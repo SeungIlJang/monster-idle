@@ -23,6 +23,9 @@ npm run android    # build → cap sync → Android Studio 열기
 **[DESIGN.md](DESIGN.md) 가 이 프로젝트의 중심이다.** 수식·상수·레이어 구조와 더불어
 **무엇이 시뮬레이션으로 검증됐고 무엇이 아직 아닌지**를 구분해 적어두었다.
 
+- [docs/reference-legend-of-slime.md](docs/reference-legend-of-slime.md) — 모티브 게임 화면 분석과 적용 우선순위.
+  무엇을 가져오고 **무엇을 가져오지 않을지**를 이유와 함께 적었다.
+
 이 프로젝트의 규칙 하나: **시뮬레이터에서 판정을 받은 뒤에 게임에 구현한다.**
 `tools/design-sim.cjs` 와 게임은 `src/balance.json` 하나를 같이 읽으므로, 상수를 고치면
 양쪽이 동시에 바뀐다. 상수를 손봤으면 구현 전에 검증부터 돌린다.
