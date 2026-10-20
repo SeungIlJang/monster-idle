@@ -1,17 +1,16 @@
 // 스프라이트 정규화 — 빌드 시점에 한 번 돌린다.
 //
-// 세 가지 문제를 푼다:
+// 두 가지 문제를 푼다:
 //
-// 1) **못 쓰는 프레임 걸러내기.** 에셋팩의 낱장 프레임은 시트를 잘못 자른 것이라
-//    뒤쪽 프레임이 쪼가리다(전사 idle_5 는 17x1 픽셀, idle_6 은 7x8). 그대로 재생하면
-//    캐릭터가 사라졌다 나타난다. 1번 프레임과 키가 비슷한 **앞쪽 연속 구간만** 남긴다.
-//
-// 2) **보이는 크기 통일.** 캔버스는 128x128 로 같아도 캐릭터가 차지하는 영역은 제각각이라
-//    (기사 77x80, 로그 85x109, 몬스터는 여백 없는 크롭) 같은 높이로 그리면 크기가 들쭉날쭉하다.
+// 1) **보이는 크기 통일.** 캐릭터가 차지하는 영역이 제각각이라(기사 77x80, 로그 85x109,
+//    몬스터는 여백 없는 크롭) 같은 높이로 그리면 크기가 들쭉날쭉하다.
 //    프레임의 내용 경계(bbox)를 매니페스트에 적어, 렌더가 **보이는 높이**를 기준으로 그리게 한다.
 //
-// 3) **검은 테두리 제거.** 투명 픽셀에 원본 배경색이 남아 있어 밝은 배경 위에서 검은 띠가
+// 2) **검은 테두리 제거.** 투명 픽셀에 원본 배경색이 남아 있어 밝은 배경 위에서 검은 띠가
 //    생긴다(png.mjs defringe 주석 참고). 배경 PNG 를 깔기 전에는 안 보이던 문제다.
+//
+// 프레임이 쓸 만한지 거르는 일은 여기서 하지 않는다 — make-hero-sprites 가 시트에서 자를 때
+// 판정한다. 예전에는 여기서 키 비교로 걸렀는데, 그 방식은 쓰러지는 Dead 동작을 통째로 지웠다.
 //
 // 사용: node tools/normalize-sprites.mjs
 import fs from 'node:fs';
@@ -21,7 +20,6 @@ import { decodePNG, encodePNG, defringe } from './png.mjs';
 
 const HERE = path.resolve(import.meta.dirname, '..');
 const ASSETS = path.join(HERE, 'assets');
-const TOL = 0.12;            // 1번 프레임 대비 허용 키 차이
 
 function bbox(file) {
   const img = decodePNG(fs.readFileSync(file));
@@ -69,20 +67,10 @@ for (const group of ['mon', 'hero']) {
       }
       if (!boxes[0]) { out[anim] = 0; continue; }
 
-      // 1번 프레임과 키가 비슷한 앞쪽 연속 구간만 남긴다
-      let keep = 1;
-      for (let i = 1; i < boxes.length; i++) {
-        const b = boxes[i];
-        if (!b) break;
-        if (Math.abs(b.h - boxes[0].h) / boxes[0].h > TOL) break;
-        keep++;
-      }
-      // 잘린 프레임은 지운다 (www 용량도 줄어든다)
-      for (let i = keep + 1; i <= n; i++) {
-        const f = path.join(dir, `${anim}_${i}.png`);
-        if (fs.existsSync(f)) fs.unlinkSync(f);
-      }
-      // 남긴 프레임만 테두리를 정리한다 (지울 프레임에 시간 쓰지 않는다)
+      // 프레임이 유효한지는 make-hero-sprites 가 자를 때 이미 판정한다.
+      // 여기서 "1번 프레임과 키가 비슷한 것만" 으로 또 거르면 Dead 를 날린다 —
+      // 쓰러지는 동작은 원래 프레임마다 키가 줄기 때문이다.
+      const keep = boxes.filter(Boolean).length;
       for (let i = 1; i <= keep; i++) {
         const f = path.join(dir, `${anim}_${i}.png`);
         if (!fs.existsSync(f)) continue;

@@ -58,7 +58,7 @@ android/        Capacitor 안드로이드 프로젝트
 런타임 이미지 처리는 하지 않는다. 스프라이트 가공은 전부 빌드 시점에 끝낸다.
 
 ```bash
-npm run assets                                   # 스프라이트 복사 → 시트 자르기 → 정규화
+npm run assets                                   # 시트에서 자르기 → 정규화
 npm run bg -- "경로/battle-swamp-v1.png" swamp   # 배경 한 장 추가
 ```
 

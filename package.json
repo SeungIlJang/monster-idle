@@ -8,7 +8,7 @@
     "dev": "node server.mjs",
     "sim": "node tools/design-sim.cjs --days=30",
     "sim:long": "node tools/design-sim.cjs --days=365",
-    "assets": "node tools/copy-assets.mjs && node tools/make-monster-sprites.mjs && node tools/make-hero-sprites.mjs && node tools/normalize-sprites.mjs",
+    "assets": "node tools/make-monster-sprites.mjs && node tools/make-hero-sprites.mjs && node tools/normalize-sprites.mjs",
     "bg": "node tools/make-bg.mjs",
     "build": "node tools/build-www.mjs",
     "sync": "npm run build && npx cap sync android",
