@@ -1,0 +1,37 @@
+{
+  "_": "전투 배경 생성 프롬프트. 공통 제약은 common 에, 지역별 차이는 zones[].scene 에만 둔다. 생성 후 실제로 쓴 모델/설정과 결과를 generated 에 기록할 것.",
+  "status": "1/10 생성 완료 (forest)",
+
+  "common": {
+    "style": "2D mobile idle RPG battle background, side view, cute cartoon style with thick clean outlines, flat shading, high saturation, bright and readable",
+    "composition": "Horizontal 9:5 banner. Clear horizon line at 70% from the top: everything below is the ground the characters stand on, everything above is sky/backdrop. Depth in three layers: far backdrop, mid silhouettes, near foreground details along the bottom edge.",
+    "constraints": "Leave the center and right-center area visually calm and uncluttered — characters stand there. No characters, no creatures, no text, no letters, no UI elements, no borders, no watermark. Even lighting, no strong vignette.",
+    "negative": "characters, people, monsters, text, letters, numbers, UI, HUD, buttons, frames, watermark, signature, dark gloomy mood, heavy vignette, busy center"
+  },
+
+  "zones": [
+    { "key": "forest",   "name": "몬스터 숲",   "scene": "peaceful green meadow, rolling grassy hills, rows of pine trees, fluffy white clouds in a pale blue sky, small bushes and wooden fence posts in the foreground" },
+    { "key": "swamp",    "name": "버섯 늪",     "scene": "misty purple swamp, giant glowing mushrooms, murky teal water pools, twisted bare trees, floating spores, pale violet sky" },
+    { "key": "highland", "name": "바람 언덕",   "scene": "windy green highland, tall grass bending in the wind, scattered grey boulders, distant blue mountains, long streaky clouds" },
+    { "key": "cave",     "name": "해골 동굴",   "scene": "underground cavern, stalactites hanging from the ceiling, pale bone fragments and skulls on the rocky floor, cool blue crystal light, dark rock walls" },
+    { "key": "canyon",   "name": "불타는 협곡", "scene": "orange desert canyon, layered red rock cliffs, cracked dry ground with glowing embers, heat haze, warm amber sky" },
+    { "key": "frost",    "name": "서리 평원",   "scene": "snowy white plain, ice formations and frozen pines, drifting snowflakes, pale cyan sky, soft blue shadows on the snow" },
+    { "key": "shadow",   "name": "그림자 숲",   "scene": "dark indigo forest at dusk, tall silhouetted trees, drifting purple fog, small glowing wisps, deep blue sky with a faint moon" },
+    { "key": "ruins",    "name": "폐허 마을",   "scene": "abandoned stone village, broken walls and collapsed roofs, cracked cobblestone ground, overgrown vines and weeds, overcast grey-blue sky" },
+    { "key": "lava",     "name": "용암 지대",   "scene": "volcanic wasteland, rivers of glowing orange lava, blackened basalt rocks, floating embers, dark red smoky sky" },
+    { "key": "sky",      "name": "하늘 성채",   "scene": "floating stone islands high above the clouds, marble ruins and broken pillars, golden sunlight, sea of white clouds below, clear azure sky" }
+  ],
+
+  "promptTemplate": "{common.style}. {zone.scene}. {common.composition} {common.constraints}",
+
+  "generated": [
+    {
+      "key": "forest",
+      "date": "2026-10-20",
+      "source": "D:/AI/workspace/game/games/output/monster-idle/battle-grassland-day-v1.png",
+      "src_size": "1681x936, 1.8MB",
+      "out_size": "1080x600, 289KB (256색 팔레트)",
+      "note": "프롬프트 그대로 나왔다. 지평선이 약 50% 라 캐릭터 발(70%)보다 위 — 의도대로 캐릭터가 풀밭 위에 선다. 하단 울타리/바위가 전경이 되어 깊이가 생긴다."
+    }
+  ]
+}

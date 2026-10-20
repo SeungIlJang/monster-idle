@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
+<title>무럭무럭 몬스터</title>
+<link rel="icon" href="data:,"/><!-- 브라우저가 자동 요청하는 /favicon.ico 404 억제 -->
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+  html,body{height:100%;background:#080b18;overflow:hidden;color:#eef;
+    font-family:-apple-system,"Segoe UI","Malgun Gothic",system-ui,sans-serif}
+  #wrap{position:relative;display:flex;flex-direction:column;width:100vw;height:100dvh;max-width:540px;margin:0 auto;background:#0a0d1e}
+
+  /* HUD */
+  #hud{display:flex;justify-content:space-around;align-items:center;gap:4px;
+    padding:max(env(safe-area-inset-top),10px) 8px 8px;
+    background:linear-gradient(#151a33,#10142a);border-bottom:1px solid #26304f;font-size:12px}
+  #hud .cell{text-align:center;line-height:1.35;flex:1}
+  #hud .k{opacity:.5;font-size:10px}
+  #hud .v{font-weight:800;font-size:14px}
+  #hStage{color:#7fd0ff}#hGold{color:#ffd34d}#hPow{color:#ff9a5a}#hBest{color:#9ae6b4}#hGem{color:#8ad8ff}
+
+  #statusbar{display:flex;align-items:center;gap:8px;padding:4px 12px;font-size:11px;
+    background:#0d1126;border-bottom:1px solid #1b2340;min-height:26px}
+  #mode{font-weight:800}
+  #mode.run{color:#7fd0ff}
+  #mode.farm{color:#ffb14a}
+  #hint{opacity:.6;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #retryBtn{background:#4a6bd0;color:#fff;border:none;border-radius:8px;padding:4px 10px;
+    font-size:11px;font-weight:800;cursor:pointer}
+
+  /* 전투는 화면의 절반 이하. 나머지는 강화 목록이 채운다 (레전드 슬라임과 같은 배분) */
+  #game{flex:0 0 42vh;display:block;width:100%;min-height:0}
+  #stageBar{padding:6px 12px 7px;background:#101633;border-bottom:1px solid #26304f}
+  .sname{display:flex;align-items:center;gap:5px;font-size:12px;margin-bottom:5px}
+  .sname b{color:#ffe9a8}
+  .sname #sNum{margin-left:auto;font-weight:800;color:#7fd0ff}
+  .sprog{height:8px;background:#1a2040;border-radius:5px;overflow:hidden}
+  .sprog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#4a6bd0,#7fd0ff);transition:width .15s}
+  #mainUpg{flex:1;min-height:0;overflow-y:auto;padding:8px 10px 10px;background:#0a0d1e}
+  #mainUpg .row{margin-bottom:6px}
+
+  /* 하단 네비 */
+  /* 패널이 inset:0 으로 덮으므로 네비를 그 위에 올려야 탭 전환이 된다 */
+  #nav{display:flex;background:linear-gradient(#10142a,#0a0d1c);border-top:1px solid #26304f;position:relative;z-index:20}
+  .nav{flex:1;text-align:center;padding:8px 2px max(env(safe-area-inset-bottom),8px);
+    font-size:11px;font-weight:700;opacity:.55;cursor:pointer}
+  .nav.on{opacity:1;color:#7fd0ff;box-shadow:inset 0 2px 0 #4a6bd0}
+  .nav .ic{font-size:19px;display:block;margin-bottom:1px}
+
+  /* 패널 */
+  .panel{position:absolute;inset:0;z-index:10;display:none;flex-direction:column;
+    background:rgba(8,11,24,.97);
+    padding:max(env(safe-area-inset-top),12px) 12px calc(58px + max(env(safe-area-inset-bottom),8px))}
+  .panel.on{display:flex}
+  .panel h2{font-size:17px;text-align:center;margin-bottom:10px}
+  .closeX{position:absolute;top:max(env(safe-area-inset-top),12px);right:14px;font-size:22px;opacity:.55;cursor:pointer}
+  .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+
+  .bar{display:flex;gap:6px;margin-bottom:10px}
+  .bar .seg{flex:1;text-align:center;padding:7px 0;border-radius:9px;background:#1a2145;
+    border:1px solid #313c66;font-size:12px;font-weight:800;cursor:pointer;opacity:.6}
+  .bar .seg.on{opacity:1;background:#20305c;border-color:#4a6bd0;color:#aee1ff}
+
+  .row{display:flex;align-items:center;gap:10px;background:#2b2a50;border:1px solid #3d3a6b;
+    border-radius:12px;padding:8px 9px;margin-bottom:7px;cursor:pointer;transition:transform .05s}
+  .row:active{transform:scale(.99)}
+  .row.can{background:#30305c;border-color:#4d4a85}
+  .row.cant{opacity:.55}
+  .row.lock{opacity:.4;cursor:default}
+  .row.max{opacity:.75;cursor:default;border-color:#3b5a3b}
+  .row.sel{outline:2px solid #ffd34d}
+  /* 아이콘 + LV 뱃지 (레퍼런스의 좌측 원형 아이콘) */
+  .row .ic{position:relative;width:40px;height:40px;flex:0 0 40px;border-radius:10px;
+    background:#1d1c3a;display:flex;align-items:center;justify-content:center;font-size:20px}
+  .row .ic b{position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);
+    background:#15142c;border:1px solid #4d4a85;border-radius:5px;
+    font-size:8px;font-weight:800;padding:0 4px;color:#cfd4ff;white-space:nowrap}
+  .row .mid{flex:1;min-width:0}
+  .row .t{font-weight:800;font-size:14px}
+  .row .lv{opacity:.55;font-weight:600;font-size:12px}
+  .row .d{font-size:11px;opacity:.65;margin-top:2px}
+  .row .buy{text-align:right;white-space:nowrap}
+  .row .cost{font-weight:800;font-size:13px;color:#ffd34d}
+  .row .cost.no{color:#ff6b6b}
+  .row .cnt{font-size:10px;opacity:.5;margin-top:2px}
+  .rec{background:#2d7d46;color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:6px;margin-left:5px;vertical-align:middle}
+  .note{font-size:11px;opacity:.6;line-height:1.6;margin-bottom:10px}
+  .soon{text-align:center;opacity:.5;font-size:13px;padding:40px 10px;line-height:1.9}
+
+  /* 오프라인 */
+  .modal{position:absolute;inset:0;z-index:30;display:none;align-items:center;justify-content:center;
+    background:rgba(5,6,14,.9);padding:20px}
+  .modal.on{display:flex}
+  .modal .box{background:linear-gradient(#1a2350,#141a38);border:1px solid #4a6bd0;border-radius:18px;
+    padding:22px;text-align:center;width:min(90vw,340px)}
+  .modal h3{font-size:18px;margin-bottom:6px}
+  .modal .sub{opacity:.65;font-size:12px;margin-bottom:14px}
+  .modal .g{color:#ffd34d;font-weight:800;font-size:22px;margin-bottom:4px}
+  .modal button{width:100%;margin-top:9px;padding:12px;border:none;border-radius:12px;
+    font-size:14px;font-weight:800;cursor:pointer}
+  #offClaim2{background:#ffcf3a;color:#2a1e00}
+  #offClaim{background:#39406a;color:#fff}
+
+  .dot{display:none;position:absolute;top:5px;right:22%;width:8px;height:8px;background:#ff4d4d;border-radius:50%}
+  /* 던전 */
+  .dcard{background:#12172f;border:1px solid #26304f;border-radius:13px;padding:12px;margin-bottom:10px}
+  .dcard h3{font-size:15px;margin-bottom:3px}
+  .dcard .d{font-size:11px;opacity:.6;line-height:1.5;margin-bottom:9px}
+  .drow{display:flex;align-items:center;gap:8px;font-size:11px;margin-bottom:9px}
+  .drow .k{background:#1a2145;border:1px solid #313c66;border-radius:7px;padding:3px 8px;font-weight:700}
+  .dlv{display:flex;align-items:center;gap:6px;margin-bottom:9px}
+  .dlv button{width:30px;height:30px;border:none;border-radius:8px;background:#28325c;color:#fff;font-size:15px;font-weight:800;cursor:pointer}
+  .dlv button:disabled{opacity:.3;cursor:default}
+  .dlv .cur{flex:1;text-align:center;font-size:13px;font-weight:800}
+  .dlv .cur small{display:block;font-size:10px;opacity:.55;font-weight:600}
+  .dbtn{display:flex;gap:6px}
+  .dbtn button{flex:1;border:none;border-radius:10px;padding:10px 4px;font-size:12px;font-weight:800;cursor:pointer;background:#4a6bd0;color:#fff;line-height:1.3}
+  .dbtn button .c{display:block;font-size:10px;font-weight:600;opacity:.75}
+  .dbtn button.ad{background:#ffcf3a;color:#2a1e00}
+  .dbtn button:disabled{opacity:.35;cursor:default}
+  .dres{font-size:11px;line-height:1.6;margin-top:9px;padding:8px 10px;background:#0e1430;border-radius:9px;border:1px solid #26304f}
+  .dres b{color:#ffd34d}
+  /* 일일 */
+  .qrow{display:flex;align-items:center;gap:10px;background:#161c3c;border:1px solid #2a3360;
+    border-radius:12px;padding:10px 11px;margin-bottom:7px}
+  .qrow.done{border-color:#ffcf3a}
+  .qrow.claimed{opacity:.55}
+  .qrow .ic{font-size:19px}
+  .qrow .mid{flex:1;min-width:0}
+  .qrow .t{font-size:13px;font-weight:700}
+  .qbar{height:6px;background:#1a2040;border-radius:4px;margin-top:5px;overflow:hidden}
+  .qbar i{display:block;height:100%;background:#ffcf3a}
+  .qrow .d{font-size:10px;opacity:.6;margin-top:3px}
+  .qrow button{border:none;border-radius:9px;background:#ffcf3a;color:#2a1e00;font-weight:800;padding:7px 12px;font-size:12px;cursor:pointer}
+  .acal{display:flex;gap:4px;margin:8px 0 10px}
+  .acal div{flex:1;text-align:center;font-size:10px;padding:7px 0;border-radius:8px;background:#161c3c;border:1px solid #2a3360;line-height:1.4}
+  .acal div.past{opacity:.45}
+  .acal div.now{border-color:#ffcf3a;background:#2a2410}
+  .acal b{display:block;font-size:11px;color:#8ad8ff}
+  /* 강화 행 — 레퍼런스 구조: [아이콘+LV] [이름/값] [초록 강화버튼] */
+  #mainUpg .row{background:#2b2a50;border-color:#3d3a6b;padding:8px 9px;gap:9px}
+  #mainUpg .row.can{background:#30305c;border-color:#4d4a85}
+  #mainUpg .row .ic{position:relative;width:40px;height:40px;flex:0 0 40px;border-radius:10px;
+    background:#1d1c3a;display:flex;align-items:center;justify-content:center;font-size:19px}
+  #mainUpg .row .ic b{position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);
+    background:#15142c;border:1px solid #4d4a85;border-radius:5px;
+    font-size:8px;font-weight:800;padding:0 4px;color:#cfd4ff;white-space:nowrap}
+  #mainUpg .row .t{font-weight:800;font-size:14px}
+  #mainUpg .row .d{font-size:13px;font-weight:700;opacity:.95;margin-top:1px;color:#fff}
+  .buyBtn{min-width:76px;text-align:center;border-radius:10px;padding:7px 8px;
+    background:#3a7a3f;border:1px solid #4ea055;line-height:1.3}
+  .buyBtn .lbl{font-size:12px;font-weight:800;color:#fff}
+  .buyBtn .cost{font-size:11px;font-weight:800;color:#ffe08a;white-space:nowrap}
+  .row.cant .buyBtn,.row.lock .buyBtn,.row.max .buyBtn{background:#3a3a52;border-color:#4a4a66}
+  .row.cant .buyBtn .cost{color:#9a9ab0}
+  /* 성장 */
+  #growRes{display:flex;gap:6px;margin-bottom:9px}
+  #growRes div{flex:1;text-align:center;background:#12172f;border:1px solid #26304f;
+    border-radius:10px;padding:7px 4px;font-size:11px;line-height:1.5}
+  #growRes b{display:block;font-size:14px;color:#8ad8ff}
+  .gsec{background:#12172f;border:1px solid #26304f;border-radius:12px;padding:12px;margin-bottom:9px}
+  .gsec h3{font-size:14px;margin-bottom:4px}
+  .gsec .d{font-size:11px;opacity:.6;line-height:1.5;margin-bottom:9px}
+  .gbtns{display:flex;gap:6px}
+  .gbtns button{flex:1;border:none;border-radius:10px;padding:10px 4px;font-size:12px;
+    font-weight:800;cursor:pointer;background:#4a6bd0;color:#fff;line-height:1.3}
+  .gbtns button .c{display:block;font-size:10px;font-weight:600;opacity:.75}
+  .gbtns button.ad{background:#ffcf3a;color:#2a1e00}
+  .gbtns button.ok{background:#2d7d46}
+  .gbtns button:disabled{opacity:.35;cursor:default}
+  .mrow{display:flex;align-items:center;gap:9px;background:#161c3c;border:1px solid #2a3360;
+    border-radius:11px;padding:8px 10px;margin-bottom:6px}
+  .mrow.lock{opacity:.4}
+  .mrow.lead{border-color:#ffd34d}
+  .mrow .ic{font-size:18px;width:22px;text-align:center}
+  .mrow .mid{flex:1;min-width:0}
+  .mrow .t{font-size:13px;font-weight:700}
+  .mrow .d{font-size:10px;opacity:.6;margin-top:2px}
+  .mrow button{border:none;border-radius:9px;background:#4a6bd0;color:#fff;font-weight:800;
+    padding:6px 10px;font-size:11px;cursor:pointer}
+  .mrow button:disabled{opacity:.3;cursor:default}
+  .mrow button.sel{background:#ffcf3a;color:#2a1e00}
+  .mgrid{margin-top:9px;background:#0b1024;border:1px solid #26304f;border-radius:10px;padding:6px 6px 6px 2px;
+    max-height:230px;overflow-y:auto}
+  .trow{display:flex;gap:3px;margin-bottom:3px;align-items:center}
+  .dep{width:26px;flex:0 0 26px;text-align:right;font-size:9px;opacity:.35;padding-right:3px}
+  .tile{flex:1;aspect-ratio:1;display:flex;align-items:center;justify-content:center;position:relative;
+    border-radius:5px;background:#243054;border:1px solid #33406e;font-size:15px;cursor:pointer;user-select:none}
+  .tile:active{transform:scale(.92)}
+  .tile.dug{background:#0d1328;border-color:#1a2340;cursor:default}
+  .tile.dark{background:#161e3c;border-color:#222c52;color:#39456e;font-size:11px;cursor:default}
+  .tile.bombable{cursor:crosshair;border-color:#ffcf3a}
+  .tile i{position:absolute;right:2px;bottom:0;font-size:8px;font-style:normal;opacity:.6}
+  .mile{display:inline-block;font-size:9px;padding:1px 4px;border-radius:5px;background:#2a3360;margin-left:4px}
+  .mile.on{background:#2d7d46}
+  /* 가챠 */
+  #gHead{background:#12172f;border:1px solid #26304f;border-radius:12px;padding:10px 12px;margin-bottom:9px}
+  .glv{display:flex;align-items:baseline;gap:7px;font-size:13px;font-weight:800;margin-bottom:6px}
+  .glv .n{color:#7fd0ff;font-size:16px}
+  .glv .sub{opacity:.55;font-weight:600;font-size:11px;margin-left:auto}
+  .gprog{height:6px;background:#1a2040;border-radius:4px;overflow:hidden;margin-bottom:8px}
+  .gprog i{display:block;height:100%;background:linear-gradient(90deg,#4a6bd0,#7fd0ff)}
+  .gtab{display:flex;gap:3px;font-size:10px;text-align:center;margin-bottom:6px}
+  .gtab div{flex:1;padding:3px 0;border-radius:6px;background:#161c3c}
+  .gtab b{display:block;font-size:11px}
+  .gown{font-size:11px;opacity:.75;line-height:1.6}
+  .gown b{color:#ffd34d}
+  #gActions{display:flex;gap:6px;margin-bottom:9px}
+  #gActions button{flex:1;border:none;border-radius:11px;padding:11px 4px;font-size:12px;
+    font-weight:800;cursor:pointer;background:#4a6bd0;color:#fff;line-height:1.35}
+  #gActions button .c{display:block;font-size:10px;font-weight:600;opacity:.75}
+  #gActions button:disabled{opacity:.35;cursor:default}
+  #gActions button.free{background:#ffcf3a;color:#2a1e00}
+  #gActions button.fuse{background:#2d7d46}
+  #gResult{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:9px;min-height:0}
+  #gSlots{margin-bottom:10px}
+  .slabel{font-size:10px;opacity:.6;margin-bottom:5px}
+  .slots{display:flex;gap:5px}
+  .slot{flex:1;text-align:center;font-size:17px;padding:7px 2px;border-radius:9px;
+    background:#161c3c;border:1px solid #2a3360;line-height:1.1}
+  .slot small{display:block;font-size:9px;opacity:.75;margin-top:3px}
+  .slot.empty{opacity:.4}
+  .slot.lock{opacity:.3;font-size:13px}
+  .chip{font-size:10px;font-weight:800;padding:3px 7px;border-radius:7px;border:1px solid}
+  .ginv{display:flex;align-items:center;gap:9px;background:#161c3c;border:1px solid #2a3360;
+    border-radius:11px;padding:8px 10px;margin-bottom:6px}
+  .ginv .ic{font-size:17px}
+  .ginv .mid{flex:1;min-width:0}
+  .ginv .t{font-size:13px;font-weight:700}
+  .ginv .d{font-size:10px;opacity:.6;margin-top:1px}
+  .ginv .cnt{font-size:12px;font-weight:800;opacity:.8}
+  .ginv.ready{border-color:#2d7d46;background:#16301f}
+
+  #adOv{position:absolute;inset:0;z-index:45;display:none;align-items:center;justify-content:center;
+    flex-direction:column;gap:12px;background:rgba(3,4,10,.94)}
+  #toast{position:absolute;top:84px;left:50%;transform:translateX(-50%);z-index:40;
+    background:#222c4e;border:1px solid #4a6bd0;padding:7px 14px;border-radius:18px;
+    font-size:12px;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
+  #toast.on{opacity:1}
+  #wipeBtn{margin-top:14px;background:#3a2030;color:#ffb4b4;border:1px solid #6a3545;
+    border-radius:10px;padding:9px;font-size:12px;font-weight:700;width:100%;cursor:pointer}
+  .ver{text-align:center;font-size:10px;opacity:.3;padding:3px}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div class="cell"><div class="k">스테이지</div><div class="v" id="hStage">1-1</div></div>
+    <div class="cell"><div class="k">최고</div><div class="v" id="hBest">1</div></div>
+    <div class="cell"><div class="k">🪙 골드</div><div class="v" id="hGold">0</div></div>
+    <div class="cell"><div class="k">💎 젬</div><div class="v" id="hGem">0</div></div>
+    <div class="cell"><div class="k">⚔️ DPS</div><div class="v" id="hPow">0</div></div>
+  </div>
+
+  <div id="statusbar">
+    <span id="mode" class="run">도전 중</span>
+    <span id="hint"></span>
+    <button id="retryBtn" style="display:none">재도전</button>
+  </div>
+
+  <div id="stageBar">
+    <div class="sname"><span id="sIcon">🚩</span> <b id="sName">몬스터 숲</b> <span id="sNum">1-1</span></div>
+    <div class="sprog"><i id="sProg"></i></div>
+  </div>
+
+  <canvas id="game"></canvas>
+
+  <!-- 강화는 메인 화면에 상시 노출한다. 별도 탭에 숨기면 메인이 '구경만 하는 화면'이 된다 -->
+  <div id="mainUpg" class="scroll"></div>
+
+  <div id="nav">
+    <div class="nav on" data-t="battle"><span class="ic">⚔️</span>전투</div>
+    <div class="nav" data-t="gacha" style="position:relative"><span class="ic">🎲</span>가챠<span id="gDot" style="display:none;position:absolute;top:5px;right:24%;width:8px;height:8px;background:#2d7d46;border-radius:50%"></span></div>
+    <div class="nav" data-t="dun" style="position:relative"><span class="ic">🗝️</span>던전<span id="dDot" class="dot"></span></div>
+    <div class="nav" data-t="daily" style="position:relative"><span class="ic">📋</span>일일<span id="qDot" class="dot"></span></div>
+    <div class="nav" data-t="grow" style="position:relative"><span class="ic">🌱</span>성장<span id="grDot" class="dot" style="background:#2d7d46"></span></div>
+  </div>
+
+  <!-- 강화 -->
+  <div class="panel" id="p_upg">
+    <span class="closeX" data-close>✕</span>
+    <h2>🔨 강화</h2>
+    <div class="bar">
+      <div class="seg on" id="bm_1">×1</div>
+      <div class="seg" id="bm_10">×10</div>
+      <div class="seg" id="bm_max">MAX</div>
+    </div>
+    <div class="scroll" id="upgList"></div>
+  </div>
+
+  <!-- 가챠 -->
+  <div class="panel" id="p_gacha">
+    <span class="closeX" data-close>✕</span>
+    <h2>🎲 가챠</h2>
+    <div class="bar" id="gBanners"></div>
+    <div id="gHead"></div>
+    <div id="gActions"></div>
+    <div id="gResult"></div>
+    <div id="gSlots"></div>
+    <div class="scroll" id="gInv"></div>
+  </div>
+
+  <!-- 성장 (2단계 레이어) -->
+  <div class="panel" id="p_grow">
+    <span class="closeX" data-close>✕</span>
+    <h2>🌱 성장</h2>
+    <div id="growRes"></div>
+    <div class="bar" id="growTabs"></div>
+    <div class="scroll" id="growBody"></div>
+  </div>
+
+  <!-- 던전 -->
+  <div class="panel" id="p_dun">
+    <span class="closeX" data-close>✕</span>
+    <h2>🗝️ 던전</h2>
+    <div class="scroll" id="dunList"></div>
+  </div>
+
+  <!-- 일일 -->
+  <div class="panel" id="p_daily">
+    <span class="closeX" data-close>✕</span>
+    <h2>📋 일일</h2>
+    <div class="scroll" id="dailyList"></div>
+  </div>
+
+  <!-- 오프라인 보상 -->
+  <div class="modal" id="offline">
+    <div class="box">
+      <h3>🌙 돌아오셨군요</h3>
+      <div class="sub" id="offTime">오프라인 0분</div>
+      <div>그동안 모은 골드</div>
+      <div class="g" id="offGold">+0</div>
+      <button id="offClaim2">📺 2배로 받기</button>
+      <button id="offClaim">그냥 받기</button>
+    </div>
+  </div>
+
+  <!-- 광고 오버레이 (폰에서는 실제 광고가 그 위에 뜬다) -->
+  <div id="adOv">
+    <div style="font-size:44px">📺</div>
+    <div class="msg" style="font-size:16px;font-weight:800">광고 준비 중…</div>
+    <div class="sub" style="font-size:12px;opacity:.5"></div>
+  </div>
+
+  <div id="toast"></div>
+</div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

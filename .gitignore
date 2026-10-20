@@ -1,0 +1,29 @@
+# 의존성
+node_modules/
+
+# 빌드 산출물 — npm run build / npx cap sync 가 만든다
+www/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+
+# 안드로이드 빌드
+.gradle/
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/captures/
+android/.idea/
+*.iml
+
+# 서명 키 — 절대 커밋하지 않는다
+*.jks
+*.keystore
+keystore.properties
+
+# 작업 중 임시
+.tmp/
+*.log
+.DS_Store
+Thumbs.db

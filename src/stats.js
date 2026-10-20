@@ -1,0 +1,150 @@
+// 파생 스탯. tools/design-sim.cjs 의 같은 이름 함수와 반드시 일치해야 한다.
+// 큰 값은 log10 으로 돌려준다(접두사 L).
+import { B, STAT_KEYS, perWave, isBoss, LeATK, LeHP } from './balance.js';
+import { S } from './state.js';
+import { fromNum, geoSum, ratio, sub } from './logmath.js';
+import { atkMul, hpMul, dpsMul } from './layer2.js';
+
+const SD = k => B.stats[k];
+
+export function unlocked(k) {
+  const d = SD(k);
+  if (d.reqStage && S.best < d.reqStage) return false;
+  if (d.req && S.lv[d.req[0]] < d.req[1]) return false;
+  return true;
+}
+export function maxed(k) {
+  const d = SD(k);
+  return d.max !== undefined && S.lv[k] >= d.max;
+}
+/** 다음 1레벨 비용 (log10) */
+export const Lcost = k => {
+  const d = SD(k);
+  return d.Lc0 + S.lv[k] * d.Lg;
+};
+/** N레벨 한꺼번에 사는 비용 (log10) */
+export const LcostN = (k, N) => {
+  const d = SD(k);
+  return Lcost(k) + geoSum(d.Lg, d.g, N);
+};
+/** 'mul' 스탯의 현재 값 (log10) */
+export const Lval = k => {
+  const d = SD(k);
+  return d.Lbase + (S.lv[k] - (d.base === 1 ? 0 : 1)) * d.Lr;
+};
+/** 'add' 스탯의 현재 값 (실수) */
+export const nval = k => {
+  const d = SD(k);
+  return d.base + d.a * S.lv[k];
+};
+
+// ── 가챠 보유 효과 (배너별 합 %) ──────────────────────────────
+// 보유 효과 + 장착 효과가 같은 축에 곱해진다 (DESIGN.md §7.4)
+export const gE = () => S.own.equip + S.eqv.equip;
+export const gS = () => S.own.skill + S.eqv.skill;
+export const gC = () => S.own.comp + S.eqv.comp;
+
+// ── 전투 스탯 ────────────────────────────────────────────────
+// 상급공격력은 해금 전에도 레벨 1 이라 ×1.024 가 적용되고 있었다 — 잠겼으면 ×1 이어야 한다
+export const LATK = () => Lval('atk') + (unlocked('adv') ? Lval('adv') : 0) + fromNum((1 + gE() / 100) * atkMul());
+export const LHP  = () => Lval('hp') + fromNum((1 + gE() / 200) * hpMul());
+export const LDEF = () => Lval('def');
+export const Lburst = () => fromNum(1.5 * (1 + gS() / 100));
+
+export const shots = () => 1 + Math.min(1, nval('dbl')) + Math.min(1, nval('trp'));
+export const critF = () => 1 + Math.min(1, nval('crit')) * (nval('cdmg') - 1);
+
+export function LDPS(boss) {
+  const nrmF = boss ? 1 : 1 + nval('nrm');
+  let L = LATK() + fromNum(critF() * shots() * nrmF * nval('aspd') * (1 + gC() / 100) * dpsMul());
+  if (boss) L += Lburst();
+  return L;
+}
+
+/** 스테이지 s 에서 초당 받는 피해 (log10). 방어 비율감소 반영 */
+export const Linc = (s, boss) =>
+  LeATK(s, boss) + fromNum(B.enemy.aspd * (boss ? 1 : perWave(s))) - LDEF();
+
+/** 전투력 = DPS × 버티는 시간 (log10). 지출 우선순위 판단에 쓴다 */
+export function Lpower(s, boss) {
+  const waves = boss ? 1 : B.stage.waves;
+  const Lehp = LHP() + fromNum(1 + (waves - 1) * nval('rec'));
+  return LDPS(boss) + Lehp - Linc(s, boss);
+}
+
+/** 표시용 전투력 (log10) — 스테이지 의존을 뺀 단순 지표 */
+export const Lrating = () => LDPS(false) + LHP() + LDEF();
+
+// ── 구매 ─────────────────────────────────────────────────────
+/** 살 수 있는 최대 레벨 수 */
+export function affordable(k) {
+  const d = SD(k);
+  if (!unlocked(k) || maxed(k)) return 0;
+  const diff = S.Lg - Lcost(k);
+  if (diff < 0) return 0;
+  const a = Math.pow(10, Math.min(300, diff));
+  let N = Math.floor(Math.log(1 + a * (d.g - 1)) / Math.log(d.g));
+  if (!Number.isFinite(N) || N < 1) N = 1;
+  if (d.max !== undefined) N = Math.min(N, d.max - S.lv[k]);
+  return Math.max(0, N);
+}
+
+/** N레벨 구매. 실제로 산 레벨 수를 돌려준다 */
+export function buy(k, N = 1) {
+  const can = affordable(k);
+  if (can < 1) return 0;
+  const n = Math.min(N, can);
+  const paid = LcostN(k, n);
+  if (paid > S.Lg) return 0;
+  S.Lg = sub(S.Lg, paid);
+  S.lv[k] += n;
+  return n;
+}
+
+/** 그 스테이지를 지금 전투력으로 여유있게 클리어할 수 있는가 */
+export function canClear(s, margin = 1.5) {
+  const boss = isBoss(s);
+  const ttk = ratio(LeHP(s, boss), LDPS(boss));
+  if (!(ttk > 0) || !isFinite(ttk)) return false;
+  const per = boss ? 1 : perWave(s);
+  const waves = boss ? 1 : B.stage.waves;
+  const need = ttk * per * waves;
+  if (need > B.player.giveUpSeconds) return false;
+  const Lehp = LHP() + fromNum(1 + (waves - 1) * nval('rec'));
+  const survive = ratio(Lehp, Linc(s, boss));
+  return survive > need * margin;
+}
+
+/**
+ * 사망 후 돌아갈 파밍 스테이지.
+ * 한 칸씩 내려가면 1.12^스테이지 성장 때문에 복구가 사실상 불가능하므로(사망 연쇄),
+ * 지금 전투력으로 클리어 가능한 가장 깊은 스테이지를 이분탐색으로 바로 찾는다.
+ */
+export function bestFarmStage(maxStage) {
+  const hiLimit = Math.max(1, maxStage);
+  if (!canClear(1)) return 1;
+  let lo = 1, hi = hiLimit;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (canClear(mid)) lo = mid; else hi = mid - 1;
+  }
+  return lo;
+}
+
+/** 전투력 증가율 ÷ 비용 이 가장 큰 스탯 (자동 강화·추천 표시용) */
+export function bestBuy(s, boss) {
+  const p0 = Lpower(s, boss);
+  let best = null;
+  for (const k of STAT_KEYS) {
+    if (!unlocked(k) || maxed(k)) continue;
+    const c = Lcost(k);
+    if (c > S.Lg) continue;
+    S.lv[k]++;
+    const gain = ratio(Lpower(s, boss), p0) - 1;
+    S.lv[k]--;
+    if (!(gain > 0)) continue;
+    const score = Math.log10(gain) - c;
+    if (!best || score > best.score) best = { key: k, score };
+  }
+  return best;
+}

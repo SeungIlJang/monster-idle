@@ -1,0 +1,25 @@
+{
+  "name": "monster-idle",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "무럭무럭 몬스터 — 방치형 RPG (레전드 오브 슬라임 모티브)",
+  "scripts": {
+    "dev": "node server.mjs",
+    "sim": "node tools/design-sim.cjs --days=30",
+    "sim:long": "node tools/design-sim.cjs --days=365",
+    "assets": "node tools/copy-assets.mjs && node tools/make-monster-sprites.mjs && node tools/make-hero-sprites.mjs && node tools/normalize-sprites.mjs",
+    "bg": "node tools/make-bg.mjs",
+    "build": "node tools/build-www.mjs",
+    "sync": "npm run build && npx cap sync android",
+    "android": "npm run sync && npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.2.1",
+    "@capacitor/android": "^6.2.1",
+    "@capacitor-community/admob": "^6.2.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.1"
+  }
+}
