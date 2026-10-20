@@ -1,0 +1,58 @@
+{
+  "_": "동료 6종 생성 프롬프트. 로스터는 src/gacha.js CATALOG.comp 와 같아야 한다 — id 를 바꾸면 세이브(S.inv.comp)가 깨진다. assets/mon/prompts.json 과 같은 형식.",
+  "status": "not-generated-yet",
+
+  "_설계의도": "동료는 **주인공이 아니다.** 리드 몬스터 뒤에 서서 같이 때리는 조연이고, 최대 5기가 동시에 화면에 있다. 그래서 리드와 겨루면 안 된다 — 리드보다 작고(0.75배), 단순하고, 색이 차분해야 한다. 레전드 슬라임도 같은 처리를 한다(플레이어는 슬라임, 동료는 닭 같은 작고 단순한 생물). 리드 몬스터 10종(assets/mon/prompts.json)과 **생김새가 겹치지 않게** 하는 것이 이 파일의 가장 중요한 제약이다.",
+
+  "common": {
+    "style": "2D mobile idle RPG sidekick sprite, cute chibi mascot, thick clean dark outline, flat cel shading, readable at very small size",
+    "silhouette": "VERY simple bold silhouette — this is drawn at roughly 60px tall and five of them share the screen at once, so it must read instantly as one shape. One or two colors only. Eyes are two small dots or short curved lines. No fine detail, no small props, no patterns.",
+    "subordinate": "A small helper creature, clearly smaller and simpler than a main character. Soft, rounded, non-threatening. It should look like it is following someone rather than leading.",
+    "facing": "Facing the viewer in a slight 3/4 turn toward the viewer's RIGHT. Full body, resting or hovering just above an invisible ground line at the bottom edge.",
+    "composition": "Single creature, centered, filling about 65% of the frame height — deliberately smaller in frame than the lead monsters. Square frame. Fully transparent background — no ground shadow, no platform, no backdrop.",
+    "constraints": "No text, no letters, no numbers, no UI, no frame, no border, no watermark. No humans. Muted, slightly desaturated colors so the lead monster stays the brightest thing on screen.",
+    "negative": "human, knight, armor, text, letters, numbers, UI, HUD, frame, border, watermark, background, scenery, ground shadow, platform, multiple creatures, busy detail, intricate patterns, photorealistic, gore, horror, large imposing creature, heroic pose, bright saturated hero colors"
+  },
+
+  "companions": [
+    { "id": "slimelet", "name": "작은 슬라임", "icon": "🟢",
+      "scene": "a tiny jelly blob, muted sage green, a simple smooth dome half the size of a normal slime, two dot eyes, one small highlight, no arms",
+      "_겹침주의": "리드 몬스터 글룹과 같은 슬라임이다. 반드시 **훨씬 작고 더 둔한 녹색**으로 — 채도를 낮추고 하이라이트를 하나만. 글룹의 축소판처럼 보이면 성공, 글룹처럼 보이면 실패" },
+
+    { "id": "bats", "name": "박쥐 떼", "icon": "🦇",
+      "scene": "three tiny bats flying in a loose cluster, dusty violet-grey, simple triangular wings, dot eyes, arranged in a small triangle formation, hovering",
+      "_참고": "유일하게 여러 마리인 동료다. 세 마리를 **하나의 덩어리로** 읽히게 뭉쳐 둘 것 — 흩어지면 작은 화면에서 먼지처럼 보인다" },
+
+    { "id": "spore", "name": "버섯 포자", "icon": "🍄",
+      "scene": "a tiny round mushroom sprite, dull rose cap with two cream dots, stubby pale stalk, two dot eyes, a few small spore specks drifting close to the cap",
+      "_겹침주의": "리드 몬스터 스포어링과 겹친다. 스포어링은 다리로 걷는 버섯, 이쪽은 **다리 없는 동그란 포자 덩어리**로 확실히 다르게" },
+
+    { "id": "wisp", "name": "도깨비불", "icon": "🔮",
+      "scene": "a small floating flame spirit, soft teal-blue glow with a paler core, a simple teardrop flame shape with a wispy trailing tail, two dot eyes in the core, no limbs",
+      "_참고": "자체 발광하는 유일한 동료라 배경과 겹칠 일이 없다. 다만 밝은 풀밭 위에서 청록은 잘 보이니 채도만 억제" },
+
+    { "id": "shard", "name": "돌조각", "icon": "🪨",
+      "scene": "a small floating rock fragment, warm grey stone with one chipped flat face and a thin moss streak, blocky angular shape, two dot eyes carved into the front, hovering slightly tilted",
+      "_겹침주의": "리드 몬스터 그래니트(골렘)와 겹친다. 그래니트는 팔다리 있는 거대 석상, 이쪽은 **팔다리 없는 떠 있는 돌 한 조각**" },
+
+    { "id": "shade", "name": "그림자", "icon": "👤",
+      "scene": "a small shadow creature, flat charcoal-grey silhouette with soft ragged edges, a simple hunched blob shape with no features except two pale glowing dot eyes, slightly transparent at the bottom edge",
+      "_겹침주의": "리드 몬스터 레이스(유령)와 겹친다. 레이스는 후드와 꼬리가 있는 창백한 청백색 망령, 이쪽은 **특징이 전혀 없는 납작한 검은 실루엣**. 레이스보다 훨씬 단순해야 한다",
+      "_주의": "밝은 풀밭 위에서 검은 덩어리는 잘 보이지만, 배경이 어두운 지역(해골 동굴·그림자 숲)에서는 묻힌다. 가장자리에 아주 옅은 테두리 빛을 넣을 것" }
+  ],
+
+  "promptTemplate": "{common.style}. {companion.scene}. {common.subordinate} {common.silhouette} {common.facing} {common.composition} {common.constraints}",
+
+  "_규격": {
+    "포즈": "idle 1장이면 충분하다. 동료는 작고 뒤에 있어서 프레임이 늘어도 눈에 띄지 않는다 — 리드 몬스터에 쓸 생성 예산을 동료에 쓰지 말 것. 움직임은 렌더에서 상하 흔들기(bob)와 공격 때 런지로 낸다",
+    "비율": "정사각형 1024x1024 로 생성. 투명 트림 + 축소 필요 (assets/mon/prompts.json 의 _규격 과 동일)",
+    "해상도": "화면에서 약 60px 높이. 원본은 240px 안쪽으로 줄여 저장",
+    "배경": "반드시 투명. 특히 그림자(shade)는 검은색이라 배경 제거를 나중에 하면 몸이 통째로 지워진다",
+    "방향": "오른쪽을 보게. 렌더에서 반전하지 않는다",
+    "저장경로": "assets/comp/<id>.png — id 는 위 companions[].id 와 같아야 한다"
+  },
+
+  "_구현메모": "이 그림이 없어도 동료 기능은 먼저 만들 수 있다. 그림이 없으면 리드 몬스터의 스프라이트를 작게·반투명하게 그려 자리를 잡아두고, 나중에 PNG 를 넣으면 교체되게 할 것 — 배경(assets/bg)에서 쓴 방식과 같다.",
+
+  "generated": []
+}

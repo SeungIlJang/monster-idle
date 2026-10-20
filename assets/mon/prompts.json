@@ -7,13 +7,27 @@
   "common": {
     "style": "2D mobile idle RPG character sprite, cute chibi mascot, thick clean dark outline, flat cel shading with one soft highlight, high saturation, readable at small size",
     "silhouette": "Simple bold silhouette that stays recognizable when shrunk to 64px tall. Big simple eyes (two tall ovals, no pupils) placed low on the body. No mouth detail smaller than 4px. Identity comes from ONE strong accessory or body shape, not from fine detail.",
-    "pose": "Standing idle, facing the viewer in a slight 3/4 turn toward the viewer's RIGHT, weight settled, calm friendly expression. Full body, feet (or base) flat on an invisible ground line at the bottom edge.",
+    "facing": "Facing the viewer in a slight 3/4 turn toward the viewer's RIGHT. Full body, feet (or base) resting on an invisible ground line at the bottom edge.",
     "composition": "Single character, centered, filling about 80% of the frame height. Square frame. Fully transparent background — no ground shadow, no platform, no backdrop, no props beside the character.",
     "constraints": "No text, no letters, no numbers, no UI, no frame, no border, no watermark, no signature. No weapons aimed at the viewer. Not scary — these are the player's team, they should read as lovable even when monstrous.",
     "negative": "human, knight, armor, text, letters, numbers, UI, HUD, buttons, frame, border, watermark, signature, background, scenery, ground shadow, platform, drop shadow, multiple characters, cropped limbs, photorealistic, gore, horror, dull desaturated colors, busy tiny details"
   },
 
   "_palette": "종별로 주조색 하나 + 보조색 하나로 묶는다. 전투 배경이 밝은 풀밭(assets/bg/forest.png)이라 연한 노란빛·연두색 몬스터는 배경에 묻힌다 — 주조색은 채도를 높이고 외곽선을 반드시 어둡게.",
+
+  "_poses": "지금 몬스터는 종마다 idle 1장뿐이다. 그래서 공격이 스쿼시·런지 변형으로 가짜로 연출된다(DESIGN.md §2). 아래 4포즈를 같이 받으면 진짜 애니메이션이 된다. 한 종을 4장 받을 때 **반드시 한 번의 생성 세션에서 같은 시드·같은 설명으로** 받을 것 — 따로 받으면 색과 비율이 어긋나 프레임이 튄다.",
+  "poses": [
+    { "key": "idle",   "필수": true,
+      "add": "standing calmly at rest, neutral friendly expression, body settled and symmetrical" },
+    { "key": "attack", "필수": false,
+      "add": "lunging forward to the viewer's right in mid-attack, body stretched toward the target, mouth or weapon forward, aggressive but still cute, same character and same colors as the idle pose" },
+    { "key": "hit",    "필수": false,
+      "add": "recoiling backward from a hit, body squashed and leaning away to the viewer's left, eyes squeezed shut, pained expression, same character and same colors as the idle pose" },
+    { "key": "dead",   "필수": false,
+      "add": "collapsed and flattened on the ground, lying down, eyes closed as simple curved lines, defeated but comical not gruesome, same character and same colors as the idle pose" }
+  ],
+
+  "_우선순위": "슬라임(글룹)부터 한다. S.mon 의 기본값이라 모든 플레이어가 1분째부터 보는 몬스터이고, 지금 가장 밋밋하다. 슬라임 4포즈가 만족스러우면 그 설정 그대로 나머지 9종으로 넓힌다.",
 
   "monsters": [
     { "key": "slime",    "name": "글룹",     "unlock": 1,
@@ -38,7 +52,7 @@
       "scene": "a small red dragon, scarlet scales with a cream belly, short folded wings, stubby horns, a tiny flame flickering at the corner of its mouth, puffed-up proud posture, the most ornate of the ten" }
   ],
 
-  "promptTemplate": "{common.style}. {monster.scene}. {common.silhouette} {common.pose} {common.composition} {common.constraints}",
+  "promptTemplate": "{common.style}. {monster.scene}. {pose.add}. {common.silhouette} {common.facing} {common.composition} {common.constraints}",
 
   "_규격": {
     "비율": "정사각형 1024x1024 로 생성. 넣기 전 투명 트림 + 축소가 필요하다 — 변환 도구는 아직 없다. tools/make-bg.mjs 와 tools/png.mjs(decodePNG/trim/encodePNG)를 본떠 만들 것",
