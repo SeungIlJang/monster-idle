@@ -24,6 +24,29 @@ const NUM = k => ARG[k] !== undefined ? +ARG[k] : undefined;
 const DAYS = NUM('days') || 30;
 const NOGACHA = !!ARG.nogacha;
 
+// ── 3단계: 배속 · 지속 버프 ───────────────────────────────────
+// 배속과 "10분간 골드 2배" 같은 광고 버프는 같은 기계다 — **시한부 배수**다.
+// 다른 건 무엇에 곱하느냐뿐이라 하나로 모델링한다.
+//
+// 전투 시간(t)과 하루 수입(뽑기·레이어2)은 따로 돈다. 배속은 전투만 빠르게 하고
+// 하루 수입은 그대로이므로 "전부 2배" 가 되지 않는다 — 그게 이 검증의 핵심이다.
+//
+//   --speed=2        항상 켜진 배속 (상시 해금안)
+//   --buffmin=60     하루 중 버프가 켜진 분 (광고안: 6회 x 10분 = 60)
+//   --buffmul=2      그 버프의 배수
+//   --bufftype=speed|gold
+const SPEED = NUM('speed') || 1;                 // 상시 배속
+const BUFF_MIN = NUM('buffmin') || 0;            // 하루 버프 지속(분)
+const BUFF_MUL = NUM('buffmul') || 2;
+const BUFF_TYPE = ARG.bufftype || 'speed';
+// 하루 중 버프가 켜진 비율. 시뮬의 플레이어는 24시간 싸우므로 이 비율이 곧 기여도다.
+const BUFF_F = Math.max(0, Math.min(1, BUFF_MIN / 1440));
+// 비율 f 동안 m 배면 전체 처리량 배수는 (1-f) + f*m 이다.
+const blend = m => (1 - BUFF_F) + BUFF_F * m;
+const SPEED_MUL = SPEED * (BUFF_TYPE === 'speed' ? blend(BUFF_MUL) : 1);
+const GOLD_MUL = BUFF_TYPE === 'gold' ? blend(BUFF_MUL) : 1;
+const LGOLD_MUL = fromNum(GOLD_MUL);
+
 // ══════════════════════════════════════════════════ 설계 상수
 // ══════════════════════════════════════════════════ 상수는 게임과 같은 파일에서 읽는다
 // src/balance.json 이 단일 출처다. 여기에 수치를 중복으로 적으면 반드시 어긋난다
@@ -319,8 +342,8 @@ function run() {
     if (d2 > day) { day = d2; addPulls(); layer2Day(S); daily.push({ day, ...snap() }); }
 
     const r = attempt(S, S.stage);
-    S.Lgold = Ladd(S.Lgold, r.Lgold); spend(S);
-    t += r.elapsed;
+    S.Lgold = Ladd(S.Lgold, r.Lgold + LGOLD_MUL); spend(S);
+    t += r.elapsed / SPEED_MUL;        // 배속은 전투 시간만 줄인다 (하루 수입은 그대로)
 
     if (r.win) {
       S.stage++;
@@ -342,8 +365,8 @@ function run() {
       r.reason === 'dead' ? deaths++ : slows++;
       const fs = Math.max(1, S.stage - 1), fb = isBoss(fs);
       const ttkF = ratio(LeHP(fs, fb), LDPS(S, fb));
-      const kills = Math.max(0, Math.min(D.player.farmSeconds / Math.max(ttkF, 1e-6), 1e4));
-      if (kills > 0) S.Lgold = Ladd(S.Lgold, LeGOLD(fs, fb) + fromNum(kills));
+      const kills = Math.max(0, Math.min(D.player.farmSeconds * SPEED_MUL / Math.max(ttkF, 1e-6), 1e4));
+      if (kills > 0) S.Lgold = Ladd(S.Lgold, LeGOLD(fs, fb) + fromNum(kills) + LGOLD_MUL);
       spend(S);
       t += D.player.farmSeconds; farmT += D.player.farmSeconds;
     }

@@ -211,6 +211,8 @@ export function refresh() {
   $('hGem').textContent = S.gem;
   // 전투력(DPS×HP×방어)은 합성 수치라 플레이어에게 의미가 없었다 — DPS 로 바꿨다
   $('hPow').textContent = fmt(LDPS(false));
+  $('hSpd').textContent = '×' + (S.spd || 1);
+  $('spdCell').classList.toggle('on', S.spd === 2);
 
   const tg = toughness();
   const slow = tg.need > B.player.giveUpSeconds;
@@ -271,6 +273,11 @@ export function initUI() {
   // 스테이지 바를 누르면 해금 로드맵 — 월드맵 자리에 해당한다
   const sb = $('stageBar');
   if (sb) sb.onclick = () => setTab(tab === 'road' ? 'battle' : 'road');
+  // 배속 — 방치형에서 가장 자주 눌리는 버튼인데 없었다.
+  // 공짜로 둔다. 시뮬상 상시 ×2 가 30일 +3.8% / 365일 +2.1% 라 체감용이지 힘이 아니다
+  // (곡선이 로그라 처리량을 2배로 올려도 스테이지는 상수만큼만 오른다).
+  const sc = $('spdCell');
+  if (sc) sc.onclick = () => { S.spd = S.spd === 2 ? 1 : 2; save(); refresh(); };
   for (const m of [1, 10, 'max']) {
     const el = $('bm_' + m);
     if (el) el.onclick = () => { buyMode = m; renderUpgrade(); };

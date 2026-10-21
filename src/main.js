@@ -65,8 +65,11 @@ function loop(now) {
   let dt = (now - last) / 1000;
   last = now;
   if (dt > 0.1) dt = 0.1;            // 탭 복귀 시 점프 방지
-  tick(dt);
-  render(dt);
+  // 배속은 **라이브 루프에만** 건다. 오프라인 보상은 실제 경과 시간으로 따로 계산하므로
+  // 여기서 늘려도 그쪽은 영향받지 않는다(시뮬이 검증한 것도 전투 처리량뿐이다).
+  const sdt = dt * (S.spd || 1);
+  tick(sdt);
+  render(sdt);
   acc += dt;
   if (acc > 0.25) { acc = 0; refresh(); }
   requestAnimationFrame(loop);

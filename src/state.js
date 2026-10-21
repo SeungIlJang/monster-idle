@@ -16,6 +16,7 @@ export function defaults() {
     st: 1,             // 현재 도전 스테이지
     best: 1,           // 최고 도달 스테이지
     farm: 0,           // 수동 파밍 스테이지 (0 = 자동)
+    spd: 1,            // 전투 배속 (1 또는 2). 라이브 루프에만 걸린다
     mon: 'slime',      // 선택한 리드 몬스터
     bp: { equip: 0, skill: 0, comp: 0 },   // 배너별 누적 뽑기 (= 배너 경험치)
     own: { equip: 0, skill: 0, comp: 0 },  // 배너별 보유 효과 합(%) — inv 에서 파생되는 캐시
@@ -85,6 +86,7 @@ function migrate(d) {
     s.lv[k] = v;
   }
   if (!Number.isFinite(s.Lg)) s.Lg = L0;
+  s.spd = s.spd === 2 ? 2 : 1;
   s.st = Math.max(1, Math.floor(s.st) || 1);
   s.best = Math.max(s.st, Math.floor(s.best) || 1);
   return s;
