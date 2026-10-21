@@ -1,0 +1,53 @@
+{
+  "_": "용사(적) 8종 생성 프롬프트. 키·이름은 src/balance.json roster.heroes 와 같아야 한다. assets/mon/prompts.json 과 같은 형식.",
+  "status": "not-generated-yet",
+
+  "_왜필요한가": "슬라임·동료를 새로 그리면서 화면에 두 가지 그림체가 섞였다. 몬스터는 매끈한 벡터풍(굵은 외곽선·평면 채색)인데 용사는 에셋팩의 도트다. 한쪽만 바꾸면 바꾼 쪽이 떠 보이는 게 아니라 **안 바꾼 쪽이 낡아 보인다.** 몬스터 10종을 새 그림체로 끝낸 뒤 용사 8종도 같은 기준으로 맞춰야 화면이 하나로 보인다. 순서는 몬스터가 먼저다 — 플레이어가 더 오래 본다.",
+
+  "_연출상의역할": "이 게임에서 용사는 **적**이다. 플레이어(몬스터)를 침략한 인간들이고, 톤은 '무섭다' 가 아니라 '얄밉다' 에 가깝다. 공포스럽게 그리면 역할 반전이라는 후크가 죽는다 — 귀엽지만 당당하고 조금 거만한 쪽으로. 보스로 나오는 용사는 이름이 뜨므로 한눈에 구별돼야 한다.",
+
+  "common": {
+    "style": "2D mobile idle RPG character sprite, cute chibi, thick clean dark outline, flat cel shading with one soft highlight, high saturation, readable at small size",
+    "silhouette": "Simple bold silhouette recognizable at 60px tall. Big simple eyes. Identity comes from ONE strong element — the helmet, the hat, the hood, the weapon — not from fine detail. Each of the eight must be distinguishable from the others by silhouette alone.",
+    "attitude": "A human adventurer who thinks they are the hero of this story. Confident, a little smug, never frightening. This is the ENEMY the player fights, so it should read as 'punchable' rather than 'scary'.",
+    "facing": "Facing the viewer in a slight 3/4 turn toward the viewer's LEFT (these characters face the player's party, which stands on the left). Full body, feet on an invisible ground line at the bottom edge.",
+    "composition": "Single character, centered, filling about 80% of the frame height. Square frame. Fully transparent background — no ground shadow, no platform, no backdrop.",
+    "constraints": "No text, no letters, no numbers, no UI, no frame, no border, no watermark. No blood, no gore. Weapons are stylised and chunky, never pointed at the viewer.",
+    "negative": "monster, slime, text, letters, numbers, UI, HUD, frame, border, watermark, background, scenery, ground shadow, platform, multiple characters, photorealistic, gore, horror, grimdark, dull desaturated colors, busy tiny details, pixel art, dithering"
+  },
+
+  "_포즈": "assets/mon/prompts.json 의 poses 를 그대로 쓴다(idle/attack/hit/dead). 다만 facing 이 반대다 — 용사는 **왼쪽**을 본다. 렌더는 용사를 flip:true 로 그리므로(render.js) 그림 자체는 오른쪽을 보게 그려도 되지만, 그러면 좌우가 뒤집힌 무기·장식이 어색해진다. 왼쪽을 보게 그리고 render 의 flip 을 끄는 쪽이 낫다 — 바꿀 때 보스 이름표 위치도 같이 확인할 것.",
+
+  "heroes": [
+    { "key": "warrior", "name": "카엘", "full": "Kael Ironblade",
+      "scene": "a young swordsman with messy brown hair, red scarf and a deep blue tunic with gold trim, a short broad sword held low, open confident grin, the most 'classic hero' looking of the eight" },
+    { "key": "knight", "name": "알드릭", "full": "Aldric Aegis",
+      "scene": "a stout knight in polished silver plate armour, closed helm with a tall blue plume, a large kite shield with a gold cross, stubby and heavy, immovable stance" },
+    { "key": "rogue", "name": "사일러스", "full": "Sylas Nightveil",
+      "scene": "a slim rogue in a deep green hood that shadows the upper face, white hair showing beneath, dark leather with belt buckles, two small daggers held reversed, sly half-smile" },
+    { "key": "mage", "name": "라이라", "full": "Lyra Arcanis",
+      "scene": "a small witch with long pink hair under an oversized pointed purple hat, purple robe with gold trim, a wooden staff topped with a glowing violet gem, smug half-lidded eyes" },
+    { "key": "cleric", "name": "엘리라", "full": "Elira Dawnlight",
+      "scene": "a blonde cleric in a white and blue habit with a tall white hat marked with a blue cross, holding a golden cross-topped staff, serene closed-eye smile, soft warm glow" },
+    { "key": "archer", "name": "리나", "full": "Rina Windarrow",
+      "scene": "an orange-haired archer with a high ponytail, green hunting leathers and a brown quiver, a short recurve bow held across the body, one eye winking, light and quick" },
+    { "key": "emage", "name": "테라", "full": "Terra Stoneheart",
+      "scene": "an earth mage in layered mossy green and brown robes, short dark hair with a leaf circlet, a gnarled wooden staff with a raw amber stone, calm and rooted, small floating pebbles beside the staff" },
+    { "key": "dmage", "name": "닉스", "full": "Nyx Shadowveil",
+      "scene": "a dark mage in a black and deep-violet robe with a wide hat brim hiding the eyes, pale lavender hair, a crooked staff with a dark crystal, wisps of shadow at the hem, the most ominous of the eight but still cute" }
+  ],
+
+  "promptTemplate": "{common.style}. {hero.scene}. {pose.add}. {common.silhouette} {common.attitude} {common.facing} {common.composition} {common.constraints}",
+
+  "_규격": {
+    "비율": "정사각형 1024x1024 로 생성 후 투명 트림 + 축소. tools/make-mon.mjs 가 assets/hero/<key>/<anim>_1.png 도 같은 방식으로 받을 수 있게 확장하면 된다(지금은 mon/comp 만 본다)",
+    "해상도": "화면에서 약 60~70px(잡몹) · 보스는 약 160px. 원본은 320px 안쪽",
+    "배경": "반드시 투명. 투명 픽셀 RGB 가 (0,0,0) 이면 make-mon 이 defringe 를 건너뛰게 등록하므로 그대로 두면 된다",
+    "그림자": "넣지 말 것 — 렌더가 타원 그림자를 그린다",
+    "포즈": "한 종을 여러 포즈로 받을 때는 **한 번의 생성 세션에서 같은 시드**로. 따로 받으면 색과 비율이 어긋나 프레임이 튄다"
+  },
+
+  "_교체순서": "8종을 한꺼번에 바꿀 필요는 없다. 챕터 보스로 먼저 나오는 순서대로 — 카엘(1장) → 알드릭 → 사일러스 → 라이라 → 엘리라 → 리나 → 테라 → 닉스. 다만 한 챕터 안에서 잡몹과 보스가 같은 용사이므로, 한 명을 바꾸면 그 챕터는 통째로 새 그림체가 된다.",
+
+  "generated": []
+}
