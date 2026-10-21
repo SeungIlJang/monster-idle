@@ -140,6 +140,45 @@
   .soon{text-align:center;opacity:.5;font-size:13px;padding:40px 10px;line-height:1.9}
 
   /* 오프라인 */
+  /* ── 첫 화면 ───────────────────────────────────────────── */
+  #title{position:absolute;inset:0;z-index:60;display:none;flex-direction:column;
+         justify-content:space-between;overflow:hidden}
+  #title.on{display:flex}
+  #title.out{animation:tOut .45s ease forwards}
+  @keyframes tOut{to{opacity:0;visibility:hidden}}
+  /* 배경은 이미 있는 전투 배경을 그대로 쓴다 — 톤이 게임과 어긋나지 않는다 */
+  .tbg{position:absolute;inset:0;background:url(assets/bg/forest.png) center/cover no-repeat;
+       transform:scale(1.08);animation:tDrift 24s ease-in-out infinite alternate}
+  @keyframes tDrift{to{transform:scale(1.14) translateX(-2%)}}
+  /* 위아래를 어둡게 깔아야 글자가 읽힌다 */
+  .tveil{position:absolute;inset:0;background:
+     linear-gradient(180deg,rgba(6,9,22,.86) 0%,rgba(6,9,22,.25) 38%,rgba(6,9,22,.55) 72%,rgba(6,9,22,.95) 100%)}
+  .tmain{position:relative;padding:40px 20px 0;text-align:center;flex:0 0 auto}
+  .ttag{font-size:12px;letter-spacing:.14em;color:#9fd8ff;opacity:.9;margin-bottom:10px}
+  .tname{font-size:40px;line-height:1.1;font-weight:900;color:#fff8e1;
+         text-shadow:0 3px 0 #2a1d4a,0 0 22px rgba(120,180,255,.45);letter-spacing:-.01em}
+  .tname b{color:#ffd34d;font-size:46px;text-shadow:0 3px 0 #4a3410,0 0 26px rgba(255,200,90,.5)}
+  /* 주인공과 동료 — 게임 안 그림을 그대로 쓴다 */
+  /* 두 겹인 이유: 바깥이 남는 세로를 차지해 **가운데 정렬**하고,
+     안쪽 .trow 가 셋의 **발밑을 같은 선**에 맞춘다. 한 겹으로는 둘 다 못 한다
+     (flex-end 로 맞추면 캐릭터가 통째로 바닥으로 쏠린다). */
+  .tcast{position:relative;flex:1 1 auto;display:flex;align-items:center;justify-content:center}
+  .trow{display:flex;align-items:flex-end;justify-content:center;gap:6px}
+  .tcast img{image-rendering:auto;filter:drop-shadow(0 6px 10px rgba(0,0,0,.45))}
+  .tcast .c1{width:128px;animation:tBob 2.4s ease-in-out infinite}
+  .tcast .c2{width:62px;animation:tBob 2.4s ease-in-out .5s infinite}
+  .tcast .c3{width:62px;animation:tBob 2.4s ease-in-out .9s infinite}
+  @keyframes tBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+  .tfoot{position:relative;padding:0 24px 30px;text-align:center}
+  .tsave{font-size:12px;color:#cfdcf2;opacity:.85;margin-bottom:10px;min-height:16px}
+  #tStart{width:100%;max-width:300px;padding:15px;border:none;border-radius:14px;
+          background:linear-gradient(#49b265,#2d7d46);color:#fff;font-size:17px;font-weight:900;
+          cursor:pointer;box-shadow:0 5px 0 #1d5730,0 8px 18px rgba(0,0,0,.4);
+          animation:tPulse 2s ease-in-out infinite}
+  #tStart:active{transform:translateY(3px);box-shadow:0 2px 0 #1d5730}
+  @keyframes tPulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.14)}}
+  .tver{margin-top:12px;font-size:10px;color:#8fa6c8;opacity:.6}
+
   .modal{position:absolute;inset:0;z-index:30;display:none;align-items:center;justify-content:center;
     background:rgba(5,6,14,.9);padding:20px}
   .modal.on{display:flex}
@@ -296,6 +335,28 @@
 </head>
 <body>
 <div id="wrap">
+  <!-- 첫 화면. 처음 켰을 때 게임이 뭔지 한 번에 보여준다. -->
+  <div id="title" class="on">
+    <div class="tbg"></div>
+    <div class="tveil"></div>
+    <div class="tmain">
+      <div class="ttag">인간 용사들이 숲을 침략했다</div>
+      <h1 class="tname">무럭무럭<br><b>몬스터</b></h1>
+    </div>
+    <div class="tcast">
+      <div class="trow">
+        <img class="c2" src="assets/comp/spore.png" alt="">
+        <img class="c1" src="assets/mon/slime/idle_1.png" alt="">
+        <img class="c3" src="assets/comp/bats.png" alt="">
+      </div>
+    </div>
+    <div class="tfoot">
+      <div class="tsave" id="tSave"></div>
+      <button id="tStart">시작하기</button>
+      <div class="tver" id="tVer"></div>
+    </div>
+  </div>
+
   <div id="hud">
     <div class="cell"><div class="k">스테이지</div><div class="v" id="hStage">1-1</div></div>
     <div class="cell"><div class="k">최고</div><div class="v" id="hBest">1</div></div>

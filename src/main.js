@@ -8,6 +8,7 @@ import { pendingOffline, claimOffline, fmtDuration } from './offline.js';
 import { fmt } from './logmath.js';
 import { initAds, playRewarded, isNative } from './ads.js';
 import { renderSkillBar } from './ui-skills.js';
+import { showTitle } from './ui-title.js';
 
 load();
 
@@ -33,9 +34,10 @@ setEventHandler(ev => {
   if (ev.type === 'death') refresh();
 });
 
-// 오프라인 보상
+// 오프라인 보상 — **타이틀을 닫은 뒤** 띄운다. 먼저 띄우면 타이틀 뒤에 가려진다.
 const off = pendingOffline();
-if (off) {
+function showOfflineReward() {
+  if (!off) return;
   const box = document.getElementById('offline');
   document.getElementById('offTime').textContent = fmtDuration(off.seconds) +
     (off.seconds > off.capped ? ' (최대 ' + B.offline.capHours + '시간까지)' : '');
@@ -56,6 +58,9 @@ if (off) {
     toast('오프라인 보상 2배!');
   };
 }
+
+// 첫 화면 → (시작) → 오프라인 보상
+showTitle(showOfflineReward);
 
 enterStage(S.st, MODE.RUN);
 refresh();
