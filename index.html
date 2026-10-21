@@ -31,7 +31,21 @@
 
   /* 전투는 화면의 절반 이하. 나머지는 강화 목록이 채운다 (레전드 슬라임과 같은 배분) */
   #game{flex:0 0 42vh;display:block;width:100%;min-height:0}
-  #stageBar{padding:6px 12px 7px;background:#101633;border-bottom:1px solid #26304f}
+  #stageBar{padding:6px 12px 7px;background:#101633;border-bottom:1px solid #26304f;cursor:pointer}
+  #stageBar:active{background:#16204a}
+  /* 해금 로드맵 */
+  .rhead{padding:8px 4px 12px;color:#9fb6d8;font-size:13px}
+  .rrow{display:flex;gap:10px;align-items:flex-start;padding:8px 4px;border-left:2px solid #26304f;margin-left:18px}
+  .rrow.done{border-left-color:#2d7d46}
+  .rrow.next{border-left-color:#d8b24a}
+  .rnode{flex:0 0 38px;margin-left:-20px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+         background:#1a2242;border:2px solid #26304f;font-weight:800;font-size:12px;color:#8fa6c8}
+  .rrow.done .rnode{background:#1d3b24;border-color:#2d7d46;color:#7fd07f}
+  .rrow.next .rnode{background:#3a3016;border-color:#d8b24a;color:#ffd34d}
+  .rbody{flex:1;padding-top:3px}
+  .ritem{font-size:13px;color:#cfdcf2;line-height:1.5}
+  .rrow.done .ritem{opacity:.45}
+  .rhint{margin-top:3px;font-size:12px;color:#ffd34d;font-weight:700}
   .sname{display:flex;align-items:center;gap:5px;font-size:12px;margin-bottom:5px}
   .sname b{color:#ffe9a8}
   .sname #sNum{margin-left:auto;font-weight:800;color:#7fd0ff}
@@ -315,6 +329,13 @@
     <span class="closeX" data-close>✕</span>
     <h2>🗝️ 던전</h2>
     <div class="scroll" id="dunList"></div>
+  </div>
+
+  <!-- 해금 로드맵 — 스테이지 바를 누르면 열린다 -->
+  <div class="panel" id="p_road">
+    <span class="closeX" data-close>✕</span>
+    <h2>🗺️ 해금 로드맵</h2>
+    <div class="scroll" id="roadList"></div>
   </div>
 
   <!-- 일일 -->

@@ -12,6 +12,7 @@ import * as L2 from './layer2.js';
 import { playRewarded } from './ads.js';
 import { initGrow, renderGrow } from './ui-grow.js';
 import { initGacha, renderGacha } from './ui-gacha.js';
+import { renderRoad } from './ui-road.js';
 import { fmt, L0, ratio } from './logmath.js';
 
 const $ = id => document.getElementById(id);
@@ -253,7 +254,7 @@ export function refresh() {
 // ── 탭 ───────────────────────────────────────────────────────
 const PANEL_RENDER = {
   upg: renderUpgrade, gacha: renderGacha, dun: renderDungeon,
-  daily: renderDaily, grow: renderGrow,
+  daily: renderDaily, grow: renderGrow, road: renderRoad,
 };
 function setTab(name) {
   tab = name;
@@ -267,6 +268,9 @@ function setTab(name) {
 export function initUI() {
   for (const el of document.querySelectorAll('.nav')) el.onclick = () => setTab(el.dataset.t);
   for (const el of document.querySelectorAll('[data-close]')) el.onclick = () => setTab('battle');
+  // 스테이지 바를 누르면 해금 로드맵 — 월드맵 자리에 해당한다
+  const sb = $('stageBar');
+  if (sb) sb.onclick = () => setTab(tab === 'road' ? 'battle' : 'road');
   for (const m of [1, 10, 'max']) {
     const el = $('bm_' + m);
     if (el) el.onclick = () => { buyMode = m; renderUpgrade(); };
