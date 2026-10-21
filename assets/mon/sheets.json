@@ -1,0 +1,97 @@
+{
+  "_": "몬스터 4포즈 시트 생성 프롬프트. 슬라임(완료)에 실제로 쓰여 통한 형식을 그대로 따른다 — 2048x2048 한 장에 2x2 셀, 네 포즈를 **같이** 생성해야 색·비율·광원이 안 어긋난다. tools/print-mon-prompts.mjs 가 이 파일을 읽어 바로 붙여넣을 수 있는 문장을 뽑는다.",
+  "_출처": "slime 의 실제 프롬프트는 D:/AI/workspace/game/games/output/monster-idle/sprites-v1/generation.json 에 있다. 아래 template 은 그것을 변수만 뽑아낸 것이다.",
+
+  "template": "Use case: stylized-concept. Asset: production transparent sprite sheet for 2D mobile idle RPG. Square 2048x2048 sheet, exact 2 by 2 equal square cells, NO visible grid, no labels. Render the SAME {identity} in four poses in ONE image, consistent identity, palette, volume, outline and light source across all cells. Top-left idle: {idle}. Top-right attack: {attack}. Bottom-left hit: {hit}. Bottom-right dead: {dead}. {palette}. Thick clean dark outlines, flat cel shading, saturated, simple bold silhouette readable at 64px, no intricate details. Slight 3/4 view toward viewer's RIGHT. Each pose entirely inside its own cell with ample transparent margin, same implied floor baseline at 85% down each cell, consistent body mass; idle occupies about 75% cell width. Fully transparent background, no shadows of any kind, no floor, no props, no scenery, no motion lines, no effects, no text, no letters, no numbers, no UI, no borders, no watermark. Only these four depictions of the same {noun}.",
+
+  "_규칙": {
+    "dead 는 납작하게": "렌더는 종마다 box 를 하나(idle 기준)만 쓴다. dead 가 납작해야 쓰러진 것으로 보이고, 세워서 그리면 그냥 작아진 것처럼 보인다",
+    "hit 는 왼쪽으로": "적이 오른쪽에 있으므로 맞으면 왼쪽으로 밀린다. attack 은 오른쪽으로 뻗는다",
+    "무서워지지 않게": "해골·유령·드래곤은 쉽게 무서워진다. 이들은 플레이어의 편이다 — 겁먹게 하면 안 된다",
+    "실루엣 구별": "열 종이 작게 같이 보일 일은 없지만 도감 그리드에서는 나란히 보인다. 윤곽만으로 구별돼야 한다"
+  },
+
+  "monsters": [
+    {
+      "key": "goblin", "name": "그릭", "noun": "goblin",
+      "identity": "small mischievous goblin with oversized pointed ears and one tiny fang",
+      "palette": "Yellow-green skin, torn brown loincloth, small wooden club, ONE simple upper-left soft highlight",
+      "idle": "standing in a slight crouch, club resting on one shoulder, crooked grin, ears up",
+      "attack": "lunging right swinging the club overhead, body stretched toward the right target, eyes wide with glee",
+      "hit": "recoiling left, ears flattened, club dropping from one hand, eyes squeezed shut",
+      "dead": "sprawled flat on the ground on its back, limbs splayed, eyes as closed curved lines, tongue out comically"
+    },
+    {
+      "key": "bat", "name": "나이트윙", "noun": "bat",
+      "identity": "chubby round bat with oversized round ears and tiny fangs",
+      "palette": "Deep indigo-purple fur, paler lilac wing membranes, ONE simple upper-left soft highlight",
+      "idle": "hovering with wings spread in a relaxed shallow arc, body round and settled, cheerful",
+      "attack": "swooping right with wings swept back and fangs forward, body stretched toward the right target",
+      "hit": "tumbling left with wings crumpled inward, body squashed, eyes squeezed shut",
+      "dead": "lying flat on its back on the ground, wings spread limp and flattened, eyes as closed curved lines"
+    },
+    {
+      "key": "mushroom", "name": "스포어링", "noun": "mushroom creature",
+      "identity": "walking mushroom with a wide cap and a plump stalk body with stubby legs",
+      "palette": "Crimson red cap with cream spots, pale cream stalk, ONE simple upper-left soft highlight",
+      "idle": "standing still and content, cap level, drowsy half-closed eyes, a few tiny spores drifting right beside the cap",
+      "attack": "hopping right and headbutting with the cap tilted forward, stalk stretched toward the right target",
+      "hit": "recoiling left with the cap knocked askew, stalk squashed down, eyes squeezed shut, spores scattering",
+      "dead": "cap collapsed flat over the squashed stalk like a dropped umbrella, eyes as closed curved lines"
+    },
+    {
+      "key": "skeleton", "name": "본가드", "noun": "skeleton",
+      "identity": "stout little skeleton guard with a slightly oversized skull, a dented bronze helmet and a small round wooden shield",
+      "palette": "Clean bone white, bronze helmet, brown shield, two soft blue glowing dots for eyes, ONE simple upper-left soft highlight",
+      "idle": "standing at ease, shield lowered, helmet slightly too big and tipped back, goofy not frightening",
+      "attack": "lunging right with a bony fist thrust forward and shield raised, body stretched toward the right target",
+      "hit": "recoiling left, helmet sliding over the eye sockets, ribs squashed together, a few small bone chips popping off",
+      "dead": "collapsed into a low flat pile of bones with the skull resting on top, helmet beside it, comically tidy not gruesome"
+    },
+    {
+      "key": "wolf", "name": "팽울프", "noun": "wolf",
+      "identity": "fluffy grey dire wolf pup with oversized paws and one fang showing",
+      "palette": "Thick silver-grey fur with a darker charcoal mane, amber eyes, ONE simple upper-left soft highlight",
+      "idle": "standing on all fours, ears forward and alert, tail up, mouth slightly open",
+      "attack": "pouncing right with front paws extended and jaws open, body stretched toward the right target",
+      "hit": "recoiling left with ears flat and tail tucked, body squashed low, eyes squeezed shut",
+      "dead": "lying flat on its side on the ground, legs limp, tail still, eyes as closed curved lines"
+    },
+    {
+      "key": "ghost", "name": "레이스", "noun": "wraith",
+      "identity": "floating wraith with a wispy tail instead of legs and a tattered hood",
+      "palette": "Pale cyan-white translucent body, slightly deeper teal at the hem, two soft glowing eyes, ONE simple upper-left soft highlight",
+      "idle": "hovering upright and still, hood settled, tail curling gently below, gentle melancholy expression",
+      "attack": "surging right with the hood swept back and arms reaching forward, body stretched toward the right target",
+      "hit": "recoiling left, body rippling and compressed, hood collapsing over the eyes, eyes squeezed shut",
+      "dead": "sunk to the ground as a low flat spreading puddle of pale mist, eyes as closed curved lines, hood flattened on top"
+    },
+    {
+      "key": "orc", "name": "브락", "noun": "orc",
+      "identity": "burly orc brute with broad shoulders, two tusks jutting up from the lower jaw, and a heavy axe",
+      "palette": "Moss-green skin, brown leather straps and a grey fur shoulder pad, iron axe head, ONE simple upper-left soft highlight",
+      "idle": "standing square and heavy with the axe resting on one shoulder, confident grin, chest out",
+      "attack": "stepping right into a big overhead axe swing, body stretched toward the right target, tusks bared",
+      "hit": "staggering left with the axe dropping low, shoulders squashed down, eyes squeezed shut",
+      "dead": "flat on its back on the ground, arms out wide, axe fallen beside it, eyes as closed curved lines"
+    },
+    {
+      "key": "golem", "name": "그래니트", "noun": "stone golem",
+      "identity": "chunky blocky stone golem with oversized fists and a boxy head",
+      "palette": "Warm grey granite with mossy green patches in the cracks, two glowing amber eyes set deep in the head, ONE simple upper-left soft highlight",
+      "idle": "standing heavy and still, fists at its sides, shoulders high, slow and sturdy",
+      "attack": "slamming one huge fist down to the right, body leaning toward the right target, small pebbles shaken loose",
+      "hit": "rocking left with cracks widening across the chest, body compressed, eyes narrowed shut",
+      "dead": "collapsed into a low flat heap of stone blocks with the head resting on top, amber eyes dark, moss still showing"
+    },
+    {
+      "key": "dragon", "name": "이그나리온", "noun": "small dragon",
+      "identity": "small proud red dragon with short folded wings and stubby horns",
+      "palette": "Scarlet scales with a cream belly, warm orange wing membranes, a tiny flame at the mouth corner, ONE simple upper-left soft highlight",
+      "idle": "standing puffed up and proud, wings folded, chin raised, tiny flame flickering at the mouth",
+      "attack": "rearing right breathing a short compact puff of flame toward the right target, wings flared, neck stretched",
+      "hit": "recoiling left with wings clamped shut and neck pulled in, body squashed, eyes squeezed shut, flame snuffed out",
+      "dead": "flopped flat on its belly on the ground, wings spread limp, neck and tail stretched out, eyes as closed curved lines, a small puff of smoke at the mouth"
+    }
+  ]
+}
