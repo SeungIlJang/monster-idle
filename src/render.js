@@ -301,8 +301,10 @@ export function render(dt) {
     const h = eH * laneS(d);
     const eb = Math.sin(t * 2.4 + e.ph) * h * 0.015;
     const hit = e.hitT > 0 ? e.hitT / 0.12 : 0;
-    drawSprite(pick('hero', hero.key, hit > 0 ? 'hit' : 'idle', frame + i), ex, ey + eb, h, boxOf('hero', hero.key), {
-      flip: true,
+    // flip 을 쓰지 않는다 — 용사 그림이 이미 왼쪽(우리 쪽)을 보게 그려져 있다.
+    // 뒤집으면 무기와 장식이 반대로 가고 기사의 방패가 바깥쪽으로 돌아간다.
+    const fPose = hit > 0 ? 'hit' : R.foeAtkT > 0 ? 'attack' : 'idle';
+    drawSprite(pick('hero', hero.key, fPose, frame + i), ex, ey + eb, h, boxOf('hero', hero.key), {
       dx: hit * 7,
       sx: 1 + hit * 0.06,
       ring: FOE,
@@ -317,8 +319,9 @@ export function render(dt) {
     ctx.fillStyle = FOE;
     ctx.font = '800 13px system-ui';
     ctx.strokeStyle = 'rgba(30,20,10,.7)'; ctx.lineWidth = 3;
-    ctx.strokeText('👑 ' + hero.name, W * 0.62, feet - eH - 36);
-    ctx.fillText('👑 ' + hero.name, W * 0.62, feet - eH - 36);
+    // 보스는 W*0.66 에 선다(위 drawn 참고). 이름표도 같은 x 여야 머리 위에 온다.
+    ctx.strokeText('👑 ' + hero.name, W * 0.66, feet - eH - 20);
+    ctx.fillText('👑 ' + hero.name, W * 0.66, feet - eH - 20);
   }
 
 
