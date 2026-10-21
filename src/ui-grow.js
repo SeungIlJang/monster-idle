@@ -112,39 +112,66 @@ function renderMine() {
   };
 }
 
-// ── 몬스터 수집 ──────────────────────────────────────────────
+// ── 몬스터 수집 (도감) ───────────────────────────────────────
+// 목록이 아니라 **그리드 + 실루엣**으로 보여준다. 빈 칸은 아무 감정도 만들지 않지만
+// 회색 실루엣은 "아직 없는 것"을 계속 보여준다 — 수집 동기를 만드는 가장 싼 장치다
+// (docs/reference-legend-of-slime.md §3).
+let picked = null;
+
 function renderMonsters() {
-  const rows = L2.MONSTERS.map(m => {
-    const open = S.best >= m.unlock;
-    const lv = L2.monLevel(m.key), cost = L2.monCost(m.key);
-    const can = open && S.shard >= cost;
-    const lead = S.mon === m.key;
-    const miles = L2.MILESTONES.map(x => `<span class="mile ${lv >= x ? 'on' : ''}">${x}</span>`).join('');
-    return `<div class="mrow ${open ? (lead ? 'lead' : '') : 'lock'}">
-      <div class="ic">${open ? '🐾' : '🔒'}</div>
-      <div class="mid">
-        <div class="t">${m.name} <span style="opacity:.55;font-weight:600">Lv.${lv}</span>${lead ? ' <span style="color:#ffd34d">선두</span>' : ''}</div>
-        <div class="d">${open ? '다음 🔹' + n0(cost) + ' · ' + miles : '스테이지 ' + m.unlock + ' 도달 시 해금'}</div>
-      </div>
-      ${open ? `<button data-lead="${m.key}" class="${lead ? 'sel' : ''}">${lead ? '선두' : '선택'}</button>
-                <button data-lvup="${m.key}" ${can ? '' : 'disabled'}>+1</button>` : ''}
+  const open = m => S.best >= m.unlock;
+  if (!picked || !L2.MONSTERS.some(m => m.key === picked)) picked = S.mon;
+
+  const tiles = L2.MONSTERS.map(m => {
+    const o = open(m), lv = L2.monLevel(m.key), lead = S.mon === m.key;
+    return `<div class="mtile ${o ? '' : 'lock'} ${picked === m.key ? 'on' : ''}" data-pick="${m.key}">
+      <img src="assets/mon/${m.key}/idle_1.png" alt="">
+      ${lead ? '<span class="lead">선두</span>' : ''}
+      <div class="nm">${o ? m.name : '???'}</div>
+      <div class="sub">${o ? 'Lv.' + lv : m.unlock}</div>
     </div>`;
   }).join('');
-  $('growBody').innerHTML =
-    `<div class="d" style="font-size:11px;opacity:.65;line-height:1.6;margin-bottom:9px">
-       몬스터 레벨 1당 마스터리 포인트 1. <b>포인트는 전 몬스터 공용</b>이라 여러 마리를 키우는 게 이득입니다.<br>
-       마일스톤(${L2.MILESTONES.join('·')})마다 전체 공격력 +${B.layer2.collect.milestoneAtkPct}%.
-     </div>` + rows;
+
+  const m = L2.MONSTERS.find(x => x.key === picked);
+  const o = open(m), lv = L2.monLevel(m.key), cost = L2.monCost(m.key);
+  const can = o && S.shard >= cost;
+  const lead = S.mon === m.key;
+  const miles = L2.MILESTONES.map(x => `<span class="mile ${lv >= x ? 'on' : ''}">${x}</span>`).join('');
+
+  $('growBody').innerHTML = `
+    <div class="mgrid">${tiles}</div>
+    <div class="mdet">
+      <div class="t">${o ? m.name : '???'} <span style="opacity:.55;font-weight:600">Lv.${lv}</span></div>
+      <div class="d">${o
+        ? '마일스톤 ' + miles + ' · 다음 레벨 🔹' + n0(cost)
+        : '<b>스테이지 ' + m.unlock + '</b> 도달 시 해금'}</div>
+      ${o ? `<div class="mbtn">
+          <button data-lead="${m.key}" class="${lead ? 'sel' : ''}" ${lead ? 'disabled' : ''}>${lead ? '선두' : '선두로'}</button>
+          <button data-lvup="${m.key}" ${can ? '' : 'disabled'}>+1 <span class="c">🔹${n0(cost)}</span></button>
+          <button data-lvmax="${m.key}" ${can ? '' : 'disabled'}>MAX</button>
+        </div>` : ''}
+    </div>
+    <div class="d" style="font-size:11px;opacity:.65;line-height:1.6;margin-top:10px">
+      몬스터 레벨 1당 마스터리 포인트 1. <b>포인트는 전 몬스터 공용</b>이라 여러 마리를 키우는 게 이득입니다.<br>
+      마일스톤(${L2.MILESTONES.join('·')})마다 전체 공격력 +${B.layer2.collect.milestoneAtkPct}%.
+    </div>`;
+
+  $('growBody').querySelectorAll('[data-pick]').forEach(el => {
+    el.onclick = () => { picked = el.dataset.pick; renderMonsters(); };
+  });
   $('growBody').querySelectorAll('[data-lead]').forEach(el => {
     el.onclick = () => {
       S.mon = el.dataset.lead;
       ctx.onLeadChange();
       after();
-      ctx.toast(L2.MONSTERS.find(m => m.key === S.mon).name + ' 선두로');
+      ctx.toast(L2.MONSTERS.find(x => x.key === S.mon).name + ' 선두로');
     };
   });
   $('growBody').querySelectorAll('[data-lvup]').forEach(el => {
     el.onclick = () => { if (L2.levelUpMonster(el.dataset.lvup, 1)) after(); else ctx.toast('조각 부족'); };
+  });
+  $('growBody').querySelectorAll('[data-lvmax]').forEach(el => {
+    el.onclick = () => { if (L2.levelUpMonsterMax(el.dataset.lvmax)) after(); else ctx.toast('조각 부족'); };
   });
 }
 

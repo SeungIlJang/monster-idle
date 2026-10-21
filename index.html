@@ -33,6 +33,23 @@
   #game{flex:0 0 42vh;display:block;width:100%;min-height:0}
   #stageBar{padding:6px 12px 7px;background:#101633;border-bottom:1px solid #26304f;cursor:pointer}
   #stageBar:active{background:#16204a}
+  /* 몬스터 도감 */
+  .mgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .mtile{position:relative;background:#141b38;border:2px solid #26304f;border-radius:10px;padding:6px 3px 4px;text-align:center;cursor:pointer}
+  .mtile.on{border-color:#d8b24a;background:#1d2448}
+  .mtile img{width:100%;height:42px;object-fit:contain;image-rendering:pixelated;display:block}
+  /* 미보유는 검은 실루엣 — 빈 칸보다 "아직 없는 것" 이 훨씬 잘 보인다 */
+  .mtile.lock img{filter:brightness(0);opacity:.32}
+  .mtile .nm{font-size:11px;font-weight:700;color:#cfdcf2;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mtile.lock .nm{color:#5f6d8c}
+  .mtile .sub{font-size:10px;color:#8fa6c8}
+  .mtile.lock .sub{color:#6d7ea0}
+  .mtile .lead{position:absolute;top:2px;right:2px;background:#d8b24a;color:#20170a;font-size:9px;font-weight:800;border-radius:4px;padding:1px 4px}
+  .mdet{margin-top:10px;background:#141b38;border:1px solid #26304f;border-radius:10px;padding:10px}
+  .mdet .t{font-weight:800;font-size:15px;color:#eaf1ff}
+  .mdet .d{font-size:12px;color:#9fb6d8;margin-top:4px;line-height:1.7}
+  .mbtn{display:flex;gap:6px;margin-top:9px}
+  .mbtn button{flex:1}
   /* 해금 로드맵 */
   .rhead{padding:8px 4px 12px;color:#9fb6d8;font-size:13px}
   .rrow{display:flex;gap:10px;align-items:flex-start;padding:8px 4px;border-left:2px solid #26304f;margin-left:18px}
