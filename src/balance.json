@@ -2,42 +2,161 @@
   "_": "밸런스 단일 출처. 게임(src/*)과 시뮬레이터(tools/design-sim.cjs)가 이 파일만 읽는다.",
   "_warn": "수치를 바꾸면 반드시 `node tools/design-sim.cjs --days=30` 으로 판정 5개를 다시 확인할 것. 근거는 DESIGN.md §5~§7.",
   "version": 1,
-
   "enemy": {
     "_": "goldGrow > hpGrow 는 필수(DESIGN.md 원칙 8). 반대면 스테이지 1 파밍이 최적해가 된다.",
-    "hp0": 30, "hpGrow": 1.12,
-    "atk0": 6, "atkGrow": 1.04,
-    "gold0": 12, "goldGrow": 1.126,
+    "hp0": 30,
+    "hpGrow": 1.12,
+    "atk0": 6,
+    "atkGrow": 1.04,
+    "gold0": 12,
+    "goldGrow": 1.126,
     "aspd": 0.7
   },
-
   "stage": {
     "waves": 2,
-    "perWave": { "base": 2, "div": 12, "cap": 4 },
+    "perWave": {
+      "base": 2,
+      "div": 12,
+      "cap": 4
+    },
     "bossEvery": 10,
-    "bossHpMul": 6, "bossAtkMul": 1.6, "bossGoldMul": 10,
+    "bossHpMul": 6,
+    "bossAtkMul": 1.6,
+    "bossGoldMul": 10,
     "_timeLimit": "없음. 제한시간은 영구 벽을 만든다(원칙 3). 실패 조건은 사망뿐."
   },
-
   "player": {
     "_": "giveUpSeconds 는 UI 가 '너무 느림'을 안내하는 기준. 게임 규칙상 실패가 아니다.",
     "giveUpSeconds": 600
   },
-
   "stats": {
-    "atk":  { "kind": "mul", "base": 10,   "r": 1.018, "c0": 24,   "g": 1.055, "name": "공격력",        "icon": "⚔️" },
-    "hp":   { "kind": "mul", "base": 400,  "r": 1.018, "c0": 30,   "g": 1.055, "name": "최대체력",      "icon": "❤️" },
-    "def":  { "kind": "mul", "base": 1,    "r": 1.016, "c0": 44,   "g": 1.055, "name": "방어력",        "icon": "🛡️" },
-    "rec":  { "kind": "add", "base": 0,    "a": 0.01,  "c0": 30,   "g": 1.055, "max": 40,   "name": "웨이브 회복", "icon": "💚", "unit": "pct" },
-    "aspd": { "kind": "add", "base": 1.0,  "a": 0.01,  "c0": 20,   "g": 1.06,  "max": 200,  "name": "공격속도",    "icon": "⚡", "unit": "persec" },
-    "crit": { "kind": "add", "base": 0.05, "a": 0.001, "c0": 25,   "g": 1.045, "max": 950,  "name": "치명확률",    "icon": "✨", "unit": "pct" },
-    "cdmg": { "kind": "add", "base": 1.2,  "a": 0.01,  "c0": 25,   "g": 1.045, "max": 5000, "name": "치명피해",    "icon": "💥", "unit": "mul" },
-    "dbl":  { "kind": "add", "base": 0,    "a": 0.001, "c0": 300,  "g": 1.05,  "max": 1000, "name": "더블샷",      "icon": "🏹", "unit": "pct", "req": ["aspd", 200] },
-    "trp":  { "kind": "add", "base": 0,    "a": 0.001, "c0": 5000, "g": 1.05,  "max": 1000, "name": "트리플샷",    "icon": "🎯", "unit": "pct", "req": ["dbl", 1000] },
-    "adv":  { "kind": "mul", "base": 1,    "r": 1.024, "c0": 2000, "g": 1.04,  "name": "상급공격력",   "icon": "🔥", "reqStage": 60 },
-    "nrm":  { "kind": "add", "base": 0,    "a": 0.02,  "c0": 1000, "g": 1.05,  "max": 2000, "name": "일반적 피해", "icon": "🗡️", "unit": "pct", "req": ["adv", 150] }
+    "atk": {
+      "kind": "mul",
+      "base": 10,
+      "r": 1.018,
+      "c0": 24,
+      "g": 1.055,
+      "name": "공격력",
+      "icon": "⚔️"
+    },
+    "hp": {
+      "kind": "mul",
+      "base": 400,
+      "r": 1.018,
+      "c0": 30,
+      "g": 1.055,
+      "name": "최대체력",
+      "icon": "❤️"
+    },
+    "def": {
+      "kind": "mul",
+      "base": 1,
+      "r": 1.016,
+      "c0": 44,
+      "g": 1.055,
+      "name": "방어력",
+      "icon": "🛡️"
+    },
+    "rec": {
+      "kind": "add",
+      "base": 0,
+      "a": 0.01,
+      "c0": 30,
+      "g": 1.055,
+      "max": 40,
+      "name": "웨이브 회복",
+      "icon": "💚",
+      "unit": "pct"
+    },
+    "aspd": {
+      "kind": "add",
+      "base": 1.0,
+      "a": 0.01,
+      "c0": 20,
+      "g": 1.06,
+      "max": 200,
+      "name": "공격속도",
+      "icon": "⚡",
+      "unit": "persec"
+    },
+    "crit": {
+      "kind": "add",
+      "base": 0.05,
+      "a": 0.001,
+      "c0": 25,
+      "g": 1.045,
+      "max": 950,
+      "name": "치명확률",
+      "icon": "✨",
+      "unit": "pct"
+    },
+    "cdmg": {
+      "kind": "add",
+      "base": 1.2,
+      "a": 0.01,
+      "c0": 25,
+      "g": 1.045,
+      "max": 5000,
+      "name": "치명피해",
+      "icon": "💥",
+      "unit": "mul"
+    },
+    "dbl": {
+      "kind": "add",
+      "base": 0,
+      "a": 0.001,
+      "c0": 300,
+      "g": 1.05,
+      "max": 1000,
+      "name": "더블샷",
+      "icon": "🏹",
+      "unit": "pct",
+      "req": [
+        "aspd",
+        200
+      ]
+    },
+    "trp": {
+      "kind": "add",
+      "base": 0,
+      "a": 0.001,
+      "c0": 5000,
+      "g": 1.05,
+      "max": 1000,
+      "name": "트리플샷",
+      "icon": "🎯",
+      "unit": "pct",
+      "req": [
+        "dbl",
+        1000
+      ]
+    },
+    "adv": {
+      "kind": "mul",
+      "base": 1,
+      "r": 1.024,
+      "c0": 2000,
+      "g": 1.04,
+      "name": "상급공격력",
+      "icon": "🔥",
+      "reqStage": 60
+    },
+    "nrm": {
+      "kind": "add",
+      "base": 0,
+      "a": 0.02,
+      "c0": 1000,
+      "g": 1.05,
+      "max": 2000,
+      "name": "일반적 피해",
+      "icon": "🗡️",
+      "unit": "pct",
+      "req": [
+        "adv",
+        150
+      ]
+    }
   },
-
   "gacha": {
     "gemsPerDay": 1700,
     "costPerPull": 100,
@@ -45,34 +164,169 @@
     "_itemTypes": "배너당 아이템 종류 수. 융합이 '같은 아이템 3개'라서 종류가 많을수록 승급이 느려진다 — 시뮬도 이 값을 반영해야 한다.",
     "itemTypes": 6,
     "banners": [
-      { "key": "equip", "name": "장비", "icon": "⚔️", "slots": 3, "affects": "공격력", "slotUnlock": [1, 1, 1] },
-      { "key": "skill", "name": "스킬", "icon": "✨", "slots": 4, "affects": "보스 버스트", "slotUnlock": [1, 20, 60, 150] },
-      { "key": "comp",  "name": "동료", "icon": "🐾", "slots": 5, "affects": "DPS", "slotUnlock": [10, 40, 100, 200, 400] }
+      {
+        "key": "equip",
+        "name": "장비",
+        "icon": "⚔️",
+        "slots": 3,
+        "affects": "공격력",
+        "slotUnlock": [
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "key": "skill",
+        "name": "스킬",
+        "icon": "✨",
+        "slots": 4,
+        "affects": "보스 버스트",
+        "slotUnlock": [
+          1,
+          20,
+          60,
+          150
+        ]
+      },
+      {
+        "key": "comp",
+        "name": "동료",
+        "icon": "🐾",
+        "slots": 5,
+        "affects": "DPS",
+        "slotUnlock": [
+          10,
+          40,
+          100,
+          200,
+          400
+        ]
+      }
     ],
-    "lvThresh": [0, 20, 50, 100, 180, 300, 480, 750, 1150, 1700],
+    "lvThresh": [
+      0,
+      20,
+      50,
+      100,
+      180,
+      300,
+      480,
+      750,
+      1150,
+      1700
+    ],
     "table": [
-      [100, 0, 0, 0, 0],
-      [80, 20, 0, 0, 0],
-      [65, 33, 2, 0, 0],
-      [50, 42, 8, 0, 0],
-      [38, 46, 15, 1, 0],
-      [28, 46, 22, 4, 0],
-      [20, 43, 29, 8, 0],
-      [14, 38, 35, 12, 1],
-      [9, 32, 40, 16, 3],
-      [5, 25, 44, 20, 6]
+      [
+        100,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        80,
+        20,
+        0,
+        0,
+        0
+      ],
+      [
+        65,
+        33,
+        2,
+        0,
+        0
+      ],
+      [
+        50,
+        42,
+        8,
+        0,
+        0
+      ],
+      [
+        38,
+        46,
+        15,
+        1,
+        0
+      ],
+      [
+        28,
+        46,
+        22,
+        4,
+        0
+      ],
+      [
+        20,
+        43,
+        29,
+        8,
+        0
+      ],
+      [
+        14,
+        38,
+        35,
+        12,
+        1
+      ],
+      [
+        9,
+        32,
+        40,
+        16,
+        3
+      ],
+      [
+        5,
+        25,
+        44,
+        20,
+        6
+      ]
     ],
     "_tierRatio": "등급당 3.6배. 정확히 3배면 '3개→상위1개' 융합이 손익분기가 되어 함정처럼 느껴진다.",
     "rarities": [
-      { "name": "일반", "color": "#9aa7c7", "owned": 0.5,  "equipped": 3 },
-      { "name": "희귀", "color": "#4a9dff", "owned": 1.8,  "equipped": 11 },
-      { "name": "영웅", "color": "#b06bff", "owned": 6.5,  "equipped": 40 },
-      { "name": "전설", "color": "#ffcf3a", "owned": 23,   "equipped": 145 },
-      { "name": "신화", "color": "#ff5c7a", "owned": 83,   "equipped": 520 }
+      {
+        "name": "일반",
+        "color": "#9aa7c7",
+        "owned": 0.5,
+        "equipped": 3
+      },
+      {
+        "name": "희귀",
+        "color": "#4a9dff",
+        "owned": 1.8,
+        "equipped": 11
+      },
+      {
+        "name": "영웅",
+        "color": "#b06bff",
+        "owned": 6.5,
+        "equipped": 40
+      },
+      {
+        "name": "전설",
+        "color": "#ffcf3a",
+        "owned": 23,
+        "equipped": 145
+      },
+      {
+        "name": "신화",
+        "color": "#ff5c7a",
+        "owned": 83,
+        "equipped": 520
+      }
     ],
-    "fuse": { "sameRarityToPromote": 3, "dupToEnhance": 2, "enhanceMul": 1.12 }
+    "fuse": {
+      "sameRarityToPromote": 3,
+      "dupToEnhance": 2,
+      "enhanceMul": 1.12
+    }
   },
-
   "dungeon": {
     "_": "던전은 라이브 전투가 아니라 즉시 판정한다(방치형 관례). 난이도 d 의 기준 스테이지는 d*10.",
     "keysPerDay": 2,
@@ -82,13 +336,22 @@
     "bossCount": 10,
     "bossStep": 5,
     "list": [
-      { "key": "gold", "name": "골드 수레", "icon": "🪙", "reward": "골드",
-        "desc": "도망치는 수레를 제한시간 안에 터뜨린다. 수레는 반격하지 않는다." },
-      { "key": "boss", "name": "용사 연전", "icon": "👑", "reward": "젬",
-        "desc": "용사 10명을 연달아 쓰러뜨린다. 쓰러진 만큼만 보상을 받는다." }
+      {
+        "key": "gold",
+        "name": "골드 수레",
+        "icon": "🪙",
+        "reward": "골드",
+        "desc": "도망치는 수레를 제한시간 안에 터뜨린다. 수레는 반격하지 않는다."
+      },
+      {
+        "key": "boss",
+        "name": "용사 연전",
+        "icon": "👑",
+        "reward": "젬",
+        "desc": "용사 10명을 연달아 쓰러뜨린다. 쓰러진 만큼만 보상을 받는다."
+      }
     ]
   },
-
   "gems": {
     "_": "설계 §11 의 하루 1,700젬을 실제 획득 경로로 나눈 것. 구현 합계: 퀘스트 450 + 출석 평균 251 + 용사연전 키2회 500 = 1,201(광고 미시청), 광고 2회 추가 시 1,701. gacha.gemsPerDay 와 일치해야 한다.",
     "questReward": 150,
@@ -96,21 +359,56 @@
     "bossRushBase": 250,
     "bossRushPerDiff": 10,
     "_bossRush": "키 2회 = 약 500. 광고 2회를 더 보면 약 1,000",
-    "attendCycle": [80, 120, 160, 200, 250, 350, 600],
+    "attendCycle": [
+      80,
+      120,
+      160,
+      200,
+      250,
+      350,
+      600
+    ],
     "_attend": "7일 주기 합계 1,760 → 하루 평균 약 251"
   },
-
   "daily": {
     "quests": [
-      { "id": "kill",  "icon": "🗡️", "name": "적 40마리 처치",     "goal": 40 },
-      { "id": "pull",  "icon": "🎲", "name": "가챠 3회",           "goal": 3 },
-      { "id": "stage", "icon": "🚩", "name": "스테이지 3개 클리어", "goal": 3 }
+      {
+        "id": "kill",
+        "icon": "🗡️",
+        "name": "적 40마리 처치",
+        "goal": 40
+      },
+      {
+        "id": "pull",
+        "icon": "🎲",
+        "name": "가챠 3회",
+        "goal": 3
+      },
+      {
+        "id": "stage",
+        "icon": "🚩",
+        "name": "스테이지 3개 클리어",
+        "goal": 3
+      }
     ]
   },
-
+  "skills": {
+    "_": "액티브 스킬. 피해를 **더하지 않는다** — 총 DPS 의 dpsShare 만큼을 평타에서 떼어 스킬 버스트로 돌린다. 평균이 보존되므로 밸런스가 바뀌지 않는다(시뮬의 연속 DPS 모델에는 변화가 보이지 않는다).",
+    "_왜": "스킬 배너는 지금까지 \"보스 버스트\" 라는 숫자로만 존재했다. 동료 때와 같이 이미 있는 수치에 몸을 준다. 피해를 더하면 로그 곡선상 의미도 없고(배속 검증 참고) 판정을 다시 받아야 한다.",
+    "dpsShare": 0.35,
+    "_dpsShare": "스킬이 가져가는 총 DPS 비율. 장착한 스킬이 없으면 0 이고 평타가 100% 를 낸다. 너무 높이면 쿨 사이에 피해가 끊겨 체감이 나빠진다.",
+    "_cd": "스킬별 쿨타임(초). 서로 다르게 둬야 바가 번갈아 차오른다. 쿨이 길수록 한 방이 크다 — 몫이 쿨에 비례한다.",
+    "cd": {
+      "acid": 5,
+      "gust": 7,
+      "shriek": 8,
+      "grasp": 9,
+      "breath": 11,
+      "quake": 13
+    }
+  },
   "layer2": {
     "_": "2단계 레이어. 설계 의도는 '시간에 복리로 붙는 승산 트랙'이다 — 가챠 보유 효과는 시간에 선형으로만 쌓여서 장기 곡선이 죽는다(§6 ⚠️1).",
-
     "mine": {
       "_": "광산 산출은 최고 스테이지에 비례한다. 깊이 갈수록 더 깊이 판다 — 이게 없으면 2단계도 로그가 된다.",
       "shardPerDay": 200,
@@ -123,15 +421,19 @@
       "bombDigs": 8,
       "bombPerDay": 2
     },
-
     "collect": {
       "_": "몬스터 10종을 고르게 키운다고 본다. 레벨 비용이 레벨에 비례(선형)라 총 레벨은 조각 누적의 제곱근으로 자란다.",
       "monsters": 10,
       "shardCostPerLevel": 50,
-      "milestoneLevels": [10, 25, 50, 75, 100],
+      "milestoneLevels": [
+        10,
+        25,
+        50,
+        75,
+        100
+      ],
       "milestoneAtkPct": 2
     },
-
     "mastery": {
       "_": "몬스터 레벨 1당 포인트 1. 전 몬스터 공용이라 여러 마리를 키울 이유가 된다. 노드는 승산이어야 장기에 의미가 있다.",
       "_split": "포인트가 3노드로 나뉘므로 노드당 배수는 단일 트랙(1.008)보다 높아야 같은 곡선이 나온다. 1.012^(2/3) ≈ 1.008 — 피해에 기여하는 건 공격·광폭 둘이다.",
@@ -139,12 +441,26 @@
       "_resetGems": "되돌리기에 값을 받는다. 공짜면 찍는 데 고민이 없어져 노드를 나눈 의미가 사라진다.",
       "resetGems": 10,
       "nodes": [
-        { "key": "atk", "name": "포식", "icon": "⚔️", "affects": "공격력" },
-        { "key": "hp",  "name": "비늘", "icon": "❤️", "affects": "최대체력" },
-        { "key": "dps", "name": "광폭", "icon": "⚡", "affects": "DPS" }
+        {
+          "key": "atk",
+          "name": "포식",
+          "icon": "⚔️",
+          "affects": "공격력"
+        },
+        {
+          "key": "hp",
+          "name": "비늘",
+          "icon": "❤️",
+          "affects": "최대체력"
+        },
+        {
+          "key": "dps",
+          "name": "광폭",
+          "icon": "⚡",
+          "affects": "DPS"
+        }
       ]
     },
-
     "research": {
       "_": "광석을 쓰고 시간을 기다린다. 비용은 지수, 대기시간도 지수(상한 12시간) — 하루에 완료할 수 있는 수가 자연히 줄어든다.",
       "oreC0": 80,
@@ -155,53 +471,183 @@
       "maxHours": 12
     }
   },
-
-  "offline": { "capHours": 12 },
-
-  "anim": {
-    "monster": { "idle": 3, "attack": 3, "hit": 2, "dead": 1 },
-    "hero":    { "idle": 6, "attack": 6, "hit": 6, "dead": 6 }
+  "offline": {
+    "capHours": 12
   },
-
+  "anim": {
+    "monster": {
+      "idle": 3,
+      "attack": 3,
+      "hit": 2,
+      "dead": 1
+    },
+    "hero": {
+      "idle": 6,
+      "attack": 6,
+      "hit": 6,
+      "dead": 6
+    }
+  },
   "zones": {
     "_": "챕터(10스테이지)마다 바뀌는 지역. key 는 배경 이미지 파일명과 같다 — assets/bg/<key>.png 를 넣으면 자동으로 쓰인다(없으면 캔버스로 그린 기본 배경).",
     "list": [
-      { "key": "forest",  "name": "몬스터 숲" },
-      { "key": "swamp",   "name": "버섯 늪" },
-      { "key": "highland","name": "바람 언덕" },
-      { "key": "cave",    "name": "해골 동굴" },
-      { "key": "canyon",  "name": "불타는 협곡" },
-      { "key": "frost",   "name": "서리 평원" },
-      { "key": "shadow",  "name": "그림자 숲" },
-      { "key": "ruins",   "name": "폐허 마을" },
-      { "key": "lava",    "name": "용암 지대" },
-      { "key": "sky",     "name": "하늘 성채" }
+      {
+        "key": "forest",
+        "name": "몬스터 숲"
+      },
+      {
+        "key": "swamp",
+        "name": "버섯 늪"
+      },
+      {
+        "key": "highland",
+        "name": "바람 언덕"
+      },
+      {
+        "key": "cave",
+        "name": "해골 동굴"
+      },
+      {
+        "key": "canyon",
+        "name": "불타는 협곡"
+      },
+      {
+        "key": "frost",
+        "name": "서리 평원"
+      },
+      {
+        "key": "shadow",
+        "name": "그림자 숲"
+      },
+      {
+        "key": "ruins",
+        "name": "폐허 마을"
+      },
+      {
+        "key": "lava",
+        "name": "용암 지대"
+      },
+      {
+        "key": "sky",
+        "name": "하늘 성채"
+      }
     ]
   },
-
   "roster": {
     "_": "플레이어는 몬스터 진영, 적은 인간 용사 진영(DESIGN.md §1).",
     "monsters": [
-      { "key": "slime", "sheet": "Enemy_Gloop_Slime.png",    "dir": "Gloop_Slime",            "name": "글룹",        "unlock": 1 },
-      { "key": "goblin", "sheet": "Enemy_Grik_Goblin.png",   "dir": "Grik_Goblin",            "name": "그릭",        "unlock": 10 },
-      { "key": "bat", "sheet": "Enemy_Nightwing_Bat.png",      "dir": "Nightwing_Bat",          "name": "나이트윙",    "unlock": 40 },
-      { "key": "mushroom", "sheet": "Enemy_Sporeling_Mushroom.png", "dir": "Sporeling_Mushroom",     "name": "스포어링",    "unlock": 100 },
-      { "key": "skeleton", "sheet": "Enemy_Boneguard_Skeleton.png", "dir": "Boneguard_Skeleton",     "name": "본가드",      "unlock": 200 },
-      { "key": "wolf", "sheet": "Enemy_Fangwolf_Wolf.png",     "dir": "Fangwolf_Wolf",          "name": "팽울프",      "unlock": 400 },
-      { "key": "ghost", "sheet": "Enemy_Wraith_Ghost.png",    "dir": "Wraith_Ghost",           "name": "레이스",      "unlock": 700 },
-      { "key": "orc", "sheet": "Enemy_Brakk_Orc.png",      "dir": "Brakk_Orc",              "name": "브락",        "unlock": 1200 },
-      { "key": "golem", "sheet": "Enemy_GraniteGolem.png",    "dir": "Granite_Golem",          "name": "그래니트",    "unlock": 2000 },
-      { "key": "dragon", "sheet": "Boss_Ignarion_RedDragon.png",   "dir": "Ignarion_RedDragon_Boss", "name": "이그나리온", "unlock": 3000 }
+      {
+        "key": "slime",
+        "sheet": "Enemy_Gloop_Slime.png",
+        "dir": "Gloop_Slime",
+        "name": "글룹",
+        "unlock": 1
+      },
+      {
+        "key": "goblin",
+        "sheet": "Enemy_Grik_Goblin.png",
+        "dir": "Grik_Goblin",
+        "name": "그릭",
+        "unlock": 10
+      },
+      {
+        "key": "bat",
+        "sheet": "Enemy_Nightwing_Bat.png",
+        "dir": "Nightwing_Bat",
+        "name": "나이트윙",
+        "unlock": 40
+      },
+      {
+        "key": "mushroom",
+        "sheet": "Enemy_Sporeling_Mushroom.png",
+        "dir": "Sporeling_Mushroom",
+        "name": "스포어링",
+        "unlock": 100
+      },
+      {
+        "key": "skeleton",
+        "sheet": "Enemy_Boneguard_Skeleton.png",
+        "dir": "Boneguard_Skeleton",
+        "name": "본가드",
+        "unlock": 200
+      },
+      {
+        "key": "wolf",
+        "sheet": "Enemy_Fangwolf_Wolf.png",
+        "dir": "Fangwolf_Wolf",
+        "name": "팽울프",
+        "unlock": 400
+      },
+      {
+        "key": "ghost",
+        "sheet": "Enemy_Wraith_Ghost.png",
+        "dir": "Wraith_Ghost",
+        "name": "레이스",
+        "unlock": 700
+      },
+      {
+        "key": "orc",
+        "sheet": "Enemy_Brakk_Orc.png",
+        "dir": "Brakk_Orc",
+        "name": "브락",
+        "unlock": 1200
+      },
+      {
+        "key": "golem",
+        "sheet": "Enemy_GraniteGolem.png",
+        "dir": "Granite_Golem",
+        "name": "그래니트",
+        "unlock": 2000
+      },
+      {
+        "key": "dragon",
+        "sheet": "Boss_Ignarion_RedDragon.png",
+        "dir": "Ignarion_RedDragon_Boss",
+        "name": "이그나리온",
+        "unlock": 3000
+      }
     ],
     "heroes": [
-      { "key": "warrior", "dir": "Kael_Ironblade_Warrior",    "name": "카엘" },
-      { "key": "knight",  "dir": "Aldric_Aegis_Knight",       "name": "알드릭" },
-      { "key": "rogue",   "dir": "Sylas_Nightveil_Rogue",     "name": "사일러스" },
-      { "key": "mage",    "dir": "Lyra_Arcanis_Mage",         "name": "라이라" },
-      { "key": "cleric",  "dir": "Elira_Dawnlight_Cleric",    "name": "엘리라" },
-      { "key": "archer",  "dir": "Rina_Windarrow_Archer",     "name": "리나" },
-      { "key": "emage",   "dir": "Terra_Stoneheart_EarthMage", "name": "테라" },
-      { "key": "dmage",   "dir": "Nyx_Shadowveil_DarkMage",   "name": "닉스" }
+      {
+        "key": "warrior",
+        "dir": "Kael_Ironblade_Warrior",
+        "name": "카엘"
+      },
+      {
+        "key": "knight",
+        "dir": "Aldric_Aegis_Knight",
+        "name": "알드릭"
+      },
+      {
+        "key": "rogue",
+        "dir": "Sylas_Nightveil_Rogue",
+        "name": "사일러스"
+      },
+      {
+        "key": "mage",
+        "dir": "Lyra_Arcanis_Mage",
+        "name": "라이라"
+      },
+      {
+        "key": "cleric",
+        "dir": "Elira_Dawnlight_Cleric",
+        "name": "엘리라"
+      },
+      {
+        "key": "archer",
+        "dir": "Rina_Windarrow_Archer",
+        "name": "리나"
+      },
+      {
+        "key": "emage",
+        "dir": "Terra_Stoneheart_EarthMage",
+        "name": "테라"
+      },
+      {
+        "key": "dmage",
+        "dir": "Nyx_Shadowveil_DarkMage",
+        "name": "닉스"
+      }
     ]
   }
 }

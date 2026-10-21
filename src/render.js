@@ -325,6 +325,14 @@ export function render(dt) {
   }
 
 
+  // 스킬 섬광 — 전장을 한 번 밝힌다. 숫자만으로는 "터졌다" 가 안 읽힌다.
+  if (R.skillFxT > 0) {
+    ctx.globalAlpha = Math.min(0.35, R.skillFxT);
+    ctx.fillStyle = '#b59bff';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+  }
+
   // ── 데미지 숫자 · 금화 ──
   for (const f of R.fx) {
     if (f.delay > 0) continue;                  // 아직 뜰 차례가 아니다
@@ -341,7 +349,8 @@ export function render(dt) {
       ctx.stroke();
       continue;
     }
-    if (f.type === 'crit') { ctx.fillStyle = '#ffe24a'; ctx.font = '800 22px system-ui'; }
+    if (f.type === 'skill') { ctx.fillStyle = '#b59bff'; ctx.font = '800 20px system-ui'; }
+    else if (f.type === 'crit') { ctx.fillStyle = '#ffe24a'; ctx.font = '800 22px system-ui'; }
     else if (f.type === 'gold') { ctx.fillStyle = '#ffd34d'; ctx.font = '800 15px system-ui'; }
     else { ctx.fillStyle = '#fff'; ctx.font = '800 16px system-ui'; }
     ctx.strokeStyle = 'rgba(30,20,10,.75)';
