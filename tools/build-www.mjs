@@ -9,7 +9,12 @@ import path from 'node:path';
 const HERE = path.resolve(import.meta.dirname, '..');
 const OUT = path.join(HERE, 'www');
 
-const INCLUDE = ['index.html', 'src', 'assets'];
+// OTA 구조:
+//  - www/index.html = OTA 로더(tools/ota-loader.html). 온라인이면 원격(games-site/monsteridle/)으로 이동,
+//    실패/오프라인이면 번들된 game.html 폴백.
+//  - www/game.html  = 게임 본체(루트 index.html). 오프라인 폴백 + src/assets 상대경로 참조.
+//  - 게임 수정은 games 레포(games-site/monsteridle/)에 배포하면 즉시 반영(AAB 재빌드 불필요).
+const INCLUDE = ['src', 'assets'];
 
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
@@ -21,6 +26,10 @@ for (const name of INCLUDE) {
   const to = path.join(OUT, name);
   fs.cpSync(from, to, { recursive: true });
 }
+// 게임 본체 → game.html (오프라인 폴백)
+fs.copyFileSync(path.join(HERE, 'index.html'), path.join(OUT, 'game.html'));
+// OTA 로더 → index.html (앱 진입점)
+fs.copyFileSync(path.join(HERE, 'tools', 'ota-loader.html'), path.join(OUT, 'index.html'));
 (function walk(p) {
   for (const e of fs.readdirSync(p, { withFileTypes: true })) {
     const q = path.join(p, e.name);

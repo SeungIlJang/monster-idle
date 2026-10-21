@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<title>무럭무럭 몬스터</title>
+<style>html,body{margin:0;height:100%;background:#0e1626;overflow:hidden}#ld{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#9fd3a0;font-family:system-ui,sans-serif;gap:14px}.sp{width:42px;height:42px;border:5px solid rgba(159,211,160,.3);border-top-color:#9fd3a0;border-radius:50%;animation:sp .8s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}</style>
+</head>
+<body><div id="ld"><div class="sp"></div><div>🐲 무럭무럭 몬스터 불러오는 중…</div></div>
+<script>(function(){
+  // OTA 로더: 온라인이면 원격(games-site/monsteridle/)으로 이동, 실패/오프라인이면 번들된 game.html 폴백.
+  var REMOTE='https://seungiljang.github.io/games/monsteridle/index.html',done=false;
+  function fallback(){ if(done)return; done=true; location.replace('game.html'); }
+  var to=setTimeout(fallback,6000);
+  try{
+    // 원격 도달 가능 여부만 가볍게 확인 후 그쪽으로 이동(그래야 import.meta.url이 원격 기준이 됨)
+    var ctrl=window.AbortController?new AbortController():null;
+    var ato=setTimeout(function(){if(ctrl){try{ctrl.abort();}catch(e){}}},5000);
+    fetch(REMOTE+'?t='+Date.now(),{cache:'no-store',signal:ctrl?ctrl.signal:undefined})
+      .then(function(r){ clearTimeout(ato); if(!r.ok) throw 0; return r.text(); })
+      .then(function(h){ if(done)return; if(!h||h.length<500) throw 0; done=true; clearTimeout(to); location.replace(REMOTE); })
+      .catch(function(){ clearTimeout(to); fallback(); });
+  }catch(e){ clearTimeout(to); fallback(); }
+})();</script>
+</body></html>
