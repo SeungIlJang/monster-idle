@@ -328,7 +328,26 @@ export function render(dt) {
   }
   ctx.globalAlpha = 1;
 
-  if (R.bannerT > 0) {
+  if (R.bannerT > 0 && R.bannerBig) {
+    // 해금은 사건이다 — 띠를 깔고 크게. 조용히 지나가면 플레이어가 모르고 넘어간다.
+    const a = Math.min(1, R.bannerT);
+    const by = H * 0.30;
+    ctx.globalAlpha = a * 0.88;
+    ctx.fillStyle = '#1a1230';
+    ctx.fillRect(0, by - 30, W, 60);
+    ctx.fillStyle = '#d8b24a';
+    ctx.fillRect(0, by - 31, W, 2);
+    ctx.fillRect(0, by + 29, W, 2);
+    ctx.globalAlpha = a;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffd34d';
+    ctx.font = '800 15px system-ui';
+    ctx.fillText('새로운 해금!', W * 0.5, by - 8);
+    ctx.fillStyle = '#fff6c9';
+    ctx.font = '800 13px system-ui';
+    ctx.fillText(R.banner, W * 0.5, by + 14);
+    ctx.globalAlpha = 1;
+  } else if (R.bannerT > 0) {
     ctx.globalAlpha = Math.min(1, R.bannerT);
     ctx.fillStyle = '#fff6c9';
     ctx.font = '800 20px system-ui';

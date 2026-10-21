@@ -7,6 +7,7 @@ import { S, save } from './state.js';
 import { LDPS, LHP, LDEF, LATK, nval, shots, Linc, bestFarmStage, canClear } from './stats.js';
 import { bump as bumpDaily } from './daily.js';
 import { recomputeGacha } from './gacha.js';
+import { crossed } from './unlocks.js';
 import { L0, add, sub, ratio, fromNum, fmt } from './logmath.js';
 
 export const MODE = { RUN: 'run', FARM: 'farm' };
@@ -28,6 +29,7 @@ export const R = {
   farmClears: 0,     // 파밍으로 클리어한 횟수 (자동 재도전 판단용)
   banner: '',
   bannerT: 0,
+  bannerBig: false,       // 해금처럼 "사건" 인 알림은 크게 그린다
   shake: 0,
   heroName: '',
   stageTime: 0,      // 현재 스테이지에 쓴 시간(초) — "너무 느림" 안내용
@@ -37,7 +39,7 @@ export const R = {
 let onEvent = () => {};
 export const setEventHandler = fn => { onEvent = fn; };
 
-function banner(text, sec = 1.6) { R.banner = text; R.bannerT = sec; }
+function banner(text, sec = 1.6, big = false) { R.banner = text; R.bannerT = sec; R.bannerBig = big; }
 
 function spawnWave() {
   const n = R.boss ? 1 : perWave(R.stage);
@@ -127,10 +129,14 @@ function onKill(e, idx) {
     return;
   }
   const cleared = R.stage;
+  // 새로 열린 것이 있으면 사건으로 만든다. 조용히 탭이 하나 생기면 플레이어는
+  // 모르고 지나간다(docs/reference-legend-of-slime.md §2).
+  const opened = cleared > S.best ? crossed(S.best, cleared) : [];
   if (cleared > S.best) { S.best = cleared; recomputeGacha(); }   // 슬롯 해금 반영
   S.st = cleared + 1;
   bumpDaily('stage');     // 일일퀘스트: 스테이지 클리어 (파밍 반복은 위에서 걸러진다)
-  banner(isBoss(cleared) ? '👑 ' + R.heroName + ' 격파!' : '스테이지 클리어');
+  if (opened.length) banner(opened.map(o => o.ic + ' ' + o.plain).join('   '), 3.2, true);
+  else banner(isBoss(cleared) ? '👑 ' + R.heroName + ' 격파!' : '스테이지 클리어');
   onEvent({ type: 'stageClear', stage: cleared });
   save();
   enterStage(S.st, MODE.RUN);

@@ -3,34 +3,10 @@
 // 새 데이터를 만들지 않는다. 해금 조건은 이미 balance.json 에 전부 들어 있는데
 // 코드 안에만 있어서 플레이어가 볼 방법이 없었다. 여기서는 **읽어서 그리기만** 한다.
 // 레전드 슬라임의 월드맵이 하는 일이 이것이다(docs/reference-legend-of-slime.md §6).
-import { B } from './balance.js';
 import { S } from './state.js';
+import { milestones } from './unlocks.js';
 
 const $ = id => document.getElementById(id);
-
-/** 스테이지로 잠겨 있는 것들을 전부 모아 스테이지 순으로 정렬한다 */
-export function milestones() {
-  const out = [];
-  for (const m of B.roster.monsters) {
-    if (m.unlock > 1) out.push({ at: m.unlock, ic: '🐾', what: `몬스터 <b>${m.name}</b> 해금`, kind: 'mon' });
-  }
-  for (const b of B.gacha.banners) {
-    b.slotUnlock.forEach((at, i) => {
-      if (at > 1) out.push({ at, ic: b.icon, what: `${b.name} <b>${i + 1}번째 슬롯</b>`, kind: 'slot' });
-    });
-  }
-  for (const [k, v] of Object.entries(B.stats)) {
-    if (typeof v.reqStage === 'number' && v.reqStage > 1) {
-      out.push({ at: v.reqStage, ic: v.icon || '✨', what: `스탯 <b>${v.name}</b> 해금`, kind: 'stat', key: k });
-    }
-  }
-  return out.sort((a, b) => a.at - b.at || a.kind.localeCompare(b.kind));
-}
-
-/** 다음에 열릴 것 (전부 열렸으면 null) — HUD 안내에도 쓸 수 있다 */
-export function nextMilestone() {
-  return milestones().find(m => m.at > S.best) || null;
-}
 
 export function renderRoad() {
   const el = $('roadList');
