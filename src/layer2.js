@@ -65,8 +65,15 @@ export function spendMastery(nodeKey, times = 1) {
   }
   return done;
 }
+export const masteryResetCost = () => L2.mastery.resetGems || 0;
+/** @returns {boolean} 되돌렸는지 — 젬이 모자라거나 찍은 게 없으면 false */
 export function resetMastery() {
+  if (masterySpent() < 1) return false;
+  const cost = masteryResetCost();
+  if (S.gem < cost) return false;
+  S.gem -= cost;
   for (const n of MASTERY_NODES) S.mastery[n.key] = 0;
+  return true;
 }
 /** 노드 배수 (실수) */
 export const masteryMul = nodeKey => Math.pow(L2.mastery.perPoint, S.mastery[nodeKey] || 0);

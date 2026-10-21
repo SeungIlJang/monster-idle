@@ -180,10 +180,16 @@ function renderMastery() {
   const free = L2.masteryFree();
   const nodes = L2.MASTERY_NODES.map(nd => {
     const lv = S.mastery[nd.key] || 0;
+    const now = L2.masteryMul(nd.key);
+    const next = now * B.layer2.mastery.perPoint;
+    // 찍으면 뭐가 되는지를 **찍기 전에** 보여준다. 미리보기가 없으면 고민이 생기지 않는다.
+    const prev = free >= 1
+      ? `<span class="pv">×${now.toFixed(3)} → <b>×${next.toFixed(3)}</b></span>`
+      : `×${now.toFixed(3)}`;
     return `<div class="mrow">
       <div class="ic">${nd.icon}</div>
       <div class="mid"><div class="t">${nd.name} <span style="opacity:.55;font-weight:600">Lv.${lv}</span></div>
-        <div class="d">${nd.affects} ×${L2.masteryMul(nd.key).toFixed(2)} · 포인트당 ×${B.layer2.mastery.perPoint}</div></div>
+        <div class="d">${nd.affects} ${prev}</div></div>
       <button data-mp="${nd.key}" ${free < 1 ? 'disabled' : ''}>+1</button>
       <button data-mp10="${nd.key}" ${free < 10 ? 'disabled' : ''}>+10</button>
     </div>`;
@@ -195,14 +201,18 @@ function renderMastery() {
      </div>` + nodes +
     `<button id="mReset" style="width:100%;margin-top:8px;background:#3a2030;color:#ffb4b4;
        border:1px solid #6a3545;border-radius:10px;padding:9px;font-size:12px;font-weight:700;cursor:pointer">
-       포인트 되돌리기</button>`;
+       포인트 되돌리기 <span style="opacity:.8">💎${L2.masteryResetCost()}</span></button>`;
   $('growBody').querySelectorAll('[data-mp]').forEach(el => {
     el.onclick = () => { if (L2.spendMastery(el.dataset.mp, 1)) after(); };
   });
   $('growBody').querySelectorAll('[data-mp10]').forEach(el => {
     el.onclick = () => { if (L2.spendMastery(el.dataset.mp10, 10)) after(); };
   });
-  $('mReset').onclick = () => { L2.resetMastery(); after(); ctx.toast('포인트를 모두 되돌렸습니다'); };
+  $('mReset').onclick = () => {
+    if (L2.masterySpent() < 1) { ctx.toast('되돌릴 포인트가 없습니다'); return; }
+    if (S.gem < L2.masteryResetCost()) { ctx.toast(`젬이 부족합니다 (💎${L2.masteryResetCost()})`); return; }
+    if (L2.resetMastery()) { after(); ctx.toast('포인트를 모두 되돌렸습니다'); }
+  };
 }
 
 // ── 연구 ─────────────────────────────────────────────────────
