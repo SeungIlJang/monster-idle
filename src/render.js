@@ -273,15 +273,21 @@ export function render(dt) {
 
   const pbw = W * 0.22;
   const hpFrac = R.LhpMax > L0 ? ratio(R.Lhp, R.LhpMax) : 0;
-  bar(W * 0.34 - pbw / 2, feet - pH - 20, pbw, 8, hpFrac, hpFrac < 0.3 ? '#ff6b6b' : '#4ade80');
+  bar(W * 0.30 - pbw / 2, feet - pH - 20, pbw, 8, hpFrac, hpFrac < 0.3 ? '#ff6b6b' : '#4ade80');
+  // 배경이 밝으면(설원·풀밭) 글자가 묻힌다 — 피해 숫자와 같이 어두운 외곽선을 깐다
   ctx.textAlign = 'center';
-  ctx.fillStyle = ALLY;
-  ctx.font = '800 12px system-ui';
+  ctx.strokeStyle = 'rgba(12,18,34,.8)';
+  ctx.lineWidth = 3;
   const me = B.roster.monsters.find(m => m.key === S.mon);
-  ctx.fillText('나 · ' + (me ? me.name : '몬스터'), W * 0.34, feet - pH - 38);
-  ctx.fillStyle = '#9fb6d8';
+  const nameY = feet - pH - 38, hpY = feet - pH - 26;
+  ctx.font = '800 12px system-ui';
+  ctx.strokeText('나 · ' + (me ? me.name : '몬스터'), W * 0.30, nameY);
+  ctx.fillStyle = ALLY;
+  ctx.fillText('나 · ' + (me ? me.name : '몬스터'), W * 0.30, nameY);
   ctx.font = '600 10px system-ui';
-  ctx.fillText('HP ' + fmt(R.Lhp), W * 0.34, feet - pH - 26);
+  ctx.strokeText('HP ' + fmt(R.Lhp), W * 0.30, hpY);
+  ctx.fillStyle = '#cfdcf2';
+  ctx.fillText('HP ' + fmt(R.Lhp), W * 0.30, hpY);
 
   // ── 적 (용사) — 프레임 애니 + 피격 시 밀림 ──
   const hero = heroAt(R.stage);
@@ -320,10 +326,18 @@ export function render(dt) {
     ctx.font = '800 13px system-ui';
     ctx.strokeStyle = 'rgba(30,20,10,.7)'; ctx.lineWidth = 3;
     // 보스는 W*0.66 에 선다(위 drawn 참고). 이름표도 같은 x 여야 머리 위에 온다.
-    ctx.strokeText('👑 ' + hero.name, W * 0.66, feet - eH - 20);
-    ctx.fillText('👑 ' + hero.name, W * 0.66, feet - eH - 20);
+    ctx.strokeText('👑 ' + hero.name, W * 0.66, feet - eH - 46);
+    ctx.fillText('👑 ' + hero.name, W * 0.66, feet - eH - 46);
   }
 
+
+  // 스킬 섬광 — 전장을 한 번 밝힌다. 숫자만으로는 "터졌다" 가 안 읽힌다.
+  if (R.skillFxT > 0) {
+    ctx.globalAlpha = Math.min(0.35, R.skillFxT);
+    ctx.fillStyle = '#b59bff';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+  }
 
   // ── 데미지 숫자 · 금화 ──
   for (const f of R.fx) {
@@ -341,7 +355,8 @@ export function render(dt) {
       ctx.stroke();
       continue;
     }
-    if (f.type === 'crit') { ctx.fillStyle = '#ffe24a'; ctx.font = '800 22px system-ui'; }
+    if (f.type === 'skill') { ctx.fillStyle = '#b59bff'; ctx.font = '800 20px system-ui'; }
+    else if (f.type === 'crit') { ctx.fillStyle = '#ffe24a'; ctx.font = '800 22px system-ui'; }
     else if (f.type === 'gold') { ctx.fillStyle = '#ffd34d'; ctx.font = '800 15px system-ui'; }
     else { ctx.fillStyle = '#fff'; ctx.font = '800 16px system-ui'; }
     ctx.strokeStyle = 'rgba(30,20,10,.75)';

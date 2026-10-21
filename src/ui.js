@@ -185,7 +185,7 @@ function renderDaily() {
   }).join('');
 
   $('dailyList').innerHTML =
-    `<div class="note">자정에 초기화됩니다. 젬은 가챠에 씁니다.</div>`
+    `<div class="note">자정에 초기화됩니다. 젬은 뽑기에 씁니다.</div>`
     + quests
     + `<div style="font-size:13px;font-weight:800;margin:14px 0 2px">🎁 출석 보상</div>
        <div class="note" style="margin-bottom:0">연속 ${S.attend.streak || 0}일째${pend ? ' · 오늘 받을 수 있어요' : ' · 오늘은 받았어요'}</div>

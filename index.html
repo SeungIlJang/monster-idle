@@ -38,6 +38,21 @@
   #stageBar:active{background:#16204a}
   .pv{color:#8ad8ff}
   .pv b{color:#7fd07f}
+  /* 스킬바 */
+  #skillBar{display:none;gap:6px;padding:6px 10px;background:#0d1328;border-bottom:1px solid #26304f;
+            align-items:center;overflow-x:auto}
+  #skillBar.on{display:flex}
+  .skAuto{flex:0 0 auto;width:42px;height:42px;border-radius:50%;border:2px solid #3a4568;
+          display:flex;flex-direction:column;align-items:center;justify-content:center;
+          font-size:9px;font-weight:800;cursor:pointer;background:#1a2242;color:#8fa6c8}
+  .skAuto.on{background:#3a3016;border-color:#d8b24a;color:#ffd34d}
+  .skSlot{flex:0 0 auto;position:relative;width:42px;height:42px;border-radius:50%;
+          background:#1a2242;border:2px solid #3a4568;display:flex;align-items:center;justify-content:center;
+          font-size:19px;cursor:pointer;overflow:hidden}
+  .skSlot.ready{border-color:#d8b24a;box-shadow:0 0 6px rgba(216,178,74,.5)}
+  /* 쿨 = 아래에서 차오르는 막 */
+  .skSlot i{position:absolute;left:0;right:0;bottom:0;background:rgba(10,14,30,.72);pointer-events:none}
+  .skSlot b{position:relative;z-index:1;font-style:normal}
   /* 몬스터 도감 */
   .mgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
   .mtile{position:relative;background:#141b38;border:2px solid #26304f;border-radius:10px;padding:6px 3px 4px;text-align:center;cursor:pointer}
@@ -304,11 +319,14 @@
   <canvas id="game"></canvas>
 
   <!-- 강화는 메인 화면에 상시 노출한다. 별도 탭에 숨기면 메인이 '구경만 하는 화면'이 된다 -->
+  <!-- 스킬바 — 레퍼런스처럼 전장 바로 아래. 장착한 스킬이 없으면 숨긴다 -->
+  <div id="skillBar"></div>
+
   <div id="mainUpg" class="scroll"></div>
 
   <div id="nav">
     <div class="nav on" data-t="battle"><span class="ic">⚔️</span>전투</div>
-    <div class="nav" data-t="gacha" style="position:relative"><span class="ic">🎲</span>가챠<span id="gDot" style="display:none;position:absolute;top:5px;right:24%;width:8px;height:8px;background:#2d7d46;border-radius:50%"></span></div>
+    <div class="nav" data-t="gacha" style="position:relative"><span class="ic">🎲</span>뽑기<span id="gDot" style="display:none;position:absolute;top:5px;right:24%;width:8px;height:8px;background:#2d7d46;border-radius:50%"></span></div>
     <div class="nav" data-t="dun" style="position:relative"><span class="ic">🗝️</span>던전<span id="dDot" class="dot"></span></div>
     <div class="nav" data-t="daily" style="position:relative"><span class="ic">📋</span>일일<span id="qDot" class="dot"></span></div>
     <div class="nav" data-t="grow" style="position:relative"><span class="ic">🌱</span>성장<span id="grDot" class="dot" style="background:#2d7d46"></span></div>
@@ -329,7 +347,7 @@
   <!-- 가챠 -->
   <div class="panel" id="p_gacha">
     <span class="closeX" data-close>✕</span>
-    <h2>🎲 가챠</h2>
+    <h2>🎲 뽑기</h2>
     <div class="bar" id="gBanners"></div>
     <div id="gHead"></div>
     <div id="gActions"></div>

@@ -8,6 +8,7 @@ import { LDPS, LHP, LDEF, nval, shots, critF, Linc, bestFarmStage, canClear } fr
 import { bump as bumpDaily } from './daily.js';
 import { recomputeGacha } from './gacha.js';
 import { crossed } from './unlocks.js';
+import { tickSkills, normalShare } from './skills.js';
 import { L0, add, sub, ratio, fromNum, fmt } from './logmath.js';
 
 export const MODE = { RUN: 'run', FARM: 'farm' };
@@ -27,6 +28,8 @@ export const R = {
   atkAnimT: 0,      // 공격 애니 재생 잔여 시간
   pHitT: 0,         // 플레이어 피격 애니 잔여 시간
   foeAtkT: 0,       // 적 공격 애니 잔여 시간 (적은 그룹 1타이머라 다 같이 휘두른다)
+  skillCd: {},      // 스킬별 남은 쿨 (세이브하지 않는다 — 전투마다 새로 시작)
+  skillFxT: 0,      // 스킬 섬광 잔여 시간
   fx: [],            // 데미지 숫자 등 연출
   farmClears: 0,     // 파밍으로 클리어한 횟수 (자동 재도전 판단용)
   banner: '',
@@ -55,6 +58,8 @@ export function enterStage(stage, mode = MODE.RUN) {
   R.mode = mode;
   R.stage = Math.max(1, stage);
   R.boss = isBoss(R.stage);
+  // 스킬 쿨은 **초기화하지 않는다.** 초반 스테이지는 2초면 끝나는데 쿨은 5~13초라,
+  // 진입마다 되돌리면 스킬이 영영 안 터지면서 평타만 35% 깎인 채로 남는다.
   R.waveIdx = 0;
   R.LhpMax = LHP();
   R.Lhp = R.LhpMax;
@@ -155,12 +160,31 @@ function playerDied() {
   enterStage(farmAt, MODE.FARM);
 }
 
+/**
+ * 스킬 한 방. 자동 발동과 스킬바 수동 발동이 **같은 경로**를 쓰도록 내보낸다.
+ * secs = 이 한 방이 "DPS 몇 초치" 인가 (쿨 동안 모은 몫).
+ */
+export function fireSkill(sk, secs) {
+  const tgt = front();
+  if (!tgt) return false;        // 때릴 게 없으면 쿨을 쓰지 않는다 (몫이 증발하면 DPS 가 샌다)
+  const Ldmg = LDPS(R.boss) + fromNum(secs);
+  tgt.Lhp = sub(tgt.Lhp, Ldmg);
+  tgt.hitT = 0.16;
+  const idx = R.enemies.indexOf(tgt);
+  fx('skill', sk.icon + ' ' + fmt(Ldmg), idx, -4);
+  R.skillFxT = 0.35;
+  R.shake = Math.max(R.shake, 0.2);
+  if (tgt.Lhp <= L0) onKill(tgt, idx);
+  return true;
+}
+
 export function tick(dt) {
   if (R.bannerT > 0) R.bannerT -= dt;
   if (R.shake > 0) R.shake -= dt;
   if (R.atkAnimT > 0) R.atkAnimT -= dt;
   if (R.pHitT > 0) R.pHitT -= dt;
   if (R.foeAtkT > 0) R.foeAtkT -= dt;
+  if (R.skillFxT > 0) R.skillFxT -= dt;
   // y 는 픽셀 오프셋(위로 떠오름). delay 가 남은 것은 아직 뜨지 않은 것이다.
   for (const f of R.fx) {
     if (f.delay > 0) { f.delay -= dt; continue; }
@@ -191,7 +215,9 @@ export function tick(dt) {
     // LDPS 는 기대 치명타(critF)와 공격속도를 포함하므로 둘을 덜어내고
     // 이번 타격의 실제 치명타 배수를 다시 곱한다 — 기댓값은 LDPS 와 같고 분산만 산다.
     const critMul = crit ? nval('cdmg') : 1;
-    const Ldmg = LDPS(R.boss) - fromNum(nval('aspd')) - fromNum(critF()) + fromNum(critMul);
+    // normalShare() 는 스킬이 가져간 몫을 뺀 나머지다. 스킬이 없으면 1 이다.
+    const Ldmg = LDPS(R.boss) - fromNum(nval('aspd')) - fromNum(critF())
+               + fromNum(critMul * normalShare());
     f.Lhp = sub(f.Lhp, Ldmg);
     f.hitT = 0.12;
     const idx = R.enemies.indexOf(f);
@@ -213,6 +239,9 @@ export function tick(dt) {
     if (crit) R.shake = Math.max(R.shake, 0.16);
     if (f.Lhp <= L0) onKill(f, idx);
   }
+
+  // 스킬 — 쿨마다 모아둔 몫을 한 번에. 평타는 그만큼 줄어 있으므로 총량은 같다.
+  tickSkills(R.skillCd, dt, fireSkill);
 
   // 적 공격 (그룹 1타이머 · 살아있는 수에 비례 · 방어 비율감소)
   R.foeT -= dt;
