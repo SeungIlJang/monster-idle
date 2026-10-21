@@ -12,7 +12,8 @@
     "bg": "node tools/make-bg.mjs",
     "build": "node tools/build-www.mjs",
     "sync": "npm run build && npx cap sync android",
-    "android": "npm run sync && npx cap open android"
+    "android": "npm run sync && npx cap open android",
+    "shots": "node tools/shots.mjs"
   },
   "dependencies": {
     "@capacitor-community/admob": "^6.2.0",
