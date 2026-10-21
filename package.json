@@ -15,11 +15,12 @@
     "android": "npm run sync && npx cap open android"
   },
   "dependencies": {
-    "@capacitor/core": "^6.2.1",
+    "@capacitor-community/admob": "^6.2.0",
     "@capacitor/android": "^6.2.1",
-    "@capacitor-community/admob": "^6.2.0"
+    "@capacitor/core": "^6.2.1"
   },
   "devDependencies": {
-    "@capacitor/cli": "^6.2.1"
+    "@capacitor/cli": "^6.2.1",
+    "puppeteer-core": "^25.15.0"
   }
 }
