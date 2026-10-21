@@ -1,7 +1,7 @@
 # 생성용 프롬프트
 
-바로 붙여넣을 수 있게 펼쳐 둔 것이다. **원본은 `assets/mon/sheets.json`** 이고 이 폴더는 그걸
-펼친 결과다 — 고칠 일이 있으면 sheets.json 을 고치고 다시 뽑는다.
+바로 붙여넣을 수 있게 펼쳐 둔 것이다. **몬스터 원본은 `assets/mon/sheets.json`, 배경 원본은 `assets/bg/prompts.json`** 이고 이 폴더는 그걸
+펼친 결과다 — 고칠 일이 있으면 해당 원본 JSON 을 고치고 다시 뽑는다.
 
 ```bash
 node tools/print-mon-prompts.mjs --out docs/prompts/mon   # 전부 다시 뽑기
@@ -57,3 +57,46 @@ node tools/print-mon-prompts.mjs goblin                    # 한 종만 화면�
 
 `assets/hero/prompts.json` 에 있다. 아직 시트 형식으로 펼치지 않았다 —
 몬스터 10종을 끝낸 뒤에 같은 방식으로 뽑는다. 용사는 **왼쪽**을 보게 그려야 한다(몬스터와 반대).
+
+## 배경 9장 (`bg/`)
+
+원본은 **`assets/bg/prompts.json`** 이다. `common` · `zones[].scene` · `promptTemplate` 을
+펼친 결과가 아래 파일들이다. 파일 전체를 복사해 한 지역에 한 장씩 생성한다.
+문구를 바꿀 때는 원본 JSON 을 고치고 다시 뽑는다.
+
+```bash
+node tools/print-bg-prompts.mjs --out docs/prompts/bg  # 미완료 9개를 파일로
+node tools/print-bg-prompts.mjs swamp                 # 한 지역만 화면에
+node tools/print-bg-prompts.mjs cave lava             # 여러 지역만 화면에
+node tools/print-bg-prompts.mjs --all                 # 완료한 숲까지 10개 전부
+```
+
+기본 출력은 `generated` 에 없는 지역이다. 완료된 `forest` 는 기본에서 제외하며,
+`forest` 키를 직접 지정하거나 `--all` 을 주면 다시 출력할 수 있다.
+프롬프트 내보내기는 생성 완료 기록을 변경하지 않는다.
+
+| 파일 | 지역 |
+|---|---|
+| `swamp.txt` | 버섯 늪 |
+| `highland.txt` | 바람 언덕 |
+| `cave.txt` | 해골 동굴 |
+| `canyon.txt` | 불타는 협곡 |
+| `frost.txt` | 서리 평원 |
+| `shadow.txt` | 그림자 숲 |
+| `ruins.txt` | 폐허 마을 |
+| `lava.txt` | 용암 지대 |
+| `sky.txt` | 하늘 성채 |
+
+### 생성 → 들이기
+
+1. `.txt` 하나를 통째로 복사해 **가로 9:5 배경 한 장**을 생성한다. 캐릭터나 UI 는 넣지 않는다.
+2. 중앙·오른쪽 중앙이 비어 있고, 화면 하단 30% 가 캐릭터가 설 지면인지 확인한다.
+   동굴·그림자 숲·용암 지대도 캐릭터가 잘 보이는 밝기와 대비를 유지한다.
+3. 원본을 보관하고 아래처럼 지역 키로 들인다.
+   ```bash
+   node tools/make-bg.mjs "<생성한 원본 PNG 경로>" swamp
+   ```
+   도구가 9:5 로 자르고 게임용 `assets/bg/swamp.png` 로 저장한다(1080×600).
+4. 게임에서 지면 위치·캐릭터 대비·중앙 가림을 확인하고, 실제 생성 설정과 결과를
+   `assets/bg/prompts.json` 의 `generated` 에 기록한다.
+
