@@ -25,6 +25,7 @@ export const R = {
   atkT: 0,
   foeT: 0,
   atkAnimT: 0,      // 공격 애니 재생 잔여 시간
+  pHitT: 0,         // 플레이어 피격 애니 잔여 시간
   fx: [],            // 데미지 숫자 등 연출
   farmClears: 0,     // 파밍으로 클리어한 횟수 (자동 재도전 판단용)
   banner: '',
@@ -157,6 +158,7 @@ export function tick(dt) {
   if (R.bannerT > 0) R.bannerT -= dt;
   if (R.shake > 0) R.shake -= dt;
   if (R.atkAnimT > 0) R.atkAnimT -= dt;
+  if (R.pHitT > 0) R.pHitT -= dt;
   // y 는 픽셀 오프셋(위로 떠오름). delay 가 남은 것은 아직 뜨지 않은 것이다.
   for (const f of R.fx) {
     if (f.delay > 0) { f.delay -= dt; continue; }
@@ -211,6 +213,7 @@ export function tick(dt) {
       const Ldmg = LeATK(R.stage, R.boss) + fromNum(n) - LDEF();
       if (Ldmg >= R.Lhp) { R.Lhp = L0; playerDied(); return; }
       R.Lhp = sub(R.Lhp, Ldmg);
+      R.pHitT = 0.18;        // 피격 포즈
     }
   }
 }

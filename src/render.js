@@ -6,13 +6,21 @@
 import { B, heroAt } from './balance.js';
 import { S } from './state.js';
 import { R } from './combat.js';
-import { pick, preload, boxOf } from './sprites.js';
+import { pick, preload, boxOf, frameCount } from './sprites.js';
 import { activeCompanions, compImage } from './companions.js';
 import { L0, ratio, fmt } from './logmath.js';
 
 const WAVES = B.stage.waves;
 // 세로로 긴 폰 화면에서 위쪽이 텅 비어 보였다 — 바닥을 올려 전투를 화면 가운데로 끌어온다
 const GROUND = 0.70;
+// 전투는 한 줄이 아니라 **앞뒤가 있는 바닥면**에서 벌어진다. 모두 같은 선에 세우면
+// 종이인형처럼 보이고, 캐릭터를 키우면 화면이 금방 꽉 찬다. 레퍼런스는 작은 캐릭터를
+// 깊이를 두고 흩어 놓는다 — 뒤쪽은 위에 작게, 앞쪽은 아래에 크게.
+const LANE_BACK = 0.60, LANE_FRONT = 0.82;
+const laneY = d => H * (LANE_BACK + d * (LANE_FRONT - LANE_BACK));
+const laneS = d => 0.80 + d * 0.38;
+// 적을 흩을 깊이값. 순서대로 쓰면 지그재그로 놓여 "줄"이 안 보인다.
+const FOE_LANES = [0.52, 0.16, 0.86, 0.34, 0.70, 0.04];
 // 진영 색: 왼쪽(몬스터)이 나, 오른쪽(용사)이 적
 const ALLY = '#7fe0a0';
 const FOE = '#ff8a8a';
@@ -206,15 +214,17 @@ export function render(dt) {
   }
   drawBG();
 
-  const feet = H * GROUND;
+  const feet = laneY(0.45);          // 리드가 서는 깊이
   const base = Math.min(W, H);
   // 몬스터는 내용에 딱 맞게 잘라낸 크롭이고 용사 PNG 는 128x128 에 여백이 많다.
   // 같은 높이로 그리면 몬스터가 거인처럼 보여서, 보이는 크기가 맞도록 따로 잡는다.
   // 몬스터 크롭은 여백이 없고 용사 PNG 는 여백이 커서, 같은 기준으로는 몬스터가 커 보인다
   // 이제 둘 다 "보이는 높이" 라 같은 기준으로 비교된다
   // 영상 기준: 캐릭터는 전투 영역에서 작게, 서로 가깝게 선다
-  const pH = base * 0.20;
-  const eH = base * (R.boss ? 0.30 : 0.24);
+  // 작게. 0.20 일 때는 캐릭터 대여섯이 화면을 꽉 채워 전장이 보이지 않았다.
+  // 잡몹은 작게 흩고 **보스만 크게** — 보스가 "사건" 으로 보여야 한다.
+  const pH = base * 0.125 * laneS(0.45);
+  const eH = base * (R.boss ? 0.32 : 0.11);
 
   // ── 동료 ──
   // 피해는 더하지 않는다. comp 배너의 DPS 기여는 이미 계산에 들어 있고
@@ -229,30 +239,37 @@ export function render(dt) {
   const drawComp = c => {
     const e = (elapsed - c.delay) / ATK_DUR;
     const lunge = e > 0 && e < 1 ? Math.sin(e * Math.PI) : 0;
-    const h = pH * c.s;
-    const cx = W * (0.34 + c.dx);
-    const cy = feet + pH * c.dy + Math.sin(t * 3 + c.phase) * h * 0.025;
+    const h = base * 0.125 * c.s * laneS(c.d);
+    const cx = W * (0.30 + c.dx);
+    const cy = laneY(c.d) + Math.sin(t * 3 + c.phase) * h * 0.025;
     // 고리는 리드에게만 준다 — 여섯 개가 겹치면 바닥이 고리밭이 되고
     // 정작 "누가 주인공인지" 가 흐려진다.
     const opt = { dx: lunge * W * 0.03, sx: 1 + lunge * 0.08, sy: 1 - lunge * 0.06, alpha: 0.92 };
     const own = compImage(c.id);
-    if (own) drawSprite(own, cx, cy, h, { x: 0, y: 0, w: 1, h: 1 }, opt);
+    if (own) drawSprite(own, cx, cy, h, boxOf('comp', c.id), opt);
     else drawSprite(pick('mon', c.sprite, 'idle', 0), cx, cy, h, boxOf('mon', c.sprite), opt);
   };
-  for (const c of comps) if (c.dy <= 0) drawComp(c);
+  const LEAD_D = 0.45;
+  for (const c of comps) if (c.d <= LEAD_D) drawComp(c);      // 리드보다 뒤
 
   // ── 플레이어 (몬스터) — 프레임이 1장이라 변형으로 연출 ──
-  const pImg = pick('mon', S.mon, 'idle', 0);
+  // 포즈 그림이 있으면 그걸 쓴다(슬라임은 idle/attack/hit/dead 4장). 없으면 idle 로
+  // 폴백하고 아래 변형으로 흉내낸다 — pick() 이 알아서 돌려준다.
+  const pose = R.atkAnimT > 0 ? 'attack' : R.pHitT > 0 ? 'hit' : 'idle';
+  const pImg = pick('mon', S.mon, pose, 0);
+  const hasPose = frameCount('mon', S.mon, pose) > 0;
   const atk = Math.max(0, R.atkAnimT) / 0.25;               // 1 → 0
   const lungePhase = Math.sin((1 - atk) * Math.PI);          // 0 → 1 → 0
+  // 포즈 그림이 이미 런지를 그리고 있으면 변형을 약하게 준다 — 둘 다 세게 주면 과장된다
+  const k = hasPose && pose !== 'idle' ? 0.35 : 1;
   const bob = Math.sin(t * 3) * pH * 0.02;
-  drawSprite(pImg, W * 0.34, feet + bob, pH, boxOf('mon', S.mon), {
-    dx: lungePhase * W * 0.05,
-    sx: 1 + lungePhase * 0.1,
-    sy: 1 - lungePhase * 0.08,
+  drawSprite(pImg, W * 0.30, feet + bob, pH, boxOf('mon', S.mon), {
+    dx: lungePhase * W * 0.05 * k,
+    sx: 1 + lungePhase * 0.1 * k,
+    sy: 1 - lungePhase * 0.08 * k,
     ring: ALLY,
   });
-  for (const c of comps) if (c.dy > 0) drawComp(c);      // 앞줄 — 리드보다 카메라에 가깝다
+  for (const c of comps) if (c.d > LEAD_D) drawComp(c);      // 리드보다 앞 — 카메라에 가깝다
 
   const pbw = W * 0.22;
   const hpFrac = R.LhpMax > L0 ? ratio(R.Lhp, R.LhpMax) : 0;
@@ -270,15 +287,18 @@ export function render(dt) {
   const hero = heroAt(R.stage);
   const alive = R.enemies.filter(e => e.Lhp > L0);
   const n = alive.length;
-  // 용사 PNG 는 좌우 여백이 커서 체감 폭의 2배쯤 벌려야 겹치지 않는다
-  const spread = n > 1 ? W * 0.16 : 0;
-  alive.forEach((e, i) => {
-    const col = i % 3;
-    const row = Math.floor(i / 3);
-    const ex = W * 0.62 + (col - (Math.min(n, 3) - 1) / 2) * spread + row * spread * 0.35;
-    const ey = feet + row * eH * 0.14;
-    // 여백 없이 자른 스프라이트는 같은 높이로 그리면 다른 용사보다 커 보인다
-    const h = eH * (n > 2 ? 0.84 : 1);
+  // 격자로 세우면 "줄" 이 보인다. 깊이를 지그재그로 주고 가로도 조금씩 어긋나게 둔다.
+  // 뒤 레인은 작고 위에, 앞 레인은 크고 아래에 — 그래야 한 바닥면 위에 흩어진 것으로 보인다.
+  const drawn = alive.map((e, i) => {
+    // 보스는 한 기뿐이다 — 흩을 이유가 없고 가운데 크게 서야 한다
+    if (R.boss) return { e, i, d: 0.5, x: W * 0.66 };
+    const d = FOE_LANES[i % FOE_LANES.length];
+    return { e, i, d, x: W * (0.56 + (i % 3) * 0.13 + (d - 0.5) * 0.06) };
+  }).sort((a, b) => a.d - b.d);           // 뒤에 있는 것부터 그린다
+
+  for (const { e, i, d, x: ex } of drawn) {
+    const ey = laneY(d);
+    const h = eH * laneS(d);
     const eb = Math.sin(t * 2.4 + e.ph) * h * 0.015;
     const hit = e.hitT > 0 ? e.hitT / 0.12 : 0;
     drawSprite(pick('hero', hero.key, hit > 0 ? 'hit' : 'idle', frame + i), ex, ey + eb, h, boxOf('hero', hero.key), {
@@ -287,9 +307,9 @@ export function render(dt) {
       sx: 1 + hit * 0.06,
       ring: FOE,
     });
-    const bw = h * 0.55;
-    bar(ex - bw / 2, ey - h - 8, bw, 5, ratio(e.Lhp, e.Lmax), '#ff5a6e');
-  });
+    const bw = h * 0.62;
+    bar(ex - bw / 2, ey - h - 7, bw, 4, ratio(e.Lhp, e.Lmax), '#ff5a6e');
+  }
 
   ctx.textAlign = 'center';
   // 레퍼런스는 잡몹에 이름표를 안 단다 — 보스일 때만 크게 보여준다
