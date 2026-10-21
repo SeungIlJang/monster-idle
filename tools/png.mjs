@@ -1,6 +1,8 @@
 // 최소 PNG 디코더/인코더 (node:zlib 만 사용, 외부 의존성 없음).
 // 빌드 시점 스프라이트 가공 전용 — 런타임에서는 절대 쓰지 않는다(DESIGN.md §12).
-// 지원: 8비트, 색상타입 0(회색)/2(RGB)/4(회색+A)/6(RGBA), 비인터레이스.
+// 지원: 8비트, 색상타입 0(회색)/2(RGB)/3(팔레트)/4(회색+A)/6(RGBA), 비인터레이스.
+// 팔레트를 넣은 이유: make-bg.mjs 가 배경을 색상타입 3 으로 저장하는데
+// 정작 이 디코더가 못 읽어서, 배경을 읽으려는 도구가 바로 막혔다.
 import zlib from 'node:zlib';
 
 const CRC_TABLE = (() => {
@@ -21,7 +23,7 @@ function crc32(buf) {
 /** @returns {{width:number,height:number,data:Uint8Array}} data 는 RGBA */
 export function decodePNG(buf) {
   if (buf.readUInt32BE(0) !== 0x89504e47) throw new Error('PNG 아님');
-  let pos = 8, ihdr = null;
+  let pos = 8, ihdr = null, plte = null, trns = null;
   const idat = [];
   while (pos < buf.length) {
     const len = buf.readUInt32BE(pos);
@@ -32,7 +34,9 @@ export function decodePNG(buf) {
         width: body.readUInt32BE(0), height: body.readUInt32BE(4),
         depth: body[8], color: body[9], interlace: body[12],
       };
-    } else if (type === 'IDAT') idat.push(body);
+    } else if (type === 'PLTE') plte = Buffer.from(body);
+    else if (type === 'tRNS') trns = Buffer.from(body);
+    else if (type === 'IDAT') idat.push(body);
     else if (type === 'IEND') break;
     pos += 12 + len;
   }
@@ -40,8 +44,9 @@ export function decodePNG(buf) {
   if (ihdr.depth !== 8) throw new Error('8비트만 지원 (depth=' + ihdr.depth + ')');
   if (ihdr.interlace) throw new Error('인터레이스 미지원');
 
-  const CH = { 0: 1, 2: 3, 4: 2, 6: 4 }[ihdr.color];
+  const CH = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 }[ihdr.color];
   if (!CH) throw new Error('색상타입 ' + ihdr.color + ' 미지원');
+  if (ihdr.color === 3 && !plte) throw new Error('팔레트 PNG 인데 PLTE 가 없다');
 
   const raw = zlib.inflateSync(Buffer.concat(idat));
   const { width: W, height: H } = ihdr;
@@ -74,7 +79,13 @@ export function decodePNG(buf) {
     }
     for (let x = 0; x < W; x++) {
       const s = x * CH, d = (y * W + x) * 4;
-      if (CH === 1) { out[d] = out[d + 1] = out[d + 2] = line[s]; out[d + 3] = 255; }
+      if (ihdr.color === 3) {
+        const p = line[s] * 3;
+        out[d] = plte[p]; out[d + 1] = plte[p + 1]; out[d + 2] = plte[p + 2];
+        // tRNS 는 팔레트 앞쪽 항목의 알파만 담는다. 없는 항목은 불투명.
+        out[d + 3] = trns && line[s] < trns.length ? trns[line[s]] : 255;
+      }
+      else if (CH === 1) { out[d] = out[d + 1] = out[d + 2] = line[s]; out[d + 3] = 255; }
       else if (CH === 2) { out[d] = out[d + 1] = out[d + 2] = line[s]; out[d + 3] = line[s + 1]; }
       else if (CH === 3) { out[d] = line[s]; out[d + 1] = line[s + 1]; out[d + 2] = line[s + 2]; out[d + 3] = 255; }
       else { out[d] = line[s]; out[d + 1] = line[s + 1]; out[d + 2] = line[s + 2]; out[d + 3] = line[s + 3]; }

@@ -21,15 +21,15 @@ node tools/make-bg.mjs "D:/AI/workspace/game/games/output/monster-idle/battle-sw
 | 파일 | 지역 | 챕터 | 상태 |
 |---|---|---|---|
 | `forest.png` | 몬스터 숲 | 1, 11, 21 … | ✅ |
-| `swamp.png` | 버섯 늪 | 2, 12, 22 … | — |
-| `highland.png` | 바람 언덕 | 3, 13 … | — |
-| `cave.png` | 해골 동굴 | 4, 14 … | — |
-| `canyon.png` | 불타는 협곡 | 5, 15 … | — |
-| `frost.png` | 서리 평원 | 6, 16 … | — |
-| `shadow.png` | 그림자 숲 | 7, 17 … | — |
-| `ruins.png` | 폐허 마을 | 8, 18 … | — |
-| `lava.png` | 용암 지대 | 9, 19 … | — |
-| `sky.png` | 하늘 성채 | 10, 20 … | — |
+| `swamp.png` | 버섯 늪 | 2, 12, 22 … | ✅ |
+| `highland.png` | 바람 언덕 | 3, 13 … | ✅ |
+| `cave.png` | 해골 동굴 | 4, 14 … | ✅ |
+| `canyon.png` | 불타는 협곡 | 5, 15 … | ✅ |
+| `frost.png` | 서리 평원 | 6, 16 … | ✅ |
+| `shadow.png` | 그림자 숲 | 7, 17 … | ✅ |
+| `ruins.png` | 폐허 마을 | 8, 18 … | ✅ |
+| `lava.png` | 용암 지대 | 9, 19 … | ✅ |
+| `sky.png` | 하늘 성채 | 10, 20 … | ✅ |
 
 ## 규격
 
