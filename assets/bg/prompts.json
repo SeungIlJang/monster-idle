@@ -1,6 +1,4 @@
 {
-  "_": "전투 배경 생성 프롬프트. 공통 제약은 common 에, 지역별 차이는 zones[].scene 에만 둔다. 생성 후 실제로 쓴 모델/설정과 결과를 generated 에 기록할 것.",
-  "status": "10/10 생성 완료",
   "common": {
     "style": "2D mobile idle RPG battle background, side view, cute cartoon style with thick clean outlines, flat shading, high saturation, bright and readable",
     "composition": "Horizontal 9:5 banner. Clear horizon line at 70% from the top: everything below is the ground the characters stand on, everything above is sky/backdrop. Depth in three layers: far backdrop, mid silhouettes, near foreground details along the bottom edge.",
@@ -59,7 +57,7 @@
       "scene": "floating stone islands high above the clouds, marble ruins and broken pillars, golden sunlight, sea of white clouds below, clear azure sky"
     }
   ],
-  "promptTemplate": "{common.style}. {zone.scene}. {common.composition} {common.constraints}",
+  "promptTemplate": "{common.style}. {item.scene}. {common.composition} {common.constraints}",
   "generated": [
     {
       "key": "forest",

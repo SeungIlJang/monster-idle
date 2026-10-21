@@ -221,7 +221,7 @@
 슬라임을 레전드 슬라임 스타일로 새로 그리면 **셋이 섞인다.** 새 그림을 넣을 거라면
 몬스터 10종을 **한 번에 같은 기준으로** 다시 뽑아야 한다. 한 마리만 바꾸면 그 한 마리만 떠 보인다.
 
-→ 디자인 프롬프트는 `assets/mon/prompts.json`(리드 10종)과 `assets/comp/prompts.json`(동료 6종)에 작성했다.
+→ 미술 방향과 함정은 [docs/art-direction.md](art-direction.md), 생성용 프롬프트는 [docs/prompts/](prompts/) 에 있다.
 
 ---
 

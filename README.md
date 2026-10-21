@@ -25,6 +25,9 @@ npm run android    # build → cap sync → Android Studio 열기
 
 - [docs/reference-legend-of-slime.md](docs/reference-legend-of-slime.md) — 모티브 게임 화면 분석과 적용 우선순위.
   무엇을 가져오고 **무엇을 가져오지 않을지**를 이유와 함께 적었다.
+- [docs/art-direction.md](docs/art-direction.md) — 그림을 넣거나 바꿀 때 읽는다. 방향·크기 규칙과
+  **겪어서 아는 함정**(투명 배경, box 공유, 어두운 지역 대비).
+- [docs/prompts/](docs/prompts/) — 붙여넣을 수 있는 생성용 프롬프트. 원본은 `assets/*/prompts.json`.
 
 이 프로젝트의 규칙 하나: **시뮬레이터에서 판정을 받은 뒤에 게임에 구현한다.**
 `tools/design-sim.cjs` 와 게임은 `src/balance.json` 하나를 같이 읽으므로, 상수를 고치면

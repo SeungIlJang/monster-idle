@@ -3,7 +3,7 @@
 //   node tools/make-mon.mjs <준비된폴더>
 //   node tools/make-mon.mjs "D:/AI/workspace/game/games/output/monster-idle/sprites-v1"
 //
-// 준비된 폴더는 아래 모양이어야 한다 (assets/mon/prompts.json · assets/comp/prompts.json 규격):
+// 준비된 폴더는 아래 모양이어야 한다 (규격은 docs/art-direction.md):
 //   assets/mon/<key>/{idle,attack,hit,dead}_1.png   — 투명 RGBA, 포즈끼리 **같은 배율·하단 기준**
 //   assets/comp/<id>.png                            — 투명 RGBA
 //
