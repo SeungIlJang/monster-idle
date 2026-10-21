@@ -68,9 +68,19 @@ function front() {
 }
 export const aliveCount = () => R.enemies.reduce((n, e) => n + (e.Lhp > L0 ? 1 : 0), 0);
 
-function fx(type, text, x, y) {
-  R.fx.push({ type, text, x, y, life: type === 'crit' ? 1.0 : 0.8, vy: -34 });
-  if (R.fx.length > 40) R.fx.shift();
+/**
+ * delay: 늦게 뜨기까지의 시간(초). 여러 발을 한 프레임에 겹쳐 띄우면 숫자가 포개져
+ *        한 덩어리로 보인다 — 조금씩 어긋나야 "여러 번 맞았다" 로 읽힌다.
+ * jx:    가로 흔들림. 같은 자리에 쌓이지 않게 한다.
+ */
+function fx(type, text, x, y, delay = 0) {
+  R.fx.push({
+    type, text, x, y, delay,
+    life: type === 'crit' ? 1.0 : 0.8,
+    vy: type === 'gold' ? -70 : -34,
+    jx: (Math.random() - 0.5) * (type === 'gold' ? 34 : 30),
+  });
+  if (R.fx.length > 60) R.fx.shift();
 }
 
 function gainGold() {
@@ -81,7 +91,17 @@ function onKill(e, idx) {
   gainGold();
   bumpDaily('kill');
   fx('gold', '+' + fmt(LeGOLD(R.stage, R.boss)), idx, -16);
-  R.shake = Math.max(R.shake, 0.1);
+  // 금화가 튀어 오른다. 숫자만 뜨는 것보다 "벌었다" 가 훨씬 잘 느껴진다.
+  // 보스는 골드가 10배라 더 많이 튀게 한다.
+  const coins = R.boss ? 9 : 5;
+  for (let i = 0; i < coins; i++) {
+    fx('coin', '', idx, -10, i * 0.035);
+    const c = R.fx[R.fx.length - 1];
+    c.vy = -150 - Math.random() * 90;
+    c.vjx = (Math.random() - 0.5) * 120;    // 좌우로 흩어지며
+    c.life = 0.75 + Math.random() * 0.3;
+  }
+  R.shake = Math.max(R.shake, R.boss ? 0.3 : 0.12);
   if (aliveCount() > 0) return;
 
   // 웨이브 클리어
@@ -131,7 +151,13 @@ export function tick(dt) {
   if (R.bannerT > 0) R.bannerT -= dt;
   if (R.shake > 0) R.shake -= dt;
   if (R.atkAnimT > 0) R.atkAnimT -= dt;
-  for (const f of R.fx) { f.life -= dt; f.y += f.vy * dt; }   // y 는 픽셀 오프셋(위로 떠오름)
+  // y 는 픽셀 오프셋(위로 떠오름). delay 가 남은 것은 아직 뜨지 않은 것이다.
+  for (const f of R.fx) {
+    if (f.delay > 0) { f.delay -= dt; continue; }
+    f.life -= dt;
+    f.y += f.vy * dt;
+    if (f.vjx) { f.jx += f.vjx * dt; f.vy += 320 * dt; }   // 금화는 중력을 받아 포물선을 그린다
+  }
   if (R.fx.length) R.fx = R.fx.filter(f => f.life > 0);
   for (const e of R.enemies) if (e.hitT > 0) e.hitT -= dt;
 
@@ -151,7 +177,22 @@ export function tick(dt) {
     f.Lhp = sub(f.Lhp, Ldmg);
     f.hitT = 0.12;
     const idx = R.enemies.indexOf(f);
-    fx(crit ? 'crit' : 'hit', fmt(Ldmg), idx, 0);
+    // 발수만큼 숫자를 나눠 띄운다. 연출이 아니라 사실이다 — 피해식에 shots() 가 이미 곱해져 있다.
+    // shots() 는 더블샷·트리플샷이 확률 스탯이라 1~3 사이 실수다. 소수부를 확률로 처리하면
+    // 평균 표시 발수가 기댓값과 정확히 맞고, 매 타격이 조금씩 달라져 보기에도 낫다.
+    const s = shots();
+    const n = Math.max(1, Math.floor(s) + (Math.random() < s % 1 ? 1 : 0));
+    const per = fmt(Ldmg - Math.log10(n));     // log10 공간에서 나누기 = 빼기
+    for (let i = 0; i < n; i++) {
+      fx(crit ? 'crit' : 'hit', per, idx, 0, i * 0.07);
+      // 무작위로만 흩으면 겹칠 때가 있다. 발 순서대로 부채꼴로 벌리고 거기에만 흔들림을 더한다.
+      const c = R.fx[R.fx.length - 1];
+      // 숫자는 자릿수가 늘면 길어진다(4.56e42 같은 것도 뜬다). 가로로만 벌리면
+      // 결국 겹치므로 세로로도 어긋나게 둔다.
+      c.jx = (i - (n - 1) / 2) * 42 + (Math.random() - 0.5) * 10;
+      c.y = -i * 13;
+    }
+    if (crit) R.shake = Math.max(R.shake, 0.16);
     if (f.Lhp <= L0) onKill(f, idx);
   }
 

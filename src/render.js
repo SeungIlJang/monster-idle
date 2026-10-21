@@ -7,6 +7,7 @@ import { B, heroAt } from './balance.js';
 import { S } from './state.js';
 import { R } from './combat.js';
 import { pick, preload, boxOf } from './sprites.js';
+import { activeCompanions, compImage } from './companions.js';
 import { L0, ratio, fmt } from './logmath.js';
 
 const WAVES = B.stage.waves;
@@ -215,6 +216,31 @@ export function render(dt) {
   const pH = base * 0.20;
   const eH = base * (R.boss ? 0.30 : 0.24);
 
+  // ── 동료 ──
+  // 피해는 더하지 않는다. comp 배너의 DPS 기여는 이미 계산에 들어 있고
+  // 여기서는 그 수치에 몸만 준다(companions.js 주석 참고).
+  //
+  // 전부 리드보다 먼저 그렸더니 리드 가까이 선 동료가 통째로 가려졌다.
+  // dy 로 앞뒤를 갈라 뒷줄은 리드 전에, 앞줄은 리드 뒤에 그린다 — 그래야
+  // 겹침이 "가림" 이 아니라 "거리감" 으로 읽힌다.
+  const ATK_DUR = 0.25;
+  const elapsed = ATK_DUR - Math.max(0, R.atkAnimT);         // 0 → 0.25
+  const comps = activeCompanions();
+  const drawComp = c => {
+    const e = (elapsed - c.delay) / ATK_DUR;
+    const lunge = e > 0 && e < 1 ? Math.sin(e * Math.PI) : 0;
+    const h = pH * c.s;
+    const cx = W * (0.34 + c.dx);
+    const cy = feet + pH * c.dy + Math.sin(t * 3 + c.phase) * h * 0.025;
+    // 고리는 리드에게만 준다 — 여섯 개가 겹치면 바닥이 고리밭이 되고
+    // 정작 "누가 주인공인지" 가 흐려진다.
+    const opt = { dx: lunge * W * 0.03, sx: 1 + lunge * 0.08, sy: 1 - lunge * 0.06, alpha: 0.92 };
+    const own = compImage(c.id);
+    if (own) drawSprite(own, cx, cy, h, { x: 0, y: 0, w: 1, h: 1 }, opt);
+    else drawSprite(pick('mon', c.sprite, 'idle', 0), cx, cy, h, boxOf('mon', c.sprite), opt);
+  };
+  for (const c of comps) if (c.dy <= 0) drawComp(c);
+
   // ── 플레이어 (몬스터) — 프레임이 1장이라 변형으로 연출 ──
   const pImg = pick('mon', S.mon, 'idle', 0);
   const atk = Math.max(0, R.atkAnimT) / 0.25;               // 1 → 0
@@ -226,6 +252,7 @@ export function render(dt) {
     sy: 1 - lungePhase * 0.08,
     ring: ALLY,
   });
+  for (const c of comps) if (c.dy > 0) drawComp(c);      // 앞줄 — 리드보다 카메라에 가깝다
 
   const pbw = W * 0.22;
   const hpFrac = R.LhpMax > L0 ? ratio(R.Lhp, R.LhpMax) : 0;
@@ -275,11 +302,22 @@ export function render(dt) {
   }
 
 
-  // ── 데미지/골드 숫자 ──
+  // ── 데미지 숫자 · 금화 ──
   for (const f of R.fx) {
+    if (f.delay > 0) continue;                  // 아직 뜰 차례가 아니다
     ctx.globalAlpha = Math.max(0, Math.min(1, f.life * 1.6));
-    const fx = W * (0.62 + (f.x - 1) * 0.055);
+    const fx = W * (0.62 + (f.x - 1) * 0.055) + (f.jx || 0);
     const fy = feet - eH * 1.05 + f.y;
+    if (f.type === 'coin') {
+      ctx.beginPath();
+      ctx.arc(fx, fy, 5, 0, 7);
+      ctx.fillStyle = '#ffd34d';
+      ctx.fill();
+      ctx.strokeStyle = '#b07d10';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      continue;
+    }
     if (f.type === 'crit') { ctx.fillStyle = '#ffe24a'; ctx.font = '800 22px system-ui'; }
     else if (f.type === 'gold') { ctx.fillStyle = '#ffd34d'; ctx.font = '800 15px system-ui'; }
     else { ctx.fillStyle = '#fff'; ctx.font = '800 16px system-ui'; }
