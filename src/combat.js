@@ -4,7 +4,7 @@
 //   · 사망 시 직전 스테이지로 내려가 파밍하고, 플레이어가 재도전을 누른다
 import { B, perWave, isBoss, LeHP, LeATK, LeGOLD, heroAt } from './balance.js';
 import { S, save } from './state.js';
-import { LDPS, LHP, LDEF, LATK, nval, shots, Linc, bestFarmStage, canClear } from './stats.js';
+import { LDPS, LHP, LDEF, nval, shots, critF, Linc, bestFarmStage, canClear } from './stats.js';
 import { bump as bumpDaily } from './daily.js';
 import { recomputeGacha } from './gacha.js';
 import { crossed } from './unlocks.js';
@@ -182,8 +182,16 @@ export function tick(dt) {
     R.atkT = interval;
     R.atkAnimT = Math.min(0.25, interval * 0.6);
     const crit = Math.random() < Math.min(1, nval('crit'));
-    const nrmF = R.boss ? 1 : 1 + nval('nrm');
-    const Ldmg = LATK() + fromNum((crit ? nval('cdmg') : 1) * shots() * nrmF);
+    // 실제 피해를 **LDPS 에서 끌어온다.** 식을 두 벌 쓰면 반드시 어긋난다 —
+    // 실제로 어긋나 있었다: gC(동료 배너)와 dpsMul(마스터리 광폭)이 표시 DPS 와
+    // canClear 판단에만 있고 피해에는 없어서, 표시가 406배일 때 타격은 1.12배였다.
+    // 동료 배너와 광폭 노드가 통째로 무력했고, 부풀려진 DPS 로 못 깨는 스테이지에
+    // 계속 도전해 죽었다. 시뮬은 줄곧 올바른 쪽(LDPS)을 검증해 왔다.
+    //
+    // LDPS 는 기대 치명타(critF)와 공격속도를 포함하므로 둘을 덜어내고
+    // 이번 타격의 실제 치명타 배수를 다시 곱한다 — 기댓값은 LDPS 와 같고 분산만 산다.
+    const critMul = crit ? nval('cdmg') : 1;
+    const Ldmg = LDPS(R.boss) - fromNum(nval('aspd')) - fromNum(critF()) + fromNum(critMul);
     f.Lhp = sub(f.Lhp, Ldmg);
     f.hitT = 0.12;
     const idx = R.enemies.indexOf(f);
