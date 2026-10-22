@@ -81,6 +81,44 @@ const D = {
 };
 const CAP_S = (D.offline.capHours || 12) * 3600;    // 오프라인 보상 상한(초)
 
+// ══════════════════════════════════════════════════ 환생(프레스티지)
+// 스테이지·골드·강화를 버리고 **영혼**을 받는다. 영혼은 피해에 곱해지며 영구다.
+//
+// 수식의 근거: 스테이지 s 에 도달하려면 로그 전투력이 s × log10(hpGrow) ≈ s × 0.0492 필요하다.
+// 영혼이 주는 로그 보너스는 (s / soulDiv) × log10(perSoul) 이므로, 둘의 비가 곧
+// **"환생 직후 예전 스테이지의 몇 %까지 즉시 돌아오는가"** 다:
+//
+//     복귀율 = log10(perSoul) / (soulDiv × log10(hpGrow))
+//
+// 이 값이 1 을 넘으면 환생할수록 공짜로 깊어져 무한 루프가 된다. 0.3~0.5 가 설계 목표다.
+// soulDiv 를 키우면 영혼 개수가 읽기 좋아지지만 perSoul 이 비현실적으로 커진다 — 10 이 타협점이다.
+// ⚠️ 영혼을 **자동 배수**로 주면 안 된다. 측정으로 확인했다:
+//   복귀율 3% 에서도 365일 끝점이 19,668 → 138,354, 4% 이상은 연산 상한(20만)까지 폭주했다.
+//   이유는 수식에 있다 — 영혼이 스테이지에 선형이면
+//     S(n+1) ≥ S(n) + (복귀층/soulDiv) = S(n)·(1 + 복귀율)
+//   이라 **어떤 복귀율에서도 발산한다.** 게다가 더 빨리 깊어지니 3,000층짜리 해금 절벽을
+//   오히려 앞당긴다 — 고치려던 문제를 악화시킨다.
+//
+// 그래서 영혼은 **사서 쓰는 재화**다. 비용이 등비로 오르는 상점에서 사면
+// 보너스가 영혼의 로그가 되어(레벨 N ∝ log(영혼)) 곡선이 수렴한다.
+// 구조가 기존 골드 강화와 똑같아서, 이미 5판정으로 검증된 모양을 그대로 쓴다.
+const PRESTIGE = {
+  on: !!ARG.prestige,
+  unlockStage: NUM('pUnlock') || 100,      // 첫 환생 가능 스테이지
+  soulDiv: NUM('pDiv') || 10,              // 스테이지 N 당 영혼 1
+  c0: NUM('pC0') || 10,                    // 영혼 상점 1레벨 가격
+  g: NUM('pG') || 1.15,                    // 레벨당 가격 배수
+  r: NUM('pR') || 1.08,                    // 레벨당 피해 배수
+  at: NUM('pAt') || 2,                     // 지금 영혼의 몇 배를 더 받을 수 있으면 환생하는가
+};
+const soulsFor = stage => Math.floor(stage / PRESTIGE.soulDiv);
+
+/** 영혼 N 개로 살 수 있는 최대 레벨. 등비수열 합의 역함수. */
+function soulLv(souls) {
+  if (souls < PRESTIGE.c0) return 0;
+  return Math.floor(Math.log(1 + souls * (PRESTIGE.g - 1) / PRESTIGE.c0) / Math.log(PRESTIGE.g));
+}
+
 // ══════════════════════════════════════════════════ 가챠 레이어
 // 보유 효과만이 아니라 장착 효과까지 모델링한다.
 // 그러려면 "총합"이 아니라 "등급별 보유량"을 들고 있어야 한다 — 장착은 상위 N개만 쓰기 때문이다.
@@ -178,7 +216,7 @@ const activeSlots = (b, best) => b.slotUnlock.filter(u => best >= u).length;
 function refreshGacha(S) {
   for (const b of GACHA.banners) {
     S.own[b.key] = ownSum(S.cnt[b.key]);
-    S.eqv[b.key] = eqSum(S.cnt[b.key], activeSlots(b, S.best));
+    S.eqv[b.key] = eqSum(S.cnt[b.key], activeSlots(b, S.life));
   }
 }
 // CLI 오버라이드
@@ -218,12 +256,24 @@ function newState() {
            bp,            // 배너별 누적 뽑기
            cnt,           // 배너별 "종류당" 등급별 기대 보유량
            own, eqv,      // 보유 / 장착 효과 합(%) 캐시
-           shards: 0, ore: 0, monLv: 0, milestones: 0, rsLv: 0 };   // 2단계
+           shards: 0, ore: 0, monLv: 0, milestones: 0, rsLv: 0,     // 2단계
+           souls: 0, life: 1 };    // 환생: best=이번 회차 / life=영구 최고 기록(해금 기준)
+}
+
+/**
+ * 환생 한 번. 스테이지·골드·강화만 버린다 —
+ * 가챠·마스터리·연구·수집은 **하루 수입에 묶여 있어서** 같이 지우면 하루를 통째로 날리는 꼴이 된다.
+ */
+function doPrestige(S) {
+  S.souls += soulsFor(S.best);
+  S.Lgold = L0;
+  for (const k of Object.keys(D.stats)) S.lv[k] = (D.stats[k].kind === 'mul' ? 1 : 0);
+  S.stage = 1; S.best = 1;   // life 는 그대로 — 해금과 로드맵은 영구다
 }
 const SD = k => D.stats[k];
 function unlocked(S, k) {
   const d = SD(k);
-  if (d.reqStage && S.best < d.reqStage) return false;
+  if (d.reqStage && S.life < d.reqStage) return false;
   if (d.req && S.lv[d.req[0]] < d.req[1]) return false;
   return true;
 }
@@ -243,13 +293,17 @@ const Lburst = S => fromNum(1.5 * (1 + gS(S) / 100));
 const LATK = S => Lval(S, 'atk') + (unlocked(S, 'adv') ? Lval(S, 'adv') : 0) + fromNum(1 + gE(S) / 100) + Llayer2Atk(S);
 const LHP  = S => Lval(S, 'hp') + fromNum(1 + gE(S) / 200) + Llayer2Hp(S);
 const LDEF = S => Lval(S, 'def');
+// 환생 보너스(로그). 영혼으로 산 레벨 × 레벨당 배수 — 승산이라 로그에서는 덧셈이다.
+// soulLv 가 영혼의 로그라서 이 항 자체가 로그로 자란다 = 수렴한다.
+const Lsoul = S => soulLv(S.souls) * Math.log10(PRESTIGE.r);
+
 function LDPS(S, boss) {
   const critF = 1 + Math.min(1, nval(S, 'crit')) * (nval(S, 'cdmg') - 1);
   const shots = 1 + Math.min(1, nval(S, 'dbl')) + Math.min(1, nval(S, 'trp'));
   const nrmF = boss ? 1 : 1 + nval(S, 'nrm');
   let L = LATK(S) + Llayer2Dps(S) + fromNum(critF * shots * nrmF * nval(S, 'aspd') * (1 + gC(S) / 100));
   if (boss) L += Lburst(S);
-  return L;
+  return L + Lsoul(S);
 }
 
 const isBoss = s => s % D.stage.bossEvery === 0;
@@ -356,7 +410,7 @@ function run() {
     refreshGacha(S);
   };
 
-  const snap = () => ({ stage: S.stage, t, Ldps: LDPS(S, false), Lhp: LHP(S), Ldef: LDEF(S), pulls: S.pulls,
+  const snap = () => ({ stage: S.stage, life: S.life, souls: S.souls, t, Ldps: LDPS(S, false), Lhp: LHP(S), Ldef: LDEF(S), pulls: S.pulls,
                         bLv: bannerLv(S.bp.equip), own: { ...S.own }, eqv: { ...S.eqv }, lv: { ...S.lv },
                         monLv: S.monLv, rsLv: S.rsLv });
   daily.push({ day: 0, ...snap() });
@@ -365,7 +419,7 @@ function run() {
   // ACTIVE_H=0 이면 sessionCombat 이 Infinity 라 예전처럼 24시간 내리 싸운다.
   const sessionCombat = ACTIVE_H ? ACTIVE_H * 3600 / SESSIONS : Infinity;
   const gapS = ACTIVE_H ? (24 - ACTIVE_H) * 3600 / SESSIONS : 0;
-  let sessionT = 0, offlineS = 0, lostS = 0, sessions = 0;
+  let sessionT = 0, offlineS = 0, lostS = 0, sessions = 0, prestiges = 0;
 
   while (t < T) {
     const d2 = Math.floor(t / 86400);
@@ -378,7 +432,7 @@ function run() {
 
     if (r.win) {
       S.stage++;
-      if (S.stage > S.best) { S.best = S.stage; refreshGacha(S); }   // 슬롯 해금 반영
+      if (S.stage > S.best) { S.best = S.stage; if (S.best > S.life) S.life = S.best; refreshGacha(S); }
       // 스테이지마다 스냅샷을 쌓으면 폭주 설정(스테이지 20만)에서 힙이 터진다(실측 4GB OOM).
       // 상한에 닿으면 절반으로 솎아내고 기록 간격을 2배로 늘려 메모리를 일정하게 유지한다.
       while (nextLog <= S.stage) {
@@ -404,6 +458,17 @@ function run() {
       spend(S);
       t += D.player.farmSeconds; farmT += D.player.farmSeconds;
     }
+    // ── 환생 판단 ──
+    // 사람은 "지금 가진 것의 몇 배는 돼야 리셋한다" 로 생각한다. 그 배수가 pAt 다.
+    // 첫 환생만 unlockStage 로 따로 막는다(영혼 0 이면 어떤 배수든 0 이라 즉시 통과한다).
+    if (PRESTIGE.on && S.best >= PRESTIGE.unlockStage
+        && soulsFor(S.best) >= Math.max(1, S.souls * PRESTIGE.at)) {
+      doPrestige(S); prestiges++;
+      refreshGacha(S);          // 해금은 life 기준이라 그대로지만 캐시는 다시 계산한다
+      spend(S);
+      lastUp = t;               // 스스로 되돌린 것은 '무진행' 이 아니다
+    }
+
     // ── 세션 종료 → 자리를 비운다 ──
     sessionT += t - t0;
     if (sessionT >= sessionCombat) {
@@ -424,7 +489,7 @@ function run() {
     if (t - lastUp > 24 * 3600) break;        // 24시간 무진행 = 벽으로 보고 중단
     if (S.stage > 200000) break;              // 수치가 아니라 연산량 상한
   }
-  return { S, log, daily, deaths, slows, t, stall, farmT, pullsPerDay, deadLog, offlineS, lostS, sessions };
+  return { S, log, daily, deaths, slows, t, stall, farmT, pullsPerDay, deadLog, offlineS, lostS, sessions, prestiges };
 }
 
 // ══════════════════════════════════════════════════ 지표 & 출력
@@ -442,7 +507,8 @@ function margins(R) {
 }
 const hm = s => !isFinite(s) ? '∞' : s < 3600 ? Math.floor(s / 60) + '분' : s < 86400 ? (s / 3600).toFixed(1) + '시간' : (s / 86400).toFixed(1) + '일';
 const f = (n, w) => String(n).padStart(w);
-const dayStage = (R, d) => { const e = R.daily.filter(x => x.day <= d).pop(); return e ? e.stage : 1; };
+// 환생하면 stage 는 1 로 떨어진다 — 일자별 비교는 영구 기록(life)으로 해야 의미가 있다
+const dayStage = (R, d) => { const e = R.daily.filter(x => x.day <= d).pop(); return e ? (e.life ?? e.stage) : 1; };
 const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
 
 const R = run();
@@ -461,7 +527,7 @@ if (ARG.quiet) {
   process.stdout.write(
     'hp' + D.enemy.hpGrow.toFixed(4) + ' atk' + D.enemy.atkGrow.toFixed(3) + ' def' + D.stats.def.r.toFixed(3) +
     ' c0x' + (NUM('c0mul') || 1) + ' p' + D.gacha.pullMul + (NOL2 ? ' [L2off]' : '') +
-    ' | D1 ' + f(dayStage(R, 1), 5) + ' D7 ' + f(dayStage(R, 7), 5) + ' D30 ' + f(dayStage(R, 30), 5) + ' max ' + f(R.S.best, 6) +
+    ' | D1 ' + f(dayStage(R, 1), 5) + ' D7 ' + f(dayStage(R, 7), 5) + ' D30 ' + f(dayStage(R, 30), 5) + ' max ' + f(R.S.life, 6) +
     ' | ' + f(early.toFixed(0), 4) + '->' + f(late.toFixed(0), 4) + '/d' +
     ' | stall ' + f((R.stall / 3600).toFixed(1), 5) + 'h' +
     ' | marg ' + worst.margin.toFixed(2) + '@' + f(worst.stage, 5) +
@@ -471,7 +537,7 @@ if (ARG.quiet) {
 }
 
 console.log('== 설계 검증' + (NOGACHA ? ' [무과금]' : D.gacha.pullMul !== 1 ? ' [뽑기 x' + D.gacha.pullMul + ']' : '') + ' · ' + DAYS + '일 ' + '='.repeat(14));
-console.log('  최고 스테이지 ' + R.S.best + '   (1일차 ' + dayStage(R, 1) + ' / 7일차 ' + dayStage(R, 7) + ' / 30일차 ' + dayStage(R, 30) + ')');
+console.log('  최고 스테이지 ' + R.S.life + '   (1일차 ' + dayStage(R, 1) + ' / 7일차 ' + dayStage(R, 7) + ' / 30일차 ' + dayStage(R, 30) + ')');
 console.log('  사망 ' + R.deaths + '회  ·  너무 느려 포기 ' + R.slows + '회  ·  하루 뽑기 ' + R.pullsPerDay + '회');
 console.log('  최장 무진행 ' + hm(R.stall) + '  ·  파밍 ' + hm(R.farmT) + ' / 전체 ' + hm(R.t));
 if (ACTIVE_H) {
@@ -483,6 +549,14 @@ if (ACTIVE_H) {
 } else {
   console.log('  [오프라인] 모델 꺼짐 — 24시간 연속 전투 가정 (--active=2 로 켠다)');
 }
+if (PRESTIGE.on) {
+  const lv = soulLv(R.S.souls);
+  console.log('  [환생] ' + R.prestiges + '회  ·  영혼 ' + R.S.souls.toLocaleString()
+    + '  ·  상점 Lv.' + lv + ' (보너스 10^' + (lv * Math.log10(PRESTIGE.r)).toFixed(1) + '배)'
+    + '  ·  ' + PRESTIGE.soulDiv + '층당 영혼1 · 가격 ' + PRESTIGE.c0 + '×' + PRESTIGE.g + '^lv · 레벨당 ×' + PRESTIGE.r);
+} else {
+  console.log('  [환생] 꺼짐 (--prestige 로 켠다)');
+}
 console.log('  최장 스테이지 클리어 시간 ' + hm(maxClear) + '  (포기 임계 ' + hm(D.player.giveUpSeconds) + ')');
 
 console.log('\n[일자별]   일  스테이지        DPS      최대HP   뽑기 배너Lv  보유%   장착% | 공격 체력 방어  상급');
@@ -492,7 +566,7 @@ for (const d of R.daily) if (d.day <= 7 || d.day % (DAYS > 60 ? 30 : 5) === 0)
     + f(d.monLv, 7) + f(d.rsLv, 5)
     + ' |' + f(d.lv.atk, 5) + f(d.lv.hp, 5) + f(d.lv.adv, 7));
 
-const step = R.S.best > 2000 ? 200 : R.S.best > 500 ? 50 : 10;
+const step = R.S.life > 2000 ? 200 : R.S.life > 500 ? 50 : 10;
 console.log('\n[스테이지]  st     도달시점     1킬     클리어필요    생존여유        적HP         DPS');
 for (const m of MG) {
   if (m.stage % step !== 0) continue;
@@ -529,7 +603,7 @@ if (ARG.deaths) {
 
 // 생존여유 지표는 보수적 추정(스테이지 진입 시점 스냅샷 + 웨이브 중 구매 미반영)이라
 // 실제 치사율과 어긋난다. 판정은 실제 사망률로 한다.
-const attempts = R.S.best + R.deaths + R.slows;
+const attempts = R.S.life + R.deaths + R.slows;
 const deathRate = attempts ? R.deaths / attempts : 0;
 const pass = [
   ['벽 없음 (무진행 < 6시간)',          R.stall < 6 * 3600],
