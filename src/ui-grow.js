@@ -133,6 +133,8 @@ function renderMonsters() {
   }).join('');
 
   const m = L2.MONSTERS.find(x => x.key === picked);
+  // 고유 능력. 잠긴 몬스터도 보여 준다 — "저걸 얻으면 뭐가 되는지" 가 보여야 목표가 된다.
+  const abil = B.roster.monsters.find(x => x.key === m.key)?.ability;
   const o = open(m), lv = L2.monLevel(m.key), cost = L2.monCost(m.key);
   const can = o && S.shard >= cost;
   const lead = S.mon === m.key;
@@ -142,6 +144,7 @@ function renderMonsters() {
     <div class="mgrid">${tiles}</div>
     <div class="mdet">
       <div class="t">${o ? m.name : '???'} <span style="opacity:.55;font-weight:600">Lv.${lv}</span></div>
+      ${abil ? `<div class="mabil"><b>${abil.name}</b> ${abil.desc}</div>` : ''}
       <div class="d">${o
         ? '마일스톤 ' + miles + ' · 다음 레벨 🔹' + n0(cost)
         : '<b>스테이지 ' + m.unlock + '</b> 도달 시 해금'}</div>

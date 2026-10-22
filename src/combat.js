@@ -4,7 +4,7 @@
 //   · 사망 시 직전 스테이지로 내려가 파밍하고, 플레이어가 재도전을 누른다
 import { B, perWave, isBoss, LeHP, LeATK, LeGOLD, heroAt, foeAt, chapterLabel } from './balance.js';
 import { S, save } from './state.js';
-import { LDPS, LHP, LDEF, nval, shots, critF, Linc, bestFarmStage, canClear } from './stats.js';
+import { LDPS, LHP, LDEF, nval, shots, critF, Linc, bestFarmStage, canClear, ab } from './stats.js';
 import { bump as bumpDaily } from './daily.js';
 import { recomputeGacha } from './gacha.js';
 import { crossed } from './unlocks.js';
@@ -97,7 +97,8 @@ function fx(type, text, x, y, delay = 0) {
 }
 
 function gainGold() {
-  S.Lg = add(S.Lg, LeGOLD(R.stage, R.boss));
+  // 리드 능력의 골드 배수(그릭 탐욕 등). 오프라인 보상은 offline.js 쪽에서 같이 건다.
+  S.Lg = add(S.Lg, LeGOLD(R.stage, R.boss) + fromNum(ab('gold')));
 }
 
 function onKill(e, idx) {

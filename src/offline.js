@@ -1,7 +1,7 @@
 // 오프라인 보상. 최대 12시간, 획득률은 "최고 클리어 스테이지의 초당 골드"에 비례(DESIGN.md §3).
 import { B, isBoss, LeHP, LeGOLD, perWave } from './balance.js';
 import { S } from './state.js';
-import { LDPS } from './stats.js';
+import { LDPS, ab } from './stats.js';
 import { add, ratio, fromNum, fmt } from './logmath.js';
 
 /** 파밍 기준 스테이지에서의 초당 골드 (log10) */
@@ -9,7 +9,7 @@ export function LgoldPerSec(stage) {
   const boss = isBoss(stage);
   const ttk = ratio(LeHP(stage, boss), LDPS(boss));       // 1마리 처치 시간(초)
   if (!(ttk > 0) || !isFinite(ttk)) return -Infinity;
-  return LeGOLD(stage, boss) - fromNum(ttk);
+  return LeGOLD(stage, boss) + fromNum(ab('gold')) - fromNum(ttk);   // 리드 능력의 골드 배수
 }
 
 /**

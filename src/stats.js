@@ -33,9 +33,30 @@ export const Lval = k => {
   return d.Lbase + (S.lv[k] - (d.base === 1 ? 0 : 1)) * d.Lr;
 };
 /** 'add' 스탯의 현재 값 (실수) */
+// ── 리드 몬스터 고유 능력 ────────────────────────────────────
+// 전부 **사이드그레이드** 다 — 한 축을 올리면 다른 축이 내려간다.
+// 상한 없는 순수 상승이면 "제일 센 놈" 하나만 남아 선택이 사라지고(그러면 수집이 외형일 뿐이다),
+// 곡선도 깨진다(해금 스탯에서 겪었다: 성장 트랙을 더하면 전투력이 적을 앞지른다).
+const ABIL = {};
+for (const m of B.roster.monsters) ABIL[m.key] = m.ability || {};
+/** 지금 리드의 능력치 배수. 없는 항목은 1(= 영향 없음) */
+export const ab = (k, dflt = 1) => {
+  const v = ABIL[S.mon]?.[k];
+  return typeof v === 'number' ? v : dflt;
+};
+export const abilityOf = key => ABIL[key] || null;
+
 export const nval = k => {
   const d = SD(k);
-  return d.base + d.a * S.lv[k];
+  let v = d.base + d.a * S.lv[k];
+  // 능력은 스탯 **실효값** 에 건다 — 그래야 공격속도 변화가 실제 타격 간격까지 간다.
+  // 단 nrm(일반적 피해)은 여기서 건드리면 안 된다. max(0, (1+v)*0.95-1) 로 깎았더니
+  // 레벨 1~2 에서 값이 0 에 머물러, 탐욕적 구매기가 gain=0 을 보고 nrm 트랙을 영영 안 샀다
+  // (최대 +4000% 짜리 트랙이 통째로 날아가 30일차가 14,041 → 7,043 이 됐다).
+  // 잡몹 배수는 LDPS 에서 boss 와 대칭으로 건다.
+  if (k === 'aspd' || k === 'cdmg' || k === 'rec') v *= ab(k);
+  if (k === 'crit') v = Math.max(0, v + ab('critAdd', 0));
+  return v;
 };
 
 // ── 가챠 보유 효과 (배너별 합 %) ──────────────────────────────
@@ -54,8 +75,9 @@ const ATK_T = TRACK('atk'), HP_T = TRACK('hp');
 const Ltrack = ks => ks.reduce((a, k) => a + (unlocked(k) ? Lval(k) : 0), 0);
 
 export const LATK = () => Ltrack(ATK_T) + fromNum((1 + gE() / 100) * atkMul());
-export const LHP  = () => Ltrack(HP_T) + fromNum((1 + gE() / 200) * hpMul());
-export const LDEF = () => Lval('def');
+export const LHP  = () => Ltrack(HP_T) + fromNum((1 + gE() / 200) * hpMul() * ab('hp'));
+// dr(피해감소)은 방어력 배수로 들어간다 — 적 피해가 LDEF 로 나눠지므로 올리면 덜 맞는다
+export const LDEF = () => Lval('def') + fromNum(ab('dr'));
 export const Lburst = () => fromNum(1.5 * (1 + gS() / 100));
 
 export const shots = () => 1 + Math.min(1, nval('dbl')) + Math.min(1, nval('trp'));
@@ -63,7 +85,9 @@ export const critF = () => 1 + Math.min(1, nval('crit')) * (nval('cdmg') - 1);
 
 export function LDPS(boss) {
   const nrmF = boss ? 1 : 1 + nval('nrm');
-  let L = LATK() + fromNum(critF() * shots() * nrmF * nval('aspd') * (1 + gC() / 100) * dpsMul());
+  // dmg 는 전체, boss/잡몹 배수는 상대에 따라 갈린다 (nrm 쪽은 nval('nrm') 에서 이미 반영됐다)
+  let L = LATK() + fromNum(critF() * shots() * nrmF * nval('aspd') * (1 + gC() / 100) * dpsMul()
+                           * ab('dmg') * (boss ? ab('boss') : ab('nrm')));
   if (boss) L += Lburst();
   return L;
 }

@@ -600,70 +600,80 @@
         "sheet": "Enemy_Gloop_Slime.png",
         "dir": "Gloop_Slime",
         "name": "글룹",
-        "unlock": 1
+        "unlock": 1,
+        "ability": {"name": "균형", "desc": "모든 피해 +10%", "dmg": 1.1}
       },
       {
         "key": "goblin",
         "sheet": "Enemy_Grik_Goblin.png",
         "dir": "Grik_Goblin",
         "name": "그릭",
-        "unlock": 10
+        "unlock": 10,
+        "ability": {"name": "탐욕", "desc": "골드 +40%, 피해 -15%", "gold": 1.4, "dmg": 0.85}
       },
       {
         "key": "bat",
         "sheet": "Enemy_Nightwing_Bat.png",
         "dir": "Nightwing_Bat",
         "name": "나이트윙",
-        "unlock": 40
+        "unlock": 40,
+        "ability": {"name": "흡혈", "desc": "웨이브 회복 2배, 피해 -10%", "rec": 2.0, "dmg": 0.9}
       },
       {
         "key": "mushroom",
         "sheet": "Enemy_Sporeling_Mushroom.png",
         "dir": "Sporeling_Mushroom",
         "name": "스포어링",
-        "unlock": 100
+        "unlock": 100,
+        "ability": {"name": "포자", "desc": "잡몹 피해 +35%, 보스 피해 -20%", "nrm": 1.35, "boss": 0.8}
       },
       {
         "key": "skeleton",
         "sheet": "Enemy_Boneguard_Skeleton.png",
         "dir": "Boneguard_Skeleton",
         "name": "본가드",
-        "unlock": 200
+        "unlock": 200,
+        "ability": {"name": "뼈방패", "desc": "받는 피해 -25%, 피해 -10%", "dr": 1.33, "dmg": 0.9}
       },
       {
         "key": "wolf",
         "sheet": "Enemy_Fangwolf_Wolf.png",
         "dir": "Fangwolf_Wolf",
         "name": "팽울프",
-        "unlock": 400
+        "unlock": 400,
+        "ability": {"name": "질주", "desc": "공격속도 +25%, 치명피해 -20%", "aspd": 1.25, "cdmg": 0.8}
       },
       {
         "key": "ghost",
         "sheet": "Enemy_Wraith_Ghost.png",
         "dir": "Wraith_Ghost",
         "name": "레이스",
-        "unlock": 700
+        "unlock": 700,
+        "ability": {"name": "원혼", "desc": "치명확률 +12%p, 최대체력 -20%", "critAdd": 0.12, "hp": 0.8}
       },
       {
         "key": "orc",
         "sheet": "Enemy_Brakk_Orc.png",
         "dir": "Brakk_Orc",
         "name": "브락",
-        "unlock": 1200
+        "unlock": 1200,
+        "ability": {"name": "격노", "desc": "보스 피해 +170%, 잡몹 피해 -5%", "boss": 2.7, "nrm": 0.95}
       },
       {
         "key": "golem",
         "sheet": "Enemy_GraniteGolem.png",
         "dir": "Granite_Golem",
         "name": "그래니트",
-        "unlock": 2000
+        "unlock": 2000,
+        "ability": {"name": "암반", "desc": "최대체력 +60%, 공격속도 -15%", "hp": 1.6, "aspd": 0.85}
       },
       {
         "key": "dragon",
         "sheet": "Boss_Ignarion_RedDragon.png",
         "dir": "Ignarion_RedDragon_Boss",
         "name": "이그나리온",
-        "unlock": 3000
+        "unlock": 3000,
+        "ability": {"name": "화염", "desc": "치명피해 +60%, 치명확률 -5%p", "cdmg": 1.6, "critAdd": -0.05}
       }
     ],
     "heroes": [

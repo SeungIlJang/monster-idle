@@ -113,6 +113,13 @@ const PRESTIGE = {
 };
 const soulsFor = stage => Math.floor(stage / PRESTIGE.soulDiv);
 
+// ── 리드 몬스터 고유 능력 (src/stats.js 의 ab() 와 같은 규칙) ──
+// 전부 사이드그레이드여야 한다 — 하나가 지배적이면 선택이 사라지고 곡선도 밀린다.
+// --lead=<key> 로 바꿔 가며 돌려 끝점이 좁은 띠 안에 있는지 확인한다.
+const LEAD = ARG.lead || B.roster.monsters[0].key;
+const LEAD_AB = (B.roster.monsters.find(m => m.key === LEAD) || {}).ability || {};
+const ab = (k, dflt = 1) => (typeof LEAD_AB[k] === 'number' ? LEAD_AB[k] : dflt);
+
 /** 영혼 N 개로 살 수 있는 최대 레벨. 등비수열 합의 역함수. */
 function soulLv(souls) {
   if (souls < PRESTIGE.c0) return 0;
@@ -281,7 +288,13 @@ function unlocked(S, k) {
 const maxed = (S, k) => { const d = SD(k); return d.max !== undefined && S.lv[k] >= d.max; };
 const Lcost = (S, k) => { const d = SD(k); return d.Lc0 + S.lv[k] * d.Lg; };
 const Lval = (S, k) => { const d = SD(k); return d.Lbase + (S.lv[k] - (d.base === 1 ? 0 : 1)) * d.Lr; };   // 'mul' → log10
-const nval = (S, k) => { const d = SD(k); return d.base + d.a * S.lv[k]; };                                 // 'add' → 실수
+const nval = (S, k) => {                                                                                    // 'add' → 실수
+  const d = SD(k);
+  let v = d.base + d.a * S.lv[k];
+  if (k === 'aspd' || k === 'cdmg' || k === 'rec') v *= ab(k);
+  if (k === 'crit') v = Math.max(0, v + ab('critAdd', 0));
+  return v;
+};
 
 // 배너별 보유 효과 합(%)이 각각 다른 축을 곱한다:
 //   장비 → 공격력(+체력 절반), 동료 → DPS, 스킬 → 보스 버스트
@@ -298,8 +311,8 @@ const ATK_T = TRACK('atk'), HP_T = TRACK('hp');
 const Ltrack = (S, ks) => ks.reduce((a, k) => a + (unlocked(S, k) ? Lval(S, k) : 0), 0);
 
 const LATK = S => Ltrack(S, ATK_T) + fromNum(1 + gE(S) / 100) + Llayer2Atk(S);
-const LHP  = S => Ltrack(S, HP_T) + fromNum(1 + gE(S) / 200) + Llayer2Hp(S);
-const LDEF = S => Lval(S, 'def');
+const LHP  = S => Ltrack(S, HP_T) + fromNum((1 + gE(S) / 200) * ab('hp')) + Llayer2Hp(S);
+const LDEF = S => Lval(S, 'def') + fromNum(ab('dr'));
 // 환생 보너스(로그). 영혼으로 산 레벨 × 레벨당 배수 — 승산이라 로그에서는 덧셈이다.
 // soulLv 가 영혼의 로그라서 이 항 자체가 로그로 자란다 = 수렴한다.
 const Lsoul = S => soulLv(S.souls) * Math.log10(PRESTIGE.r);
@@ -308,7 +321,8 @@ function LDPS(S, boss) {
   const critF = 1 + Math.min(1, nval(S, 'crit')) * (nval(S, 'cdmg') - 1);
   const shots = 1 + Math.min(1, nval(S, 'dbl')) + Math.min(1, nval(S, 'trp'));
   const nrmF = boss ? 1 : 1 + nval(S, 'nrm');
-  let L = LATK(S) + Llayer2Dps(S) + fromNum(critF * shots * nrmF * nval(S, 'aspd') * (1 + gC(S) / 100));
+  let L = LATK(S) + Llayer2Dps(S) + fromNum(critF * shots * nrmF * nval(S, 'aspd') * (1 + gC(S) / 100)
+                                     * ab('dmg') * (boss ? ab('boss') : ab('nrm')));
   if (boss) L += Lburst(S);
   return L + Lsoul(S);
 }
@@ -316,7 +330,7 @@ function LDPS(S, boss) {
 const isBoss = s => s % D.stage.bossEvery === 0;
 const LeHP   = (s, b) => LG.hp0  + (s - 1) * LG.hpGrow   + (b ? LG.bossHp : 0);
 const LeATK  = (s, b) => LG.atk0 + (s - 1) * LG.atkGrow  + (b ? LG.bossAtk : 0);
-const LeGOLD = (s, b) => LG.gold0 + (s - 1) * LG.goldGrow + (b ? LG.bossGold : 0);
+const LeGOLD = (s, b) => LG.gold0 + (s - 1) * LG.goldGrow + (b ? LG.bossGold : 0) + fromNum(ab('gold'));
 
 const Linc = (S, s, b) => LeATK(s, b) + fromNum(D.enemy.aspd * (b ? 1 : D.stage.perWave(s))) - LDEF(S);
 
