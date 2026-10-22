@@ -2,7 +2,7 @@
 //   · 전투 중 회복 없음 — 회복 스탯은 웨이브 사이에만 작동
 //   · 제한시간 없음 — 유일한 실패 조건은 사망
 //   · 사망 시 직전 스테이지로 내려가 파밍하고, 플레이어가 재도전을 누른다
-import { B, perWave, isBoss, LeHP, LeATK, LeGOLD, heroAt } from './balance.js';
+import { B, perWave, isBoss, LeHP, LeATK, LeGOLD, heroAt, foeAt, chapterLabel } from './balance.js';
 import { S, save } from './state.js';
 import { LDPS, LHP, LDEF, nval, shots, critF, Linc, bestFarmStage, canClear } from './stats.js';
 import { bump as bumpDaily } from './daily.js';
@@ -13,7 +13,7 @@ import { L0, add, sub, ratio, fromNum, fmt } from './logmath.js';
 
 export const MODE = { RUN: 'run', FARM: 'farm' };
 // 파밍을 이만큼 돌면 전투력 판단과 무관하게 한 번 찔러본다 (canClear 가 보수적일 때의 안전장치)
-const AUTO_RETRY_CLEARS = 3;
+export const AUTO_RETRY_CLEARS = 3;
 
 export const R = {
   mode: MODE.RUN,
@@ -50,7 +50,11 @@ function spawnWave() {
   const n = R.boss ? 1 : perWave(R.stage);
   const Lhp = LeHP(R.stage, R.boss);
   R.enemies = [];
-  for (let i = 0; i < n; i++) R.enemies.push({ Lhp, Lmax: Lhp, hitT: 0, ph: Math.random() * 6.28 });
+  for (let i = 0; i < n; i++) {
+    // 보스는 그 구역의 용사 **본인** 이다 — 섞지 않는다. 잡몹만 지금까지 본 용사들로 채운다.
+    const hero = R.boss ? heroAt(R.stage) : foeAt(R.stage, R.waveIdx, i);
+    R.enemies.push({ Lhp, Lmax: Lhp, hitT: 0, ph: Math.random() * 6.28, hero });
+  }
 }
 
 /** 스테이지 진입. mode 가 FARM 이면 클리어해도 전진하지 않고 계속 반복한다. */
@@ -154,7 +158,9 @@ function playerDied() {
   // 한 칸씩 내려가면 사망 연쇄에 빠진다 — 클리어 가능한 깊이를 바로 계산해서 간다
   const farmAt = S.farm > 0 ? S.farm : bestFarmStage(Math.max(1, retryAt - 1));
   R.farmClears = 0;
-  banner('쓰러졌다… 파밍으로', 2.0);
+  // 어디로 왜 가는지 말해 준다. 측정해 보니 첫 1시간에 16~17번 죽는데(2~3분에 한 번),
+  // 전부 자동 복구라 "졌다" 도 "돌아왔다" 도 체감되지 않았다. 사건이 보이지 않으면 긴장도 없다.
+  banner('쓰러졌다 — ' + chapterLabel(farmAt) + ' 에서 힘을 모은다', 2.4, true);
   onEvent({ type: 'death', stage: retryAt, farmAt });
   save();
   enterStage(farmAt, MODE.FARM);

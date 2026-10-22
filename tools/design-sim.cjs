@@ -317,6 +317,7 @@ function run() {
   const S = newState();
   const log = [], daily = [];
   let t = 0, deaths = 0, slows = 0, lastUp = 0, stall = 0, farmT = 0, nextLog = 2, day = 0;
+  const deadLog = [];
   const LOG_CAP = 20000; let logEvery = 1;      // 스냅샷 메모리 상한 (아래 솎아내기 참조)
   const T = DAYS * 86400;
   // 배너당 하루 뽑기 = 광고 무료 + (젬 수입 ÷ 뽑기비용) ÷ 배너 수
@@ -362,6 +363,9 @@ function run() {
       }
       lastUp = t;
     } else {
+      // 사망이 **언제 · 어디서** 나는지 남긴다. 총 횟수만 보면 365일 평균에 희석돼
+      // "첫 1시간 무사망" 같은 체감 문제가 판정을 통과해 버린다.
+      if (r.reason === 'dead' && deadLog.length < 4000) deadLog.push({ stage: S.stage, t, boss: isBoss(S.stage) });
       r.reason === 'dead' ? deaths++ : slows++;
       const fs = Math.max(1, S.stage - 1), fb = isBoss(fs);
       const ttkF = ratio(LeHP(fs, fb), LDPS(S, fb));
@@ -374,7 +378,7 @@ function run() {
     if (t - lastUp > 24 * 3600) break;        // 24시간 무진행 = 벽으로 보고 중단
     if (S.stage > 200000) break;              // 수치가 아니라 연산량 상한
   }
-  return { S, log, daily, deaths, slows, t, stall, farmT, pullsPerDay };
+  return { S, log, daily, deaths, slows, t, stall, farmT, pullsPerDay, deadLog };
 }
 
 // ══════════════════════════════════════════════════ 지표 & 출력
@@ -452,6 +456,20 @@ if (ARG.bands) {
       + '  평균 ' + f(avg(sl.map(x => x.margin)).toFixed(2), 6) + '배  최악 ' + f(mn.margin.toFixed(2), 6) + '배 @st' + mn.stage
       + '  적수 ' + D.stage.perWave(sl[0].stage));
   }
+}
+
+// 사망이 **언제** 나는지. 365일 평균 사망률은 체감을 못 본다 — 첫 1시간이 무사망이어도
+// 판정은 통과한다(실제로 그랬다). 긴장이 초반에 존재하는지는 여기서만 보인다.
+const DL = R.deadLog;
+const deadsIn = sec => DL.filter(d => d.t <= sec).length;
+console.log('\n[사망 시점]  1시간 ' + deadsIn(3600) + '회  ·  6시간 ' + deadsIn(6 * 3600)
+  + '  ·  1일 ' + deadsIn(86400) + '  ·  7일 ' + deadsIn(7 * 86400) + '  ·  전체 ' + R.deaths
+  + '   (보스전 ' + DL.filter(d => d.boss).length + ')');
+if (DL.length) console.log('  첫 사망 ' + hm(DL[0].t) + ' @ st' + DL[0].stage + (DL[0].boss ? ' (보스)' : ''));
+else console.log('  첫 사망 없음');
+if (ARG.deaths) {
+  console.log('\n[사망 목록 — 앞 40건]');
+  for (const d of DL.slice(0, 40)) console.log('  ' + f(hm(d.t), 10) + ' st' + f(d.stage, 6) + (d.boss ? '  👑' : ''));
 }
 
 // 생존여유 지표는 보수적 추정(스테이지 진입 시점 스냅샷 + 웨이브 중 구매 미반영)이라

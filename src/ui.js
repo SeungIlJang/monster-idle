@@ -2,8 +2,8 @@
 import { B, STAT_KEYS, chapterLabel, perWave, zoneAt } from './balance.js';
 
 import { S, save, wipe } from './state.js';
-import { R, retry, enterStage, toughness, MODE } from './combat.js';
-import { Lcost, LcostN, Lval, nval, unlocked, maxed, affordable, buy, bestBuy, LDPS, LHP, LDEF } from './stats.js';
+import { R, retry, enterStage, toughness, MODE, AUTO_RETRY_CLEARS } from './combat.js';
+import { Lcost, LcostN, Lval, nval, unlocked, maxed, affordable, buy, bestBuy, canClear, LDPS, LHP, LDEF } from './stats.js';
 import { preloadFor } from './render.js';
 import * as G from './gacha.js';
 import * as DUN from './dungeon.js';
@@ -227,6 +227,19 @@ export function refresh() {
     const mins = tg.need / 60;
     needTxt = mins > 600 ? '지금 전투력으로는 사실상 불가능합니다 — 강화가 더 필요해요'
       : '이 스테이지는 약 ' + Math.round(mins) + '분 걸립니다 — 강화를 더 하세요';
+  }
+  // 파밍 중이라면 **왜 여기 있는지** 가 먼저다. 측정해 보니 첫 1시간의 45%가 파밍인데
+  // 그동안 화면에는 "파밍 중" 세 글자뿐이었다 — 같은 곳을 도는 이유도 언제 끝나는지도
+  // 안 보이니 반복이 그냥 정체로 읽힌다.
+  //
+  // 전투력 비율(canClear 의 생존여유)을 퍼센트로 보여줬다가 뺐다. 자동 재도전은
+  // canClear 가 아직 false 여도 3판이면 한 번 찔러보므로(그쪽이 보수적이라서),
+  // "준비 42%" 라고 써 놓고 재도전이 나가 버린다. 남은 판 수는 반드시 맞는 숫자다.
+  if (R.mode === MODE.FARM) {
+    const left = Math.max(0, AUTO_RETRY_CLEARS - (R.farmClears || 0));
+    needTxt = canClear(S.st) || left === 0
+      ? chapterLabel(S.st) + ' 재도전 준비 완료'
+      : chapterLabel(S.st) + ' 재도전까지 ' + left + '판';
   }
   $('hint').textContent = needTxt;
 

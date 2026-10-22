@@ -75,5 +75,42 @@ export const heroAt = s => rot(B.roster.heroes, s);
 /** 현재 스테이지의 지역 (배경 + 이름) */
 export const zoneAt = s => rot(B.zones.list, s, Math.floor(sceneEvery() / 2));
 
+/**
+ * 스테이지 s 까지 등장한 용사 전원 = **다시 나올 수 있는 적의 풀.**
+ * 1층에 나온 적은 2층에도 나올 수 있고, 10층에는 1~9층에 나온 적이 전부 나올 수 있다.
+ * heroAt 은 `% length` 로 계속 순환하지만 풀은 전원에서 멈춘다.
+ */
+export const heroPool = s =>
+  B.roster.heroes.slice(0, Math.min(B.roster.heroes.length, Math.floor((s - 1) / sceneEvery()) + 1));
+
+// (stage, wave, slot) → 고정 난수. Math.random 을 쓰면 죽고 다시 들어올 때마다 편성이
+// 바뀌어서 "장소" 가 아니라 슬롯머신이 된다. 같은 자리는 항상 같은 적이어야 한다.
+function hash(a, b, c) {
+  let x = Math.imul(a, 73856093) ^ Math.imul(b, 19349663) ^ Math.imul(c, 83492791);
+  x = Math.imul(x ^ (x >>> 15), 2246822507);
+  x = Math.imul(x ^ (x >>> 13), 3266489909);
+  return (x ^ (x >>> 16)) >>> 0;
+}
+
+/**
+ * 적 한 기가 누구인지.
+ *
+ * 한 스테이지를 한 종류로만 채우면 깊은 스테이지는 한 판이 4분이라 4분 내내 같은 얼굴만 본다.
+ * 그렇다고 전부 균등하게 섞으면 이번엔 **"이 구역의 적" 이라는 감각이 사라진다** —
+ * 36층부터는 8종이 다 풀린 상태라 모든 스테이지가 똑같은 8종 수프가 되고,
+ * 새 용사가 등장하는 순간도 사건으로 읽히지 않는다.
+ * 그래서 이번 구역의 용사를 leadFoePct 만큼 남기고 나머지를 과거 용사로 채운다.
+ *
+ * 밸런스 영향 없음 — LeHP/LeATK/LeGOLD 는 누가 나오든 스테이지와 보스 여부만 본다.
+ */
+export function foeAt(stage, wave, slot) {
+  const lead = heroAt(stage);
+  const rest = heroPool(stage).filter(h => h !== lead);
+  if (!rest.length) return lead;                       // 아직 한 종류뿐 (1~5층)
+  const h = hash(stage, wave, slot);
+  if (h % 100 < B.stage.leadFoePct) return lead;
+  return rest[(h >>> 8) % rest.length];
+}
+
 /** 해금된 플레이어 몬스터 목록 */
 export const unlockedMonsters = best => B.roster.monsters.filter(m => best >= m.unlock);
