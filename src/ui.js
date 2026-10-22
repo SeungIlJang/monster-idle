@@ -1,5 +1,5 @@
 // HUD + 패널. 강화 패널이 1단계의 핵심 화면이다.
-import { B, STAT_KEYS, chapterLabel, perWave } from './balance.js';
+import { B, STAT_KEYS, chapterLabel, perWave, zoneAt } from './balance.js';
 
 import { S, save, wipe } from './state.js';
 import { R, retry, enterStage, toughness, MODE } from './combat.js';
@@ -13,11 +13,13 @@ import { playRewarded } from './ads.js';
 import { initGrow, renderGrow } from './ui-grow.js';
 import { initGacha, renderGacha } from './ui-gacha.js';
 import { renderRoad } from './ui-road.js';
+import { nextMilestone } from './unlocks.js';
 import { fmt, L0, ratio } from './logmath.js';
 
 const $ = id => document.getElementById(id);
 let tab = 'battle';
 let buyMode = 1;        // 1 | 10 | 'max'
+let lastGoal = '';      // 목표 띠 — 바뀔 때만 다시 그린다
 
 export function toast(msg) {
   const t = $('toast');
@@ -237,11 +239,24 @@ export function refresh() {
   const waves = R.boss ? 1 : B.stage.waves;
   const alive = R.enemies.filter(e => e.Lhp > -Infinity).length;
   const killed = R.waveIdx * per + (per - alive);
-  const prog = Math.max(0, Math.min(1, killed / (per * waves)));
+  const total = per * waves;
+  const prog = Math.max(0, Math.min(1, killed / total));
   $('sProg').style.width = (prog * 100).toFixed(1) + '%';
-  $('sName').textContent = B.zones.list[Math.floor((R.stage - 1) / B.stage.bossEvery) % B.zones.list.length].name;
+  $('sName').textContent = zoneAt(R.stage).name;
+  // 숫자로도 보여준다 — 30~60분 구간은 한 판이 약 250초라, 진행바가 한 칸 차는 데
+  // 30초가 걸린다. 몇 마리 중 몇 번째인지 보이면 같은 4분도 "진행" 으로 읽힌다.
+  $('sWave').textContent = R.boss ? '보스전'
+    : `웨이브 ${Math.min(R.waveIdx + 1, waves)}/${waves} · ${killed}/${total}`;
   $('sNum').textContent = chapterLabel(R.stage);
   $('sIcon').textContent = R.boss ? '👑' : '🚩';
+
+  // 다음 목표 — 로드맵은 눌러야 나오니 한 줄만 상시로 꺼내 둔다.
+  // "왜 계속 내려가야 하는가" 에 대한 답이 화면에 항상 있어야 한다.
+  const nm = nextMilestone();
+  const goal = nm
+    ? `${nm.ic} ${nm.what} <em>${nm.at - S.best}층 남음 ›</em>`
+    : '🏅 해금 완료 — 최고 기록에 도전 중 <em>›</em>';
+  if (goal !== lastGoal) { $('sGoal').innerHTML = goal; lastGoal = goal; }  // 초당 4번 파싱하지 않는다
   // 융합 가능한 묶음이 있으면 탭에 점을 띄운다
   const gd = $('gDot');
   if (gd) gd.style.display = G.BANNERS.some(b => G.hasFusable(b.key)) ? 'block' : 'none';

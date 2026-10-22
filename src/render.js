@@ -3,7 +3,7 @@
 // 몬스터는 도감 시트에서 잘라낸 대표 포즈 1장만 있다(tools/make-monster-sprites.mjs).
 // 그래서 공격·피격 연출은 프레임이 아니라 스쿼시·런지·셰이크로 만든다(DESIGN.md §12).
 // 용사는 Idle/Attack/Hit/Dead 프레임이 멀쩡해서 프레임 애니를 그대로 쓴다.
-import { B, heroAt } from './balance.js';
+import { B, heroAt, zoneAt, sceneEvery } from './balance.js';
 import { S } from './state.js';
 import { R } from './combat.js';
 import { pick, preload, boxOf, frameCount } from './sprites.js';
@@ -99,8 +99,7 @@ function drawCover(img) {
 
 function drawBG() {
   const gy = H * GROUND;
-  const zone = B.zones.list[Math.floor((R.stage - 1) / B.stage.bossEvery) % B.zones.list.length];
-  const img = bgImage(zone.key);
+  const img = bgImage(zoneAt(R.stage).key);
   if (img) { drawCover(img); return; }
 
   // 하늘 — 밝은 낮
@@ -402,4 +401,10 @@ export function render(dt) {
 export function preloadFor(stage) {
   preload('mon', S.mon);
   preload('hero', heroAt(stage).key);
+  // 적과 배경은 5스테이지마다 바뀐다. 다음 장면 것도 미리 받아둬야 교체되는 순간
+  // 몇 프레임 동안 빈 칸/맨 캔버스가 비친다. bgImage 는 캐시에 넣기만 하면 예열된다.
+  const next = stage + sceneEvery();
+  preload('hero', heroAt(next).key);
+  bgImage(zoneAt(stage).key);
+  bgImage(zoneAt(next).key);
 }

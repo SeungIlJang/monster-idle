@@ -30,7 +30,8 @@ initUI();
 preloadFor(S.st);
 
 setEventHandler(ev => {
-  if (ev.type === 'stageClear') refresh();
+  // 클리어마다 다음 장면 자원을 예열한다 (적·배경이 5스테이지마다 바뀐다)
+  if (ev.type === 'stageClear') { refresh(); preloadFor(ev.stage + 1); }
   if (ev.type === 'death') refresh();
 });
 

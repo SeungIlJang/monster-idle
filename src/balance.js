@@ -54,11 +54,26 @@ export const chapterLabel = s => {
   return ch + '-' + idx;
 };
 
+/**
+ * 적·지역 교체 주기. 보스 주기(10)와 **분리돼 있다.**
+ * 둘이 같았을 때, 깊은 스테이지에서는 10스테이지가 40분이라 같은 적을 같은 배경에서
+ * 40분 동안 상대했다(측정: 25층 한 판 250초). 그게 "같은 장면 반복" 의 정체였다.
+ *
+ * 밸런스에는 영향이 없다 — LeHP/LeATK/LeGOLD 는 스테이지와 보스 여부만 보고,
+ * 어떤 적이 어느 지역에 나오는지는 이름과 그림뿐이다. 그래서 시뮬 재검증이 필요 없다.
+ */
+export const sceneEvery = () => B.stage.sceneEvery || B.stage.bossEvery;
+
+// 적과 지역은 **주기는 같고 타이밍은 어긋나게** 바꾼다. 동시에 바꾸면 주기 내내
+// 화면이 통째로 고정되지만, 절반씩 엇갈리면 2~3스테이지마다 둘 중 하나는 바뀐다.
+// 용사 8종 × 지역 10종이라 조합은 200스테이지 동안 겹치지 않는다.
+const rot = (list, s, shift = 0) => list[Math.floor((s - 1 + shift) / sceneEvery()) % list.length];
+
 /** 현재 스테이지에서 등장하는 적(용사) */
-export const heroAt = s => {
-  const list = B.roster.heroes;
-  return list[Math.floor((s - 1) / B.stage.bossEvery) % list.length];
-};
+export const heroAt = s => rot(B.roster.heroes, s);
+
+/** 현재 스테이지의 지역 (배경 + 이름) */
+export const zoneAt = s => rot(B.zones.list, s, Math.floor(sceneEvery() / 2));
 
 /** 해금된 플레이어 몬스터 목록 */
 export const unlockedMonsters = best => B.roster.monsters.filter(m => best >= m.unlock);

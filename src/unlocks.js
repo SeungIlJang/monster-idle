@@ -6,8 +6,13 @@
 import { B } from './balance.js';
 import { S } from './state.js';
 
+let cache = null;
+
 /** 스테이지 오름차순. 같은 스테이지에서 여러 개가 열릴 수 있다. */
 export function milestones() {
+  // balance.json 만 보므로 결과가 바뀌지 않는다. 목표 띠가 초당 4번 물어보기 때문에
+  // 매번 다시 모아 정렬하지 않는다.
+  if (cache) return cache;
   const out = [];
   for (const m of B.roster.monsters) {
     if (m.unlock > 1) out.push({ at: m.unlock, ic: '🐾', what: `몬스터 <b>${m.name}</b> 해금`, plain: `${m.name} 합류!`, kind: 'mon' });
@@ -22,7 +27,7 @@ export function milestones() {
       out.push({ at: v.reqStage, ic: v.icon || '✨', what: `스탯 <b>${v.name}</b> 해금`, plain: `${v.name} 해금!`, kind: 'stat' });
     }
   }
-  return out.sort((a, b) => a.at - b.at || a.kind.localeCompare(b.kind));
+  return (cache = out.sort((a, b) => a.at - b.at || a.kind.localeCompare(b.kind)));
 }
 
 /** 다음에 열릴 것 (전부 열렸으면 null) */

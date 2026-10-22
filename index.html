@@ -85,9 +85,16 @@
   .rhint{margin-top:3px;font-size:12px;color:#ffd34d;font-weight:700}
   .sname{display:flex;align-items:center;gap:5px;font-size:12px;margin-bottom:5px}
   .sname b{color:#ffe9a8}
+  /* 남은 적 수. 깊은 스테이지는 한 판이 4분이라 진행바만으로는 멈춘 것처럼 보인다 */
+  .sname #sWave{font-size:11px;color:#8fa6c8;font-variant-numeric:tabular-nums}
   .sname #sNum{margin-left:auto;font-weight:800;color:#7fd0ff}
   .sprog{height:8px;background:#1a2040;border-radius:5px;overflow:hidden}
   .sprog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#4a6bd0,#7fd0ff);transition:width .15s}
+  /* 다음 목표 — 눌러서 로드맵으로 가라는 뜻이 보이게 › 를 오른쪽에 붙인다 */
+  .sgoal{display:flex;align-items:center;gap:4px;margin-top:5px;font-size:11px;color:#9fb6d8;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sgoal b{color:#ffe9a8}
+  .sgoal em{font-style:normal;font-weight:800;color:#ffd34d;margin-left:auto;padding-left:6px}
   #mainUpg{flex:1;min-height:0;overflow-y:auto;padding:8px 10px 10px;background:#0a0d1e}
   #mainUpg .row{margin-bottom:6px}
 
@@ -373,8 +380,9 @@
   </div>
 
   <div id="stageBar">
-    <div class="sname"><span id="sIcon">🚩</span> <b id="sName">몬스터 숲</b> <span id="sNum">1-1</span></div>
+    <div class="sname"><span id="sIcon">🚩</span> <b id="sName">몬스터 숲</b> <span id="sWave"></span> <span id="sNum">1-1</span></div>
     <div class="sprog"><i id="sProg"></i></div>
+    <div class="sgoal" id="sGoal"></div>
   </div>
 
   <canvas id="game"></canvas>
