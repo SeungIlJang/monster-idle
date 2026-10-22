@@ -81,6 +81,11 @@ const D = {
 };
 const CAP_S = (D.offline.capHours || 12) * 3600;    // 오프라인 보상 상한(초)
 
+// 보스 광폭화 — 오래 끌수록 보스 공격력이 오른다. --enrageOff 로 끈다.
+const BE = D.stage.bossEnrage || { after: 1e9, perSec: 0, cap: 1 };
+const enrageAt = tt => ARG.enrageOff ? 1
+  : Math.min(NUM('eCap') ?? BE.cap, 1 + Math.max(0, tt - (NUM('eAfter') ?? BE.after)) * (NUM('ePerSec') ?? BE.perSec));
+
 // ══════════════════════════════════════════════════ 환생(프레스티지)
 // 스테이지·골드·강화를 버리고 **영혼**을 받는다. 영혼은 피해에 곱해지며 영구다.
 //
@@ -400,7 +405,8 @@ function attempt(S, s) {
     let alive = per;
     while (alive > 0) {
       t += ttk;
-      const Ldmg = Leatk + fromNum(D.enemy.aspd * alive) - Ldef + fromNum(ttk);
+      // 보스전만 광폭화가 붙는다 (b). t 는 이 스테이지에서 흐른 시간.
+      const Ldmg = Leatk + fromNum(D.enemy.aspd * alive) - Ldef + fromNum(ttk) + (b ? fromNum(enrageAt(t)) : 0);
       if (Ldmg >= Lhp) return { win: false, reason: 'dead', elapsed: t, Lgold };
       Lhp = Lsub(Lhp, Ldmg);
       alive--; Lgold = Ladd(Lgold, LeGOLD(s, b));

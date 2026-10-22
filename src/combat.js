@@ -75,6 +75,23 @@ export function enterStage(stage, mode = MODE.RUN) {
   spawnWave();
 }
 
+/**
+ * 보스 광폭화 — 오래 끌수록 보스 공격력이 오른다.
+ *
+ * 10스테이지마다 오는 보스가 체력 6배일 뿐이라 긴 잡몹 전투와 다를 게 없었다.
+ * 측정상 30일 동안 사망 12회가 전부 첫 1시간에 몰려 있었고, 그 뒤로는 공백에 쌓인
+ * 골드 때문에 영원히 과강화라 긴장이 없다. 시간 제한이 아니라 **점점 세지는 압박**이라
+ * 영구 벽이 되지 않는다(원칙 3) — 못 버티면 파밍하고 돌아오면 된다.
+ *
+ * after 를 보스 TTK 중위(90초)보다 짧게 잡아야 실제로 문다. 시뮬에서 60초는
+ * 효과가 0 이었고 45초부터 보스 사망이 생겼다(30일 기준 0회 → 8회).
+ */
+export function enrage() {
+  const e = B.stage.bossEnrage;
+  if (!R.boss || !e) return 1;
+  return Math.min(e.cap, 1 + Math.max(0, R.stageTime - e.after) * e.perSec);
+}
+
 function front() {
   for (const e of R.enemies) if (e.Lhp > L0) return e;
   return null;
@@ -204,7 +221,12 @@ export function tick(dt) {
 
   const f = front();
   if (!f) return;
+  const t0 = R.stageTime;
   R.stageTime += dt;
+  // 광폭화가 시작되는 순간은 **사건**이다 — 조용히 세지면 왜 죽었는지 알 수 없다
+  if (R.boss && B.stage.bossEnrage && t0 <= B.stage.bossEnrage.after && R.stageTime > B.stage.bossEnrage.after) {
+    banner('🔥 ' + R.heroName + ' 광폭화! 공격력이 계속 오른다', 2.6, true);
+  }
 
   // 플레이어 공격
   R.atkT -= dt;
@@ -257,7 +279,7 @@ export function tick(dt) {
     const n = aliveCount();
     if (n > 0) {
       R.foeAtkT = 0.22;
-      const Ldmg = LeATK(R.stage, R.boss) + fromNum(n) - LDEF();
+      const Ldmg = LeATK(R.stage, R.boss) + fromNum(n) - LDEF() + fromNum(enrage());
       if (Ldmg >= R.Lhp) { R.Lhp = L0; playerDied(); return; }
       R.Lhp = sub(R.Lhp, Ldmg);
       R.pHitT = 0.18;        // 피격 포즈

@@ -5,7 +5,7 @@
 // 용사는 Idle/Attack/Hit/Dead 프레임이 멀쩡해서 프레임 애니를 그대로 쓴다.
 import { B, heroAt, zoneAt, sceneEvery, heroPool } from './balance.js';
 import { S } from './state.js';
-import { R } from './combat.js';
+import { R, enrage } from './combat.js';
 import { pick, preload, boxOf, frameCount } from './sprites.js';
 import { activeCompanions, compImage } from './companions.js';
 import { L0, ratio, fmt } from './logmath.js';
@@ -324,12 +324,15 @@ export function render(dt) {
   ctx.textAlign = 'center';
   // 레퍼런스는 잡몹에 이름표를 안 단다 — 보스일 때만 크게 보여준다
   if (R.boss) {
-    ctx.fillStyle = FOE;
+    // 광폭화 중이면 배수를 같이 띄운다 — 얼마나 위험해졌는지가 숫자로 보여야 한다
+    const en = enrage();
+    const label = '👑 ' + lead.name + (en > 1 ? '  🔥×' + en.toFixed(1) : '');
+    ctx.fillStyle = en > 1 ? '#ff7a5a' : FOE;
     ctx.font = '800 13px system-ui';
     ctx.strokeStyle = 'rgba(30,20,10,.7)'; ctx.lineWidth = 3;
     // 보스는 W*0.66 에 선다(위 drawn 참고). 이름표도 같은 x 여야 머리 위에 온다.
-    ctx.strokeText('👑 ' + lead.name, W * 0.66, feet - eH - 46);
-    ctx.fillText('👑 ' + lead.name, W * 0.66, feet - eH - 46);
+    ctx.strokeText(label, W * 0.66, feet - eH - 46);
+    ctx.fillText(label, W * 0.66, feet - eH - 46);
   }
 
 
