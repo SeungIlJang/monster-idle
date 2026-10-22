@@ -243,7 +243,8 @@ const LG = {
 };
 for (const k of Object.keys(D.stats)) {
   const d = D.stats[k];
-  d.Lc0 = fromNum(d.c0); d.Lg = fromNum(d.g);
+  // c0log = log10 가격. 깊은 층 해금 스탯은 10^1000 을 넘어 double 로 못 적는다(src/balance.js 와 동일)
+  d.Lc0 = d.c0log !== undefined ? d.c0log : fromNum(d.c0); d.Lg = fromNum(d.g);
   if (d.kind === 'mul') { d.Lbase = fromNum(d.base); d.Lr = fromNum(d.r); }
 }
 
@@ -290,8 +291,14 @@ const gS = S => NOGACHA ? 0 : S.own.skill + S.eqv.skill;
 const gC = S => NOGACHA ? 0 : S.own.comp + S.eqv.comp;
 const Lburst = S => fromNum(1.5 * (1 + gS(S) / 100));
 // 상급공격력은 해금 전에는 ×1 이어야 한다 (게임과 동일)
-const LATK = S => Lval(S, 'atk') + (unlocked(S, 'adv') ? Lval(S, 'adv') : 0) + fromNum(1 + gE(S) / 100) + Llayer2Atk(S);
-const LHP  = S => Lval(S, 'hp') + fromNum(1 + gE(S) / 200) + Llayer2Hp(S);
+// 공격·체력 배수 트랙 — src/stats.js 와 같은 규칙(balance.json 의 `track`)을 쓴다.
+// 키를 박아 두면 깊은 층 해금 스탯을 넣을 때마다 양쪽을 고쳐야 한다.
+const TRACK = t => Object.keys(D.stats).filter(k => D.stats[k].kind === 'mul' && D.stats[k].track === t);
+const ATK_T = TRACK('atk'), HP_T = TRACK('hp');
+const Ltrack = (S, ks) => ks.reduce((a, k) => a + (unlocked(S, k) ? Lval(S, k) : 0), 0);
+
+const LATK = S => Ltrack(S, ATK_T) + fromNum(1 + gE(S) / 100) + Llayer2Atk(S);
+const LHP  = S => Ltrack(S, HP_T) + fromNum(1 + gE(S) / 200) + Llayer2Hp(S);
 const LDEF = S => Lval(S, 'def');
 // 환생 보너스(로그). 영혼으로 산 레벨 × 레벨당 배수 — 승산이라 로그에서는 덧셈이다.
 // soulLv 가 영혼의 로그라서 이 항 자체가 로그로 자란다 = 수렴한다.

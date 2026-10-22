@@ -36,6 +36,7 @@
   "stats": {
     "atk": {
       "kind": "mul",
+      "track": "atk",
       "base": 10,
       "r": 1.018,
       "c0": 24,
@@ -45,6 +46,7 @@
     },
     "hp": {
       "kind": "mul",
+      "track": "hp",
       "base": 400,
       "r": 1.018,
       "c0": 30,
@@ -135,8 +137,57 @@
         1000
       ]
     },
+    "abyA": {
+      "kind": "mul",
+      "track": "atk",
+      "base": 1,
+      "r": 1.4,
+      "c0log": 412,
+      "g": 1.3,
+      "name": "심연공격력",
+      "icon": "🌑",
+      "reqStage": 8000,
+      "max": 30
+    },
+    "abyH": {
+      "kind": "mul",
+      "track": "hp",
+      "base": 1,
+      "r": 1.4,
+      "c0log": 876,
+      "g": 1.3,
+      "name": "심연체력",
+      "icon": "🛡️",
+      "reqStage": 17000,
+      "max": 30
+    },
+    "voidA": {
+      "kind": "mul",
+      "track": "atk",
+      "base": 1,
+      "r": 1.5,
+      "c0log": 1314,
+      "g": 1.3,
+      "name": "공허공격력",
+      "icon": "💠",
+      "reqStage": 25500,
+      "max": 30
+    },
+    "voidH": {
+      "kind": "mul",
+      "track": "hp",
+      "base": 1,
+      "r": 1.5,
+      "c0log": 1623,
+      "g": 1.3,
+      "name": "공허체력",
+      "icon": "🔷",
+      "reqStage": 31500,
+      "max": 30
+    },
     "adv": {
       "kind": "mul",
+      "track": "atk",
       "base": 1,
       "r": 1.024,
       "c0": 2000,
@@ -172,25 +223,29 @@
         "key": "equip",
         "name": "장비",
         "icon": "⚔️",
-        "slots": 3,
+        "slots": 5,
         "affects": "공격력",
         "slotUnlock": [
           1,
           1,
-          1
+          1,
+          4500,
+          22000
         ]
       },
       {
         "key": "skill",
         "name": "스킬",
         "icon": "✨",
-        "slots": 4,
+        "slots": 6,
         "affects": "보스 버스트",
         "slotUnlock": [
           1,
           20,
           60,
-          150
+          150,
+          12000,
+          28500
         ]
       },
       {

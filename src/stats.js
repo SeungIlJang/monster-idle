@@ -46,8 +46,15 @@ export const gC = () => S.own.comp + S.eqv.comp;
 
 // ── 전투 스탯 ────────────────────────────────────────────────
 // 상급공격력은 해금 전에도 레벨 1 이라 ×1.024 가 적용되고 있었다 — 잠겼으면 ×1 이어야 한다
-export const LATK = () => Lval('atk') + (unlocked('adv') ? Lval('adv') : 0) + fromNum((1 + gE() / 100) * atkMul());
-export const LHP  = () => Lval('hp') + fromNum((1 + gE() / 200) * hpMul());
+// 공격·체력 배수 트랙. 어떤 스탯이 어느 트랙인지는 balance.json 의 `track` 이 정한다.
+// 수식에 키를 박아 두면 **깊은 층 해금 스탯을 하나 넣을 때마다 두 파일을 고쳐야 한다** —
+// 해금 사다리가 3,000층에서 끊긴 걸 데이터로 메우려면 여기가 열려 있어야 한다.
+const TRACK = t => STAT_KEYS.filter(k => B.stats[k].kind === 'mul' && B.stats[k].track === t);
+const ATK_T = TRACK('atk'), HP_T = TRACK('hp');
+const Ltrack = ks => ks.reduce((a, k) => a + (unlocked(k) ? Lval(k) : 0), 0);
+
+export const LATK = () => Ltrack(ATK_T) + fromNum((1 + gE() / 100) * atkMul());
+export const LHP  = () => Ltrack(HP_T) + fromNum((1 + gE() / 200) * hpMul());
 export const LDEF = () => Lval('def');
 export const Lburst = () => fromNum(1.5 * (1 + gS() / 100));
 

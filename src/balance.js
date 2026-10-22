@@ -24,7 +24,9 @@ export const LG = {
 for (const k of Object.keys(B.stats)) {
   const d = B.stats[k];
   d.key = k;
-  d.Lc0 = fromNum(d.c0);
+  // 깊은 층에 해금되는 스탯은 시작 가격이 10^1000 을 넘어 JSON 숫자(double, 최대 ~1.8e308)
+  // 로는 못 적는다 — 그런 것만 `c0log`(= log10 가격)로 직접 준다.
+  d.Lc0 = d.c0log !== undefined ? d.c0log : fromNum(d.c0);
   d.Lg = fromNum(d.g);
   if (d.kind === 'mul') {
     d.Lbase = fromNum(d.base);
