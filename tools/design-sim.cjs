@@ -35,6 +35,18 @@ const NOGACHA = !!ARG.nogacha;
 //   --buffmin=60     하루 중 버프가 켜진 분 (광고안: 6회 x 10분 = 60)
 //   --buffmul=2      그 버프의 배수
 //   --bufftype=speed|gold
+// ── 오프라인: 하루 중 실제로 켜 두는 시간 ─────────────────────
+// 기본은 **꺼져 있다**(24시간 연속 전투). 기존 판정과 숫자를 비교할 수 있어야 해서다.
+//
+//   --active=2      하루 실제 플레이 시간(시간). 0 이면 모델 끔
+//   --sessions=2    하루 접속 횟수. 상한이 무는지는 플레이 시간이 아니라 **간격**이 정한다 —
+//                   2시간을 2번에 나눠 하면 간격이 11시간이라 12시간 상한에 걸리지 않지만,
+//                   한 번에 몰아서 하면 간격이 22시간이라 10시간을 버린다.
+//   --offlineAd=2   복귀 보상 광고(2배)를 매번 본다고 가정
+const ACTIVE_H = NUM('active') || 0;
+const SESSIONS = Math.max(1, NUM('sessions') || 2);
+const OFFLINE_AD = NUM('offlineAd') || 1;
+
 const SPEED = NUM('speed') || 1;                 // 상시 배속
 const BUFF_MIN = NUM('buffmin') || 0;            // 하루 버프 지속(분)
 const BUFF_MUL = NUM('buffmul') || 2;
@@ -65,7 +77,9 @@ const D = {
   player: { giveUpSeconds: B.player.giveUpSeconds, farmSeconds: 120 },
   stats: JSON.parse(JSON.stringify(B.stats)),
   gacha: { ...B.gacha, pullMul: 1 },
+  offline: { ...B.offline },
 };
+const CAP_S = (D.offline.capHours || 12) * 3600;    // 오프라인 보상 상한(초)
 
 // ══════════════════════════════════════════════════ 가챠 레이어
 // 보유 효과만이 아니라 장착 효과까지 모델링한다.
@@ -244,6 +258,15 @@ const LeATK  = (s, b) => LG.atk0 + (s - 1) * LG.atkGrow  + (b ? LG.bossAtk : 0);
 const LeGOLD = (s, b) => LG.gold0 + (s - 1) * LG.goldGrow + (b ? LG.bossGold : 0);
 
 const Linc = (S, s, b) => LeATK(s, b) + fromNum(D.enemy.aspd * (b ? 1 : D.stage.perWave(s))) - LDEF(S);
+
+// 자리를 비운 동안의 초당 골드. src/offline.js 의 LgoldPerSec 과 같은 식이어야 한다
+// (게임은 "최고 클리어 직전 스테이지" 기준으로 준다).
+function LgoldPerSec(S, stage) {
+  const b = isBoss(stage);
+  const ttk = ratio(LeHP(stage, b), LDPS(S, b));
+  if (!(ttk > 0) || !isFinite(ttk)) return L0;
+  return LeGOLD(stage, b) - fromNum(ttk);
+}
 function Lpower(S, s) {
   const b = isBoss(s), waves = b ? 1 : D.stage.waves;
   const Lehp = LHP(S) + fromNum(1 + (waves - 1) * nval(S, 'rec'));
@@ -338,10 +361,17 @@ function run() {
                         monLv: S.monLv, rsLv: S.rsLv });
   daily.push({ day: 0, ...snap() });
 
+  // 한 세션이 끝나면 자리를 비우고, 돌아올 때 상한까지만 보상을 받는다.
+  // ACTIVE_H=0 이면 sessionCombat 이 Infinity 라 예전처럼 24시간 내리 싸운다.
+  const sessionCombat = ACTIVE_H ? ACTIVE_H * 3600 / SESSIONS : Infinity;
+  const gapS = ACTIVE_H ? (24 - ACTIVE_H) * 3600 / SESSIONS : 0;
+  let sessionT = 0, offlineS = 0, lostS = 0, sessions = 0;
+
   while (t < T) {
     const d2 = Math.floor(t / 86400);
     if (d2 > day) { day = d2; addPulls(); layer2Day(S); daily.push({ day, ...snap() }); }
 
+    const t0 = t;
     const r = attempt(S, S.stage);
     S.Lgold = Ladd(S.Lgold, r.Lgold + LGOLD_MUL); spend(S);
     t += r.elapsed / SPEED_MUL;        // 배속은 전투 시간만 줄인다 (하루 수입은 그대로)
@@ -374,11 +404,27 @@ function run() {
       spend(S);
       t += D.player.farmSeconds; farmT += D.player.farmSeconds;
     }
+    // ── 세션 종료 → 자리를 비운다 ──
+    sessionT += t - t0;
+    if (sessionT >= sessionCombat) {
+      sessionT = 0; sessions++;
+      // 게임과 같은 기준: 최고 클리어 **직전** 스테이지의 초당 골드 × 상한까지의 시간
+      const credit = Math.min(gapS, CAP_S);
+      const Lps = LgoldPerSec(S, Math.max(1, S.best - 1));
+      if (Lps > L0 && isFinite(Lps)) S.Lgold = Ladd(S.Lgold, Lps + fromNum(credit) + fromNum(OFFLINE_AD));
+      offlineS += credit; lostS += gapS - credit;
+      t += gapS;
+      // 자리를 비운 것은 **무진행이 아니다.** lastUp 을 같이 밀지 않으면 공백이 그대로
+      // "벽" 으로 잡혀서 아래 24시간 중단 조건에 걸린다.
+      lastUp += gapS;
+      spend(S);                                // 돌아오면 모아둔 골드를 쓴다
+    }
+
     if (t - lastUp > stall) stall = t - lastUp;
     if (t - lastUp > 24 * 3600) break;        // 24시간 무진행 = 벽으로 보고 중단
     if (S.stage > 200000) break;              // 수치가 아니라 연산량 상한
   }
-  return { S, log, daily, deaths, slows, t, stall, farmT, pullsPerDay, deadLog };
+  return { S, log, daily, deaths, slows, t, stall, farmT, pullsPerDay, deadLog, offlineS, lostS, sessions };
 }
 
 // ══════════════════════════════════════════════════ 지표 & 출력
@@ -428,6 +474,15 @@ console.log('== 설계 검증' + (NOGACHA ? ' [무과금]' : D.gacha.pullMul !==
 console.log('  최고 스테이지 ' + R.S.best + '   (1일차 ' + dayStage(R, 1) + ' / 7일차 ' + dayStage(R, 7) + ' / 30일차 ' + dayStage(R, 30) + ')');
 console.log('  사망 ' + R.deaths + '회  ·  너무 느려 포기 ' + R.slows + '회  ·  하루 뽑기 ' + R.pullsPerDay + '회');
 console.log('  최장 무진행 ' + hm(R.stall) + '  ·  파밍 ' + hm(R.farmT) + ' / 전체 ' + hm(R.t));
+if (ACTIVE_H) {
+  console.log('  [오프라인] 하루 ' + ACTIVE_H + '시간 × ' + SESSIONS + '회 접속'
+    + (OFFLINE_AD > 1 ? ' · 복귀광고 ×' + OFFLINE_AD : '')
+    + '  ·  접속 ' + R.sessions + '회'
+    + '  ·  보상받은 공백 ' + hm(R.offlineS) + '  ·  상한 초과로 버린 시간 ' + hm(R.lostS)
+    + ' (상한 ' + D.offline.capHours + '시간)');
+} else {
+  console.log('  [오프라인] 모델 꺼짐 — 24시간 연속 전투 가정 (--active=2 로 켠다)');
+}
 console.log('  최장 스테이지 클리어 시간 ' + hm(maxClear) + '  (포기 임계 ' + hm(D.player.giveUpSeconds) + ')');
 
 console.log('\n[일자별]   일  스테이지        DPS      최대HP   뽑기 배너Lv  보유%   장착% | 공격 체력 방어  상급');
