@@ -4,6 +4,7 @@ import { B } from './balance.js';
 import { S, save } from './state.js';
 import * as G from './gacha.js';
 import { playRewarded } from './ads.js';
+import * as sfx from './audio.js';
 
 const $ = id => document.getElementById(id);
 let ctx = { refresh: () => {}, toast: () => {} };
@@ -48,8 +49,12 @@ export function renderGacha() {
      <button id="gFuse" class="fuse" ${G.hasFusable(gBanner) ? '' : 'disabled'}>일괄 융합<span class="c">3개→상위</span></button>`;
 
   const show = res => {
-    if (res) { gLast = res; save(); renderGacha(); ctx.refresh(); }
-    else ctx.toast('젬이 부족합니다');
+    if (!res) { ctx.toast('젬이 부족합니다'); return; }     // 실패에는 성공음을 내지 않는다
+    // 10연차도 시작음 **한 번** + 최고 등급 결과음 **한 번**이다. 10개를 겹치면 소음이 된다.
+    sfx.gachaOpen();
+    const best = res.reduce((a, r) => Math.max(a, r.rarity), 0);
+    setTimeout(() => sfx.gachaResult(best), 420);          // 시작음과 겹치지 않게 한 박자 뒤
+    gLast = res; save(); renderGacha(); ctx.refresh();
   };
   $('gP1').onclick = () => show(G.pull(gBanner, 1));
   $('gP10').onclick = () => show(G.pull(gBanner, 10));

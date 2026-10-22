@@ -14,6 +14,7 @@ import { initGrow, renderGrow } from './ui-grow.js';
 import { initGacha, renderGacha } from './ui-gacha.js';
 import { renderRoad } from './ui-road.js';
 import { nextMilestone } from './unlocks.js';
+import * as sfx from './audio.js';
 import { fmt, L0, ratio } from './logmath.js';
 
 const $ = id => document.getElementById(id);
@@ -92,7 +93,8 @@ function renderUpgrade() {
       const k = el.dataset.k;
       const n = buyMode === 'max' ? affordable(k) : buyMode;
       const got = buy(k, Math.max(1, n));
-      if (got > 0) { save(); refresh(); }
+      // 성공했을 때만 울린다. 길게 누르기 연타는 audio.js 가 250ms 로 막는다.
+      if (got > 0) { sfx.upgrade(); save(); refresh(); }
       else toast('골드 부족');
     };
   });
@@ -192,7 +194,14 @@ function renderDaily() {
     + `<div style="font-size:13px;font-weight:800;margin:14px 0 2px">🎁 출석 보상</div>
        <div class="note" style="margin-bottom:0">연속 ${S.attend.streak || 0}일째${pend ? ' · 오늘 받을 수 있어요' : ' · 오늘은 받았어요'}</div>
        <div class="acal">${cal}</div>
-       ${pend ? `<button id="attBtn" style="width:100%;border:none;border-radius:11px;background:#ffcf3a;color:#2a1e00;font-weight:800;padding:12px;font-size:14px;cursor:pointer">${pend.day}일차 보상 받기 · 💎 ${pend.gem}</button>` : ''}`;
+       ${pend ? `<button id="attBtn" style="width:100%;border:none;border-radius:11px;background:#ffcf3a;color:#2a1e00;font-weight:800;padding:12px;font-size:14px;cursor:pointer">${pend.day}일차 보상 받기 · 💎 ${pend.gem}</button>` : ''}`
+    + `<div style="font-size:13px;font-weight:800;margin:18px 0 2px">🔊 소리</div>
+       <div class="sndRow">
+         <button id="sndMute">${sfx.muted() ? '🔇 꺼짐' : '🔊 켜짐'}</button>
+         <input id="sndVol" type="range" min="0" max="100" step="5" value="${Math.round(sfx.volume() * 100)}" ${sfx.muted() ? 'disabled' : ''}>
+         <span id="sndPct">${Math.round(sfx.volume() * 100)}%</span>
+       </div>
+       <div class="note" style="margin-top:4px">설정은 저장되어 다음 실행에도 유지됩니다.</div>`;
 
   $('dailyList').querySelectorAll('[data-q]').forEach(el => el.onclick = () => {
     const g = DQ.claimQuest(el.dataset.q);
@@ -203,6 +212,14 @@ function renderDaily() {
     const p = DQ.claimAttend();
     if (p) { save(); renderDaily(); refresh(); toast(`${p.day}일차 출석 · 💎 ${p.gem} 획득`); }
   };
+  // 소리 설정 — 게임 세이브가 아니라 audio.js 의 별도 키에 저장된다(진행 데이터를 건드리지 않는다)
+  $('sndMute').onclick = () => { sfx.toggleMute(); renderDaily(); };
+  $('sndVol').oninput = e => {
+    sfx.setVolume(e.target.value / 100);
+    $('sndPct').textContent = e.target.value + '%';
+  };
+  // 슬라이더를 놓을 때 한 번 들려준다 — 숫자만 보고는 크기를 알 수 없다
+  $('sndVol').onchange = () => sfx.upgrade();
 }
 
 // ── HUD ──────────────────────────────────────────────────────

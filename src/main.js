@@ -9,6 +9,7 @@ import { fmt } from './logmath.js';
 import { initAds, playRewarded, isNative } from './ads.js';
 import { renderSkillBar } from './ui-skills.js';
 import { showTitle } from './ui-title.js';
+import * as sfx from './audio.js';
 
 load();
 
@@ -29,10 +30,17 @@ initRender(document.getElementById('game'));
 initUI();
 preloadFor(S.st);
 
+// 전투는 **사건만 알린다.** 소리 연결은 여기서 한다 — combat.js 가 오디오를 직접 들면
+// 전투 로직이 재생 실패에 얽힌다. 기존 동작(클리어 시 갱신·예열)은 그대로 둔다.
 setEventHandler(ev => {
-  // 클리어마다 다음 장면 자원을 예열한다 (적·배경이 5스테이지마다 바뀐다)
-  if (ev.type === 'stageClear') { refresh(); preloadFor(ev.stage + 1); }
-  if (ev.type === 'death') refresh();
+  switch (ev.type) {
+    case 'attack':    sfx.attack(); break;
+    case 'playerHit': sfx.playerHit(); break;
+    case 'kill':      sfx.kill(); break;
+    // 클리어마다 다음 장면 자원을 예열한다 (적·배경이 5스테이지마다 바뀐다)
+    case 'stageClear': refresh(); preloadFor(ev.stage + 1); break;
+    case 'death':      refresh(); break;
+  }
 });
 
 // 오프라인 보상 — **타이틀을 닫은 뒤** 띄운다. 먼저 띄우면 타이틀 뒤에 가려진다.
@@ -61,7 +69,7 @@ function showOfflineReward() {
 }
 
 // 첫 화면 → (시작) → 오프라인 보상
-showTitle(showOfflineReward);
+showTitle(showOfflineReward, () => sfx.init());   // 입력 핸들러 안에서 컨텍스트를 깨운다
 
 enterStage(S.st, MODE.RUN);
 refresh();
@@ -85,7 +93,10 @@ function loop(now) {
 requestAnimationFrame(loop);
 
 setInterval(save, 5000);
-addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+addEventListener('visibilitychange', () => {
+  if (document.hidden) { save(); sfx.suspend(); }
+  else sfx.resume();          // 밀린 소리는 suspend 에서 버렸으므로 몰아 울리지 않는다
+});
 addEventListener('pagehide', save);
 // 패널을 열고 닫을 때 캔버스 크기가 바뀔 수 있다
 new ResizeObserver(resize).observe(document.getElementById('game'));

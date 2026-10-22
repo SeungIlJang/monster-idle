@@ -119,6 +119,8 @@ function gainGold() {
 }
 
 function onKill(e, idx) {
+  // 스킬 처치(fireSkill)도 이 함수를 거친다 — 여기 한 곳만 울려야 두 번 나지 않는다
+  onEvent({ type: 'kill' });
   gainGold();
   bumpDaily('kill');
   fx('gold', '+' + fmt(LeGOLD(R.stage, R.boss)), idx, -16);
@@ -252,6 +254,7 @@ export function tick(dt) {
                + fromNum(critMul * normalShare());
     f.Lhp = sub(f.Lhp, Ldmg);
     f.hitT = 0.12;
+    onEvent({ type: 'attack' });        // 실제 평타가 나간 순간 (연출이 아니라 사실)
     const idx = R.enemies.indexOf(f);
     // 발수만큼 숫자를 나눠 띄운다. 연출이 아니라 사실이다 — 피해식에 shots() 가 이미 곱해져 있다.
     // shots() 는 더블샷·트리플샷이 확률 스탯이라 1~3 사이 실수다. 소수부를 확률로 처리하면
@@ -286,6 +289,7 @@ export function tick(dt) {
       if (Ldmg >= R.Lhp) { R.Lhp = L0; playerDied(); return; }
       R.Lhp = sub(R.Lhp, Ldmg);
       R.pHitT = 0.18;        // 피격 포즈
+      onEvent({ type: 'playerHit' });
     }
   }
 }

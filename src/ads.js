@@ -5,6 +5,8 @@
 //
 // 구버전에서 배운 것: 광고 단위 ID 를 플레이스홀더로 두면 출시까지 그대로 간다.
 // 그래서 실ID 가 비어 있는데 테스트 모드가 꺼져 있으면 보상을 주지 않고 경고를 찍는다.
+import * as sfx from './audio.js';
+
 const res = await fetch(new URL('./ads.json', import.meta.url));
 const CFG = await res.json();
 
@@ -102,6 +104,12 @@ async function playNative() {
  * @returns {Promise<boolean>} 보상을 줘도 되는가 (끝까지 봤는가)
  */
 export async function playRewarded() {
+  // 광고가 뜨는 동안 효과음을 멈춘다. 보상 여부와 무관하게 끝나면 되살린다.
+  sfx.suspend();
+  try { return await playRewardedInner(); } finally { sfx.resume(); }
+}
+
+async function playRewardedInner() {
   if (ready && admob) return playNative();
   // 폰이 아니거나 AdMob 이 죽었으면 시뮬레이션 — 개발 중 흐름이 막히지 않게
   if (!CFG.useTest && isNative()) {

@@ -10,8 +10,11 @@ const $ = id => document.getElementById(id);
 
 /**
  * @param onStart 시작 버튼을 누른 뒤 실행할 것 (오프라인 보상 등)
+ * @param onPress 버튼을 누른 **그 순간** 동기로 실행할 것. 오디오 활성화용이다 —
+ *                모바일은 사용자 입력 핸들러 안에서 만든 AudioContext 만 울린다.
+ *                onStart 는 450ms 페이드 뒤라 이미 입력 맥락이 아니다.
  */
-export function showTitle(onStart) {
+export function showTitle(onStart, onPress) {
   const el = $('title');
   if (!el) { onStart?.(); return; }
 
@@ -33,6 +36,7 @@ export function showTitle(onStart) {
   const go = () => {
     if (done) return;            // 연타해도 한 번만
     done = true;
+    try { onPress?.(); } catch {}   // 오디오가 실패해도 게임은 시작돼야 한다
     el.classList.add('out');
     setTimeout(() => { el.classList.remove('on', 'out'); onStart?.(); }, 450);
   };
