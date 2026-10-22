@@ -11,6 +11,7 @@
     "assets": "node tools/make-monster-sprites.mjs && node tools/make-hero-sprites.mjs && node tools/normalize-sprites.mjs",
     "bg": "node tools/make-bg.mjs",
     "build": "node tools/build-www.mjs",
+    "deploy": "npm run build && node tools/deploy-ota.mjs",
     "sync": "npm run build && npx cap sync android",
     "android": "npm run sync && npx cap open android",
     "shots": "node tools/shots.mjs"
