@@ -120,7 +120,11 @@
   .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
 
   .bar{display:flex;gap:6px;margin-bottom:10px}
-  .bar .seg{flex:1;text-align:center;padding:7px 0;border-radius:9px;background:#1a2145;
+  /* 성장 탭이 5개(환생 해금 후)가 되면 375px 에서 "마스터리" 가 두 줄로 깨진다.
+     줄바꿈을 막고 좁으면 가로로 스크롤되게 둔다 — 글자를 더 줄이면 읽기 어렵다. */
+  .bar{overflow-x:auto;scrollbar-width:none}
+  .bar::-webkit-scrollbar{display:none}
+  .bar .seg{flex:1 0 auto;white-space:nowrap;text-align:center;padding:7px 10px;border-radius:9px;background:#1a2145;
     border:1px solid #313c66;font-size:12px;font-weight:800;cursor:pointer;opacity:.6}
   .bar .seg.on{opacity:1;background:#20305c;border-color:#4a6bd0;color:#aee1ff}
 

@@ -15,7 +15,7 @@ export function showTitle(onStart) {
   const el = $('title');
   if (!el) { onStart?.(); return; }
 
-  const fresh = S.best <= 1 && S.st <= 1;
+  const fresh = S.life <= 1 && S.st <= 1;
   $('tStart').textContent = fresh ? '시작하기' : '이어하기';
   const lead = B.roster.monsters.find(m => m.key === S.mon)?.name || '';
   // 받침이 있으면 '과', 없으면 '와' — "본가드 와 함께" 처럼 어색하게 붙는 걸 막는다
@@ -26,7 +26,7 @@ export function showTitle(onStart) {
   };
   $('tSave').innerHTML = fresh
     ? '몬스터가 되어 숲을 지킨다'
-    : `최고 <b style="color:#ffd34d">${chapterLabel(S.best)}</b> · ${lead}${josa(lead)} 함께`;
+    : `최고 <b style="color:#ffd34d">${chapterLabel(S.life)}</b> · ${lead}${josa(lead)} 함께`;
   $('tVer').textContent = 'v' + B.version;
 
   let done = false;

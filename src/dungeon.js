@@ -35,11 +35,11 @@ export function adLeft(k) { ensureKeys(); return Math.max(0, D.adRunsPerDay - (S
 /** 클리어한 최고 난이도 (0 = 아직 없음) */
 export const clearedDiff = k => S.dun.diff[k] ?? 0;
 /** 도전 가능한 최고 난이도 — 클리어한 다음 단계까지, 단 본편 진행도를 넘지 못한다 */
-export const maxDiff = k => Math.max(1, Math.min(clearedDiff(k) + 1, Math.floor(S.best / 10) || 1));
+export const maxDiff = k => Math.max(1, Math.min(clearedDiff(k) + 1, Math.floor(S.life / 10) || 1));
 /** 해당 난이도의 기준 스테이지 */
 export const diffStage = d => d * 10;
 /** 본편을 10스테이지도 못 갔으면 던전이 열리지 않는다 */
-export const unlocked = () => S.best >= 10;
+export const unlocked = () => S.life >= 10;
 
 // ── 용사 연전 (젬) ───────────────────────────────────────────
 /**

@@ -31,7 +31,7 @@ export function milestones() {
 }
 
 /** 다음에 열릴 것 (전부 열렸으면 null) */
-export const nextMilestone = () => milestones().find(m => m.at > S.best) || null;
+export const nextMilestone = () => milestones().find(m => m.at > S.life) || null;
 
 /** from 초과 ~ to 이하 구간에서 열린 것들 */
 export const crossed = (from, to) => milestones().filter(m => m.at > from && m.at <= to);

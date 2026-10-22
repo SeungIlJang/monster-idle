@@ -14,7 +14,10 @@ export function defaults() {
     Lg: L0,            // 골드 (log10)
     lv,                // 스탯 레벨
     st: 1,             // 현재 도전 스테이지
-    best: 1,           // 최고 도달 스테이지
+    best: 1,           // 이번 회차의 최고 도달 스테이지 (환생하면 1 로 돌아간다)
+    life: 1,           // **영구** 최고 기록. 해금은 전부 이걸 본다 — 환생이 해금을 지우면 안 된다
+    souls: 0,          // 환생 재화
+    lives: 0,          // 환생 횟수
     farm: 0,           // 수동 파밍 스테이지 (0 = 자동)
     spd: 1,            // 전투 배속 (1 또는 2). 라이브 루프에만 걸린다
     autoSkill: true,   // 스킬 자동 발동. 끄면 쿨이 찬 채로 기다린다
@@ -52,6 +55,11 @@ function migrate(d) {
   s.eqv = { ...base.eqv, ...(d.eqv || {}) };
   s.inv = { ...base.inv, ...(d.inv || {}) };
   s.freeUsed = { ...base.freeUsed, ...(d.freeUsed || {}) };
+  // life 가 없던 세이브(환생 이전 버전)는 지금 기록이 곧 영구 기록이다.
+  // 이걸 빼먹으면 기존 플레이어가 업데이트하는 순간 해금이 전부 잠긴다.
+  s.life = Math.max(Number(s.life) || 1, Number(s.best) || 1);
+  s.souls = Number.isFinite(s.souls) ? Math.max(0, Math.floor(s.souls)) : 0;
+  s.lives = Number.isFinite(s.lives) ? Math.max(0, Math.floor(s.lives)) : 0;
   s.gem = Number.isFinite(s.gem) ? Math.max(0, Math.floor(s.gem)) : 0;
   s.dun = { ...base.dun, ...(d.dun || {}) };
   s.dun.keys = { ...base.dun.keys, ...(d.dun?.keys || {}) };

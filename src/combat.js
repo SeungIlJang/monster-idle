@@ -160,8 +160,11 @@ function onKill(e, idx) {
   const cleared = R.stage;
   // 새로 열린 것이 있으면 사건으로 만든다. 조용히 탭이 하나 생기면 플레이어는
   // 모르고 지나간다(docs/reference-legend-of-slime.md §2).
-  const opened = cleared > S.best ? crossed(S.best, cleared) : [];
-  if (cleared > S.best) { S.best = cleared; recomputeGacha(); }   // 슬롯 해금 반영
+  // 해금 알림은 **영구 기록** 기준이다. 환생 후 다시 올라올 때 이미 가진 해금이
+  // 다시 '해금!' 으로 뜨면 거짓말이 된다.
+  const opened = cleared > S.life ? crossed(S.life, cleared) : [];
+  if (cleared > S.best) S.best = cleared;
+  if (cleared > S.life) { S.life = cleared; recomputeGacha(); }   // 슬롯 해금 반영
   S.st = cleared + 1;
   bumpDaily('stage');     // 일일퀘스트: 스테이지 클리어 (파밍 반복은 위에서 걸러진다)
   if (opened.length) banner(opened.map(o => o.ic + ' ' + o.plain).join('   '), 3.2, true);

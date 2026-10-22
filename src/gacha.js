@@ -79,13 +79,13 @@ export function expectedOwnedPerPull(banner) {
 export function activeSlots(banner) {
   const b = BANNERS.find(x => x.key === banner);
   if (!b) return 0;
-  return b.slotUnlock.filter(u => S.best >= u).length;
+  return b.slotUnlock.filter(u => S.life >= u).length;      // 해금은 영구 기록 기준
 }
 /** 다음 슬롯이 열리는 스테이지 (전부 열렸으면 null) */
 export function nextSlotAt(banner) {
   const b = BANNERS.find(x => x.key === banner);
   if (!b) return null;
-  const next = b.slotUnlock.find(u => S.best < u);
+  const next = b.slotUnlock.find(u => S.life < u);
   return next ?? null;
 }
 const equipValue = (rarity, enh) => RARITIES[rarity].equipped * Math.pow(ENH_MUL, enh);

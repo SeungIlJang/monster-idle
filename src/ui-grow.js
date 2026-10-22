@@ -3,7 +3,9 @@
 import { B } from './balance.js';
 import { S, save } from './state.js';
 import * as L2 from './layer2.js';
+import * as PR from './prestige.js';
 import { playRewarded } from './ads.js';
+import { enterStage, MODE } from './combat.js';
 
 const $ = id => document.getElementById(id);
 let ctx = { refresh: () => {}, toast: () => {}, onLeadChange: () => {} };
@@ -15,6 +17,8 @@ const GROW_TABS = [
   { k: 'mon', n: '몬스터', ic: '🐾' },
   { k: 'mast', n: '마스터리', ic: '🌟' },
   { k: 'res', n: '연구', ic: '🔬' },
+  // 환생은 해금되기 전엔 탭 자체를 숨긴다 — 3,000층 전에는 눌러도 할 게 없다
+  { k: 'pres', n: '환생', ic: '♻️', when: () => PR.unlocked() },
 ];
 
 const n0 = n => Math.floor(n).toLocaleString('ko-KR');
@@ -33,7 +37,9 @@ export function renderGrow() {
      <div>🪨 광석<b>${n0(S.ore)}</b></div>
      <div>🌟 포인트<b>${L2.masteryFree()} / ${L2.masteryPoints()}</b></div>`;
 
-  $('growTabs').innerHTML = GROW_TABS.map(t =>
+  const tabs = GROW_TABS.filter(t => !t.when || t.when());
+  if (!tabs.some(t => t.k === growTab)) growTab = 'mine';
+  $('growTabs').innerHTML = tabs.map(t =>
     `<div class="seg ${t.k === growTab ? 'on' : ''}" data-gt="${t.k}">${t.ic} ${t.n}</div>`).join('');
   $('growTabs').querySelectorAll('[data-gt]').forEach(el => {
     el.onclick = () => { growTab = el.dataset.gt; renderGrow(); };
@@ -42,6 +48,7 @@ export function renderGrow() {
   if (growTab === 'mine') renderMine();
   else if (growTab === 'mon') renderMonsters();
   else if (growTab === 'mast') renderMastery();
+  else if (growTab === 'pres') renderPrestige();
   else renderResearch();
 }
 
@@ -119,7 +126,7 @@ function renderMine() {
 let picked = null;
 
 function renderMonsters() {
-  const open = m => S.best >= m.unlock;
+  const open = m => S.life >= m.unlock;      // 해금은 영구 기록 기준
   if (!picked || !L2.MONSTERS.some(m => m.key === picked)) picked = S.mon;
 
   const tiles = L2.MONSTERS.map(m => {
@@ -249,5 +256,57 @@ function renderResearch() {
   if (b3) b3.onclick = async () => {
     if (!await playRewarded()) { ctx.toast('광고를 끝까지 봐야 보상을 받습니다'); return; }
     if (L2.rushResearch()) after();
+  };
+}
+
+// ── 환생 ─────────────────────────────────────────────────────
+// 플레이어가 내리는 이 게임 **유일한 전략적 결정** 이다. 그래서 "지금 누르면 뭘 얻고
+// 뭘 잃는가" 를 전부 숫자로 펼쳐 놓는다. 확인 한 번을 거치게 한다 — 되돌릴 수 없다.
+let presConfirm = false;
+
+function renderPrestige() {
+  const got = PR.pendingSouls(), lvNow = PR.soulLv(), lvAfter = PR.soulLv(S.souls + got);
+  const can = PR.canPrestige();
+  const needNext = Math.ceil(PR.soulsForLv(lvNow + 1) - S.souls);
+
+  $('growBody').innerHTML = `
+    <div class="mdet">
+      <div class="t">♻️ 환생 <span style="opacity:.55;font-weight:600">${S.lives || 0}회</span></div>
+      <div class="mabil"><b>영혼 ${n0(S.souls)}</b> · 상점 Lv.${lvNow} · 전 피해 <b style="color:#7fd07f">×${PR.soulMul().toFixed(2)}</b></div>
+      <div class="d" style="margin-top:8px">
+        다음 레벨까지 영혼 <b>${n0(Math.max(0, needNext))}</b> 더 필요합니다.
+      </div>
+    </div>
+
+    <div class="mdet" style="margin-top:10px">
+      <div class="t">지금 환생하면</div>
+      <div class="d">
+        <div>🌟 영혼 <b style="color:#ffd34d">+${n0(got)}</b> (${B.prestige.soulDiv}층당 1개 · 현재 ${n0(S.best)}층)</div>
+        <div>📈 상점 Lv.${lvNow} → <b style="color:#7fd07f">Lv.${lvAfter}</b> · 피해 ×${PR.soulMul().toFixed(2)} → <b style="color:#7fd07f">×${Math.pow(B.prestige.shop.r, lvAfter).toFixed(2)}</b></div>
+      </div>
+      <div class="d" style="margin-top:8px;color:#ff9a9a">
+        <b>잃는 것</b> — 스테이지(1층으로), 골드, 강화 레벨 전부
+      </div>
+      <div class="d" style="margin-top:4px;color:#9ae6b4">
+        <b>남는 것</b> — 해금(최고 기록 ${n0(S.life)}층 기준), 뽑기, 마스터리, 연구, 수집, 젬, 동료
+      </div>
+      <div class="mbtn">
+        <button id="presBtn" ${can ? '' : 'disabled'} style="${presConfirm ? 'background:#8a2f3f' : ''}">
+          ${!PR.unlocked() ? `${n0(B.prestige.unlockStage)}층 필요`
+            : got <= 0 ? `${B.prestige.soulDiv}층 이상 필요`
+            : presConfirm ? '정말 환생합니다' : '환생하기'}
+        </button>
+      </div>
+    </div>`;
+
+  const btn = $('presBtn');
+  if (btn) btn.onclick = () => {
+    if (!presConfirm) { presConfirm = true; renderPrestige(); ctx.toast('한 번 더 누르면 환생합니다'); return; }
+    presConfirm = false;
+    const n = PR.doPrestige();
+    enterStage(1, MODE.RUN);
+    ctx.onLeadChange();
+    after();
+    ctx.toast('환생! 영혼 +' + n0(n));
   };
 }

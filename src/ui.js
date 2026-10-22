@@ -208,7 +208,7 @@ function renderDaily() {
 // ── HUD ──────────────────────────────────────────────────────
 export function refresh() {
   $('hStage').textContent = chapterLabel(R.stage) + (R.boss ? ' 👑' : '');
-  $('hBest').textContent = S.best;
+  $('hBest').textContent = S.life;      // 영구 최고 기록
   $('hGold').textContent = fmt(S.Lg);
   $('hGem').textContent = S.gem;
   // 전투력(DPS×HP×방어)은 합성 수치라 플레이어에게 의미가 없었다 — DPS 로 바꿨다
@@ -267,7 +267,7 @@ export function refresh() {
   // "왜 계속 내려가야 하는가" 에 대한 답이 화면에 항상 있어야 한다.
   const nm = nextMilestone();
   const goal = nm
-    ? `${nm.ic} ${nm.what} <em>${nm.at - S.best}층 남음 ›</em>`
+    ? `${nm.ic} ${nm.what} <em>${nm.at - S.life}층 남음 ›</em>`
     : '🏅 해금 완료 — 최고 기록에 도전 중 <em>›</em>';
   if (goal !== lastGoal) { $('sGoal').innerHTML = goal; lastGoal = goal; }  // 초당 4번 파싱하지 않는다
   // 융합 가능한 묶음이 있으면 탭에 점을 띄운다

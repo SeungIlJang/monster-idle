@@ -541,7 +541,9 @@ const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
 const R = run();
 const MG = margins(R);
 const worst = MG.length ? MG.reduce((a, b) => a.margin < b.margin ? a : b) : { margin: 0, stage: 0 };
-const incs = []; for (let i = 1; i < R.daily.length; i++) incs.push(R.daily[i].stage - R.daily[i - 1].stage);
+// 환생하면 stage 는 1 로 떨어진다 — 상승폭은 영구 기록(life) 차이로 재야 음수가 나오지 않는다
+const lifeOf = d => d.life ?? d.stage;
+const incs = []; for (let i = 1; i < R.daily.length; i++) incs.push(lifeOf(R.daily[i]) - lifeOf(R.daily[i - 1]));
 const early = avg(incs.slice(0, 3)), late = avg(incs.slice(-3));
 const maxClear = MG.reduce((a, m) => m.clear > a ? m.clear : a, 0);   // 스프레드는 배열이 커지면 스택을 넘긴다
 // 긴 실행에서는 깊은 스테이지가 표본을 지배해 중위값이 의미를 잃는다.
@@ -588,7 +590,7 @@ console.log('  최장 스테이지 클리어 시간 ' + hm(maxClear) + '  (포�
 
 console.log('\n[일자별]   일  스테이지        DPS      최대HP   뽑기 배너Lv  보유%   장착% | 공격 체력 방어  상급');
 for (const d of R.daily) if (d.day <= 7 || d.day % (DAYS > 60 ? 30 : 5) === 0)
-  console.log('         ' + f(d.day, 4) + f(d.stage, 10) + f(fmt(d.Ldps), 11) + f(fmt(d.Lhp), 12) + f(d.pulls, 7)
+  console.log('         ' + f(d.day, 4) + f(lifeOf(d), 10) + f(fmt(d.Ldps), 11) + f(fmt(d.Lhp), 12) + f(d.pulls, 7)
     + f(d.bLv, 6) + f(d.own.equip.toFixed(0), 9) + f(d.eqv.equip.toFixed(0), 10)
     + f(d.monLv, 7) + f(d.rsLv, 5)
     + ' |' + f(d.lv.atk, 5) + f(d.lv.hp, 5) + f(d.lv.adv, 7));

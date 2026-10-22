@@ -12,7 +12,7 @@ export function renderRoad() {
   const el = $('roadList');
   if (!el) return;
   const list = milestones();
-  const next = list.find(m => m.at > S.best);
+  const next = list.find(m => m.at > S.life);
   const rows = [];
 
   // 같은 스테이지에서 여러 개가 열리므로 스테이지로 묶는다
@@ -23,7 +23,7 @@ export function renderRoad() {
   }
 
   for (const [at, group] of byStage) {
-    const done = S.best >= at;
+    const done = S.life >= at;
     const isNext = next && next.at === at;
     const items = group.map(g => `<div class="ritem">${g.ic} ${g.what}</div>`).join('');
     rows.push(`
@@ -31,13 +31,13 @@ export function renderRoad() {
         <div class="rnode">${done ? '✓' : at}</div>
         <div class="rbody">
           ${items}
-          ${isNext ? `<div class="rhint">${at - S.best} 스테이지 남음</div>` : ''}
+          ${isNext ? `<div class="rhint">${at - S.life} 스테이지 남음</div>` : ''}
         </div>
       </div>`);
   }
 
   el.innerHTML = `
-    <div class="rhead">현재 최고 <b>${S.best}</b> 스테이지 · ${list.filter(m => S.best >= m.at).length}/${list.length} 해금</div>
+    <div class="rhead">현재 최고 <b>${S.life}</b> 스테이지 · ${list.filter(m => S.life >= m.at).length}/${list.length} 해금</div>
     ${rows.join('')}`;
 
   // 다음 해금이 보이도록 스크롤
