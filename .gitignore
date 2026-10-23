@@ -27,3 +27,6 @@ keystore.properties
 *.log
 .DS_Store
 Thumbs.db
+
+# 레퍼런스 바이너리 — 분석용이고 레포에 넣지 않는다 (377MB XAPK)
+rea/
