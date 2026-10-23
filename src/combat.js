@@ -144,6 +144,7 @@ function onKill(e, idx) {
     // 웨이브 사이에만 회복 (전투 중에는 없다)
     const rec = nval('rec');
     if (rec > 0) R.Lhp = Math.min(R.LhpMax, add(R.Lhp, R.LhpMax + fromNum(rec)));
+    onEvent({ type: 'wave' });     // 다음 웨이브로 — 전진 연출의 박자
     spawnWave();
     return;
   }

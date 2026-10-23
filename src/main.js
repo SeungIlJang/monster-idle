@@ -2,7 +2,7 @@
 import { B } from './balance.js';
 import { S, load, save } from './state.js';
 import { enterStage, tick, setEventHandler, MODE, R } from './combat.js';
-import { initRender, render, preloadFor, resize } from './render.js';
+import { initRender, render, preloadFor, resize, bgAdvance } from './render.js';
 import { initUI, refresh, toast } from './ui.js';
 import { pendingOffline, claimOffline, fmtDuration } from './offline.js';
 import { fmt } from './logmath.js';
@@ -40,8 +40,9 @@ setEventHandler(ev => {
     case 'attack':    sfx.attack(); break;
     case 'playerHit': sfx.playerHit(); break;
     case 'kill':      sfx.kill(); break;
+    case 'wave':      bgAdvance(); break;        // 웨이브를 넘길 때 한 걸음 더
     // 클리어마다 다음 장면 자원을 예열한다 (적·배경이 5스테이지마다 바뀐다)
-    case 'stageClear': refresh(); preloadFor(ev.stage + 1); break;
+    case 'stageClear': refresh(); preloadFor(ev.stage + 1); bgAdvance(1.1); break;   // 스테이지는 더 길게
     case 'death':      refresh(); break;
   }
 });

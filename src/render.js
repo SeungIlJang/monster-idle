@@ -97,10 +97,54 @@ function drawCover(img) {
   ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
 }
 
-function drawBG() {
+// ── 배경 스크롤 — "앞으로 나아가는" 느낌의 전부 ─────────────
+// 레퍼런스(Legend of Slime)는 배경을 통짜로 그리지 않는다. 벽·바닥·소품 조각
+// (bg_ch1_in_wall_01/02/03, in_ground_gray/wood, bookshelf, candlestick…)을
+// 이어 붙여 **흘려보낸다.** 캐릭터가 움직여서가 아니라 세상이 흘러서 전진으로 읽힌다.
+//
+// 우리 배경은 1080×600 통짜라 가로로 이을 수 없다. 대신 **거울 타일링**을 쓴다 —
+// 원본과 좌우반전본을 번갈아 깔면 맞닿는 가장자리가 같은 픽셀이라 이음매가 없다.
+// 어떤 그림에도 통하고, 새 아트가 필요 없다.
+let bgX = 0;        // 누적 이동 거리(px)
+let bgRush = 0;     // 전진 가속 잔여 시간(초)
+const BG_WALK = 10; // 평소 걷는 속도(px/초) — 있는 줄도 모를 만큼 느려야 어지럽지 않다
+const BG_RUSH = 190; // 웨이브·스테이지를 깼을 때의 가속
+
+/** 전진 연출. 진척이 생긴 순간에만 부른다(웨이브/스테이지 클리어). */
+export function bgAdvance(sec = 0.55) { bgRush = Math.max(bgRush, sec); }
+
+function drawScroll(img, dt) {
+  const ar = img.naturalWidth / img.naturalHeight;
+  let dw = W, dh = W / ar;
+  if (dh < H) { dh = H; dw = H * ar; }
+  const y = (H - dh) / 2;
+
+  if (bgRush > 0) bgRush -= dt;
+  bgX += (BG_WALK + (bgRush > 0 ? BG_RUSH : 0)) * dt;
+
+  // 주기는 원본+반전 = 2칸. 그 안에서만 돌면 bgX 가 아무리 커져도 정밀도가 상하지 않는다
+  const period = dw * 2;
+  bgX %= period;
+  // **보이는 칸만** 그린다. 화면 밖까지 그리면 배경 한 장이 매 프레임 6번 깔려
+  // 폰에서 채우기 비용이 그대로 늘어난다(여긴 전체 화면 크기다).
+  let i = Math.floor(bgX / dw);          // 지금 왼쪽 끝에 걸친 칸
+  for (let x = i * dw - bgX; x < W; x += dw, i++) {
+    if (i % 2) {                          // 홀수 칸은 좌우반전 — 맞닿는 가장자리가 같은 픽셀이라 이음매가 없다
+      ctx.save();
+      ctx.translate(x + dw, y);
+      ctx.scale(-1, 1);
+      ctx.drawImage(img, 0, 0, dw, dh);
+      ctx.restore();
+    } else {
+      ctx.drawImage(img, x, y, dw, dh);
+    }
+  }
+}
+
+function drawBG(dt) {
   const gy = H * GROUND;
   const img = bgImage(zoneAt(R.stage).key);
-  if (img) { drawCover(img); return; }
+  if (img) { drawScroll(img, dt); return; }
 
   // 하늘 — 밝은 낮
   const sky = ctx.createLinearGradient(0, 0, 0, gy);
@@ -211,7 +255,7 @@ export function render(dt) {
     const s = R.shake * 14;
     ctx.translate((Math.random() - 0.5) * s, (Math.random() - 0.5) * s);
   }
-  drawBG();
+  drawBG(dt);
 
   const feet = laneY(0.45);          // 리드가 서는 깊이
   const base = Math.min(W, H);
