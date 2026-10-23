@@ -79,6 +79,27 @@ function pine(x, baseY, h, dark) {
 // assets/bg/<zone>.png 가 있으면 그걸 쓴다. 없으면 아래 캔버스 그림이 그대로 나온다.
 // 404 는 한 번만 확인하고 기억해서, 없는 파일을 매 프레임 다시 요청하지 않는다.
 const BG = new Map();
+
+// 패럴랙스 층 — assets/bg/layers/<zone>_{1_sky,2_mid,3_ground}.png.
+// 셋이 **다 준비됐을 때만** 쓴다. 한 장이라도 없으면 통짜 배경으로 폴백한다
+// (아트가 한 지역씩 들어와도 게임이 안 깨지게).
+const LAYER_SPEED = [0.15, 0.45, 1.00];
+const LAYER_NAME = ['1_sky', '2_mid', '3_ground'];
+const LAYERS = new Map();
+function bgLayers(key) {
+  if (!LAYERS.has(key)) {
+    LAYERS.set(key, LAYER_NAME.map(n => {
+      const im = new Image();
+      im.src = new URL(`../assets/bg/layers/${key}_${n}.png`, import.meta.url).href;
+      im.onerror = () => { im.failed = true; };
+      return im;
+    }));
+  }
+  const set = LAYERS.get(key);
+  if (set.some(im => im.failed)) return null;
+  return set.every(im => im.complete && im.naturalWidth > 0) ? set : null;
+}
+
 function bgImage(key) {
   if (!BG.has(key)) {
     const im = new Image();
@@ -113,18 +134,20 @@ const BG_RUSH = 190; // 웨이브·스테이지를 깼을 때의 가속
 /** 전진 연출. 진척이 생긴 순간에만 부른다(웨이브/스테이지 클리어). */
 export function bgAdvance(sec = 0.55) { bgRush = Math.max(bgRush, sec); }
 
-function drawScroll(img, dt) {
+/**
+ * 층 하나를 offset 만큼 밀어서 깐다.
+ * **offset 은 받기만 한다** — 누적은 drawBG 에서 프레임당 한 번만 한다.
+ * 층마다 누적하면 이동 속도가 층 수만큼 곱해진다(아트 담당이 짚어 준 함정).
+ */
+function drawScroll(img, offset) {
   const ar = img.naturalWidth / img.naturalHeight;
   let dw = W, dh = W / ar;
   if (dh < H) { dh = H; dw = H * ar; }
   const y = (H - dh) / 2;
 
-  if (bgRush > 0) bgRush -= dt;
-  bgX += (BG_WALK + (bgRush > 0 ? BG_RUSH : 0)) * dt;
-
-  // 주기는 원본+반전 = 2칸. 그 안에서만 돌면 bgX 가 아무리 커져도 정밀도가 상하지 않는다
+  // 주기는 원본+반전 = 2칸. 그 안에서만 돌면 offset 이 아무리 커져도 정밀도가 상하지 않는다
   const period = dw * 2;
-  bgX %= period;
+  let bgX = ((offset % period) + period) % period;
   // **보이는 칸만** 그린다. 화면 밖까지 그리면 배경 한 장이 매 프레임 6번 깔려
   // 폰에서 채우기 비용이 그대로 늘어난다(여긴 전체 화면 크기다).
   let i = Math.floor(bgX / dw);          // 지금 왼쪽 끝에 걸친 칸
@@ -143,8 +166,19 @@ function drawScroll(img, dt) {
 
 function drawBG(dt) {
   const gy = H * GROUND;
-  const img = bgImage(zoneAt(R.stage).key);
-  if (img) { drawScroll(img, dt); return; }
+  const key = zoneAt(R.stage).key;
+
+  // 누적은 **여기서 한 번만.** 아래 층들은 이 값에 배속만 곱해 쓴다.
+  if (bgRush > 0) bgRush -= dt;
+  bgX += (BG_WALK + (bgRush > 0 ? BG_RUSH : 0)) * dt;
+
+  const set = bgLayers(key);
+  if (set) {                       // 먼 하늘은 거의 안 움직이고 발밑 땅은 제 속도로 흐른다
+    for (let i = 0; i < set.length; i++) drawScroll(set[i], bgX * LAYER_SPEED[i]);
+    return;
+  }
+  const img = bgImage(key);        // 층이 아직 없는 지역 — 통짜 배경을 단층으로 흘린다
+  if (img) { drawScroll(img, bgX); return; }
 
   // 하늘 — 밝은 낮
   const sky = ctx.createLinearGradient(0, 0, 0, gy);

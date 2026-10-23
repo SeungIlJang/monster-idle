@@ -95,14 +95,50 @@ export function decodePNG(buf) {
   return { width: W, height: H, data: out };
 }
 
-export function encodePNG({ width, height, data }) {
-  const stride = width * 4;
-  const raw = Buffer.alloc((stride + 1) * height);
-  for (let y = 0; y < height; y++) {
-    raw[y * (stride + 1)] = 0;                               // 필터 none
-    Buffer.from(data.buffer, data.byteOffset + y * stride, stride)
-      .copy(raw, y * (stride + 1) + 1);
+/**
+ * 행마다 PNG 필터 5종을 다 돌려 보고 가장 잘 줄어드는 것을 고른다.
+ * 필터 none 으로 내보내면 평탄한 카툰 그림에서 파일이 몇 배로 커진다 —
+ * 패럴랙스 층(1080×600 RGBA 30장)에서 11.8MB 와 2.5MB 의 차이였다.
+ */
+function filterRows(px, W, H, CH) {
+  const stride = W * CH;
+  const raw = Buffer.alloc((stride + 1) * H);
+  const prev = new Uint8Array(stride);
+  const line = new Uint8Array(stride);
+  const cand = [0, 1, 2, 3, 4].map(() => new Uint8Array(stride));
+  for (let y = 0; y < H; y++) {
+    for (let i = 0; i < stride; i++) line[i] = px[y * stride + i];
+    let bestF = 0, bestScore = Infinity;
+    for (let f = 0; f <= 4; f++) {
+      const o = cand[f];
+      let score = 0;
+      for (let i = 0; i < stride; i++) {
+        const a = i >= CH ? line[i - CH] : 0, b = prev[i], c = i >= CH ? prev[i - CH] : 0;
+        let v;
+        switch (f) {
+          case 0: v = line[i]; break;
+          case 1: v = line[i] - a; break;
+          case 2: v = line[i] - b; break;
+          case 3: v = line[i] - ((a + b) >> 1); break;
+          default: {
+            const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+            v = line[i] - (pa <= pb && pa <= pc ? a : pb <= pc ? b : c);
+          }
+        }
+        o[i] = v & 0xff;
+        score += o[i] < 128 ? o[i] : 256 - o[i];
+      }
+      if (score < bestScore) { bestScore = score; bestF = f; }
+    }
+    raw[y * (stride + 1)] = bestF;
+    Buffer.from(cand[bestF].buffer, 0, stride).copy(raw, y * (stride + 1) + 1);
+    prev.set(line);
   }
+  return raw;
+}
+
+export function encodePNG({ width, height, data }) {
+  const raw = filterRows(data, width, height, 4);
   const chunk = (type, body) => {
     const b = Buffer.alloc(8 + body.length + 4);
     b.writeUInt32BE(body.length, 0);
@@ -118,7 +154,7 @@ export function encodePNG({ width, height, data }) {
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     chunk('IHDR', ihdr),
-    chunk('IDAT', zlib.deflateSync(raw, { level: 9 })),
+    chunk('IDAT', zlib.deflateSync(raw, { level: 9, memLevel: 9, windowBits: 15 })),
     chunk('IEND', Buffer.alloc(0)),
   ]);
 }
