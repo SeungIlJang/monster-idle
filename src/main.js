@@ -19,11 +19,14 @@ initAds().then(ok => console.log('[ads]', ok ? 'AdMob 초기화 완료' : (isNat
 const { recomputeGacha, ensureDaily: ensureFreePulls } = await import('./gacha.js');
 const { ensureKeys } = await import('./dungeon.js');
 const { ensureDaily } = await import('./daily.js');
+const EV = await import('./events.js');
 const { ensureLayer2 } = await import('./layer2.js');
 recomputeGacha();
 ensureFreePulls();
 ensureKeys();
 ensureDaily();
+EV.ensureEvent();
+EV.validate();          // 데이터가 젬 예산을 넘으면 콘솔 경고
 ensureLayer2();
 
 initRender(document.getElementById('game'));

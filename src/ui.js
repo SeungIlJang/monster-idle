@@ -15,9 +15,11 @@ import { initGacha, renderGacha } from './ui-gacha.js';
 import { renderRoad } from './ui-road.js';
 import { nextMilestone } from './unlocks.js';
 import * as sfx from './audio.js';
+import * as EV from './events.js';
 import { fmt, L0, ratio } from './logmath.js';
 
 const $ = id => document.getElementById(id);
+const n0 = n => Math.floor(n).toLocaleString('ko-KR');
 let tab = 'battle';
 let buyMode = 1;        // 1 | 10 | 'max'
 let lastGoal = '';      // 목표 띠 — 바뀔 때만 다시 그린다
@@ -188,7 +190,28 @@ function renderDaily() {
     return `<div class="${cls}">${n}일<b>${g}</b></div>`;
   }).join('');
 
-  $('dailyList').innerHTML =
+  // ── 기간 이벤트 (열려 있을 때만) ──
+  const ev = EV.activeEvent();
+  let evHtml = '';
+  if (ev) {
+    const p = EV.points(), track = EV.trackState();
+    const last = track[track.length - 1];
+    const prog = Math.min(1, p / last.at);
+    const days = Math.ceil(EV.msLeft() / 86400000);
+    evHtml = `<div class="evBox" style="--ec:${ev.color}">
+      <div class="evTop"><b>${ev.icon} ${ev.name}</b><span>${days}일 남음</span></div>
+      <div class="evBar"><i style="width:${(prog * 100).toFixed(1)}%"></i></div>
+      <div class="evPt">${n0(p)} / ${n0(last.at)} 포인트 · 일일퀘스트와 출석으로 모읍니다</div>
+      <div class="evTrack">${track.map(t => `
+        <div class="evStep ${t.claimed ? 'done' : t.reached ? 'open' : ''}" data-ev="${t.i}">
+          <div class="s">${n0(t.at)}</div>
+          <div class="g">💎${n0(t.gem)}</div>
+          ${t.claimed ? '<div class="chk">✓</div>' : ''}
+        </div>`).join('')}</div>
+    </div>`;
+  }
+
+  $('dailyList').innerHTML = evHtml +
     `<div class="note">자정에 초기화됩니다. 젬은 뽑기에 씁니다.</div>`
     + quests
     + `<div style="font-size:13px;font-weight:800;margin:14px 0 2px">🎁 출석 보상</div>
@@ -203,6 +226,10 @@ function renderDaily() {
        </div>
        <div class="note" style="margin-top:4px">설정은 저장되어 다음 실행에도 유지됩니다.</div>`;
 
+  $('dailyList').querySelectorAll('[data-ev]').forEach(el => el.onclick = () => {
+    const g = EV.claimStep(+el.dataset.ev);
+    if (g) { sfx.gachaResult(1); save(); renderDaily(); refresh(); toast('💎 ' + n0(g) + ' 획득'); }
+  });
   $('dailyList').querySelectorAll('[data-q]').forEach(el => el.onclick = () => {
     const g = DQ.claimQuest(el.dataset.q);
     if (g) { save(); renderDaily(); refresh(); toast('💎 ' + g + ' 획득'); }
@@ -291,7 +318,7 @@ export function refresh() {
   const gd = $('gDot');
   if (gd) gd.style.display = G.BANNERS.some(b => G.hasFusable(b.key)) ? 'block' : 'none';
   const qd = $('qDot');
-  if (qd) qd.style.display = DQ.totalClaimable() > 0 ? 'block' : 'none';
+  if (qd) qd.style.display = (DQ.totalClaimable() + EV.claimable()) > 0 ? 'block' : 'none';
   const dd = $('dDot');
   if (dd) dd.style.display = DUN.unlocked() && DUN.DUNGEONS.some(d => DUN.keysLeft(d.key) > 0) ? 'block' : 'none';
   const gr = $('grDot');

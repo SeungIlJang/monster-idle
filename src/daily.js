@@ -4,6 +4,7 @@
 // 저장까지 해버려서, 보상을 안 받고 끄면 연속이 소모됐다. 여기서는 **받을 때만 커밋**한다.
 import { B } from './balance.js';
 import { S } from './state.js';
+import { addPoint } from './events.js';
 
 export const QUESTS = B.daily.quests;
 export const ATTEND_CYCLE = B.gems.attendCycle;
@@ -42,6 +43,7 @@ export function claimQuest(id) {
   if (!q || !q.done || q.claimed) return 0;
   S.daily.claimed[id] = true;
   S.gem += q.gem;
+  addPoint('quest');          // 이벤트 포인트는 **실제 지급 시점**에만 — 띄운 것만으로는 안 준다
   return q.gem;
 }
 
@@ -65,6 +67,7 @@ export function claimAttend() {
   S.attend.last = today();          // 받는 순간에만 커밋한다
   S.attend.streak = p.streak;
   S.gem += p.gem;
+  addPoint('attend');
   return p;
 }
 

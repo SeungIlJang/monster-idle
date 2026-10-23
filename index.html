@@ -345,6 +345,27 @@
   #toast.on{opacity:1}
   #wipeBtn{margin-top:14px;background:#3a2030;color:#ffb4b4;border:1px solid #6a3545;
     border-radius:10px;padding:9px;font-size:12px;font-weight:700;width:100%;cursor:pointer}
+  /* 기간 이벤트 트랙 — 테마 색만 --ec 로 갈아 끼운다 (데이터에 적힌 color) */
+  .evBox{background:linear-gradient(160deg,#1b2446,#141b38);border:1px solid var(--ec,#4a6bd0);
+    border-radius:12px;padding:10px 11px;margin-bottom:12px}
+  .evTop{display:flex;align-items:center;font-size:14px;margin-bottom:7px}
+  .evTop b{color:var(--ec,#7fd0ff)}
+  .evTop span{margin-left:auto;font-size:11px;color:#8fa6c8;font-weight:700}
+  .evBar{height:7px;background:#10152e;border-radius:4px;overflow:hidden}
+  .evBar i{display:block;height:100%;background:var(--ec,#4a6bd0);transition:width .2s}
+  .evPt{font-size:11px;color:#9fb6d8;margin-top:5px}
+  .evTrack{display:flex;gap:5px;overflow-x:auto;margin-top:9px;padding-bottom:2px;scrollbar-width:none}
+  .evTrack::-webkit-scrollbar{display:none}
+  .evStep{position:relative;flex:0 0 auto;width:58px;text-align:center;padding:6px 2px;
+    background:#141b38;border:1px solid #2a3458;border-radius:9px;opacity:.5}
+  /* 받을 수 있는 칸만 눌린다 — 아직 못 간 칸을 누르게 두면 실패 토스트만 쌓인다 */
+  .evStep.open{opacity:1;border-color:var(--ec,#d8b24a);cursor:pointer;
+    box-shadow:0 0 7px color-mix(in srgb, var(--ec,#d8b24a) 45%, transparent)}
+  .evStep.done{opacity:.45;border-color:#2d7d46}
+  .evStep .s{font-size:10px;color:#8fa6c8}
+  .evStep .g{font-size:11px;font-weight:800;color:#ffd34d;margin-top:2px}
+  .evStep .chk{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:20px;color:#7fd07f;background:rgba(10,14,30,.55);border-radius:9px}
   .sndRow{display:flex;align-items:center;gap:10px}
   .sndRow button{flex:0 0 auto;background:#1a2145;border:1px solid #313c66;color:#cfdcf2;
     border-radius:9px;padding:7px 11px;font-size:12px;font-weight:800;cursor:pointer}

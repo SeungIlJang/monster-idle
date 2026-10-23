@@ -33,6 +33,7 @@ export function defaults() {
     dun: { day: '', keys: { gold: 0, boss: 0 }, ad: { gold: 0, boss: 0 }, diff: { gold: 0, boss: 0 } },
     daily: { date: '', kill: 0, pull: 0, stage: 0, claimed: {} },
     attend: { last: '', streak: 0 },       // last 는 "받은 날" — 띄운 날이 아니다
+    ev: { id: '', p: 0, claimed: {} },     // 기간 이벤트 진행 (id 가 바뀌면 통째로 버린다)
     // 2단계 레이어
     shard: 0, ore: 0,
     mine: { pick: 0, t: 0, day: '', bomb: 0, grid: null, top: 0, depth: 0 },
@@ -68,6 +69,8 @@ function migrate(d) {
   s.daily = { ...base.daily, ...(d.daily || {}) };
   s.daily.claimed = { ...(d.daily?.claimed || {}) };
   s.attend = { ...base.attend, ...(d.attend || {}) };
+  s.ev = { ...base.ev, ...(d.ev || {}) };
+  s.ev.claimed = { ...(d.ev?.claimed || {}) };
   s.mine = { ...base.mine, ...(d.mine || {}) };
   s.monLv = { ...(d.monLv || {}) };
   s.mastery = { ...base.mastery, ...(d.mastery || {}) };

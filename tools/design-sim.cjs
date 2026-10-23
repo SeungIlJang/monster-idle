@@ -240,6 +240,19 @@ if (NUM('costG')    !== undefined) for (const k of ['atk', 'hp', 'def']) D.stats
 if (NUM('statR')    !== undefined) D.stats.atk.r = D.stats.hp.r = NUM('statR');
 if (NUM('c0mul')    !== undefined) for (const k of ['atk', 'hp', 'def']) D.stats[k].c0 *= NUM('c0mul');
 if (NUM('gems')     !== undefined) D.gacha.gemsPerDay = NUM('gems');
+
+// ── 기간 이벤트의 젬 수입 ───────────────────────────────────
+// 이벤트는 트랙 보상을 젬으로만 준다. 밸런스상 하는 일은 **젬 수입을 올리는 것** 뿐이라,
+// 모델은 한 줄이면 된다: 하루 평균 추가 젬 = gemBudgetPerDay × 평소 수입 × 가동률.
+//
+// 기본 가동률 1.0 은 **연중 이벤트가 끊기지 않는다**는 상한 가정이다. 실제 일정은
+// 이보다 성기므로, 여기서 5판정이 버티면 어떤 일정에서도 버틴다.
+// --eventOff 로 끄고, --eventUptime=0.5 로 느슨하게 본다.
+const EV_CFG = B.events || {};
+const EV_UPTIME = ARG.eventOff ? 0 : (NUM('eventUptime') ?? 1);
+const EV_BUDGET = NUM('eventBudget') ?? (EV_CFG.gemBudgetPerDay || 0);
+const EV_GEMS = D.gacha.gemsPerDay * EV_BUDGET * EV_UPTIME;
+D.gacha.gemsPerDay += EV_GEMS;
 if (NUM('pullMul')  !== undefined) D.gacha.pullMul = NUM('pullMul');
 if (NUM('giveUp')   !== undefined) D.player.giveUpSeconds = NUM('giveUp');
 if (NUM('waves')    !== undefined) D.stage.waves = NUM('waves');
@@ -586,6 +599,9 @@ if (PRESTIGE.on) {
 } else {
   console.log('  [환생] 꺼짐 (--prestige 로 켠다)');
 }
+console.log('  [이벤트] ' + (EV_UPTIME > 0
+  ? '젬 +' + Math.round(EV_GEMS) + '/일 (예산 ' + (EV_BUDGET * 100).toFixed(0) + '% × 가동률 ' + EV_UPTIME + ')'
+  : '꺼짐 (--eventOff)'));
 console.log('  최장 스테이지 클리어 시간 ' + hm(maxClear) + '  (포기 임계 ' + hm(D.player.giveUpSeconds) + ')');
 
 console.log('\n[일자별]   일  스테이지        DPS      최대HP   뽑기 배너Lv  보유%   장착% | 공격 체력 방어  상급');
