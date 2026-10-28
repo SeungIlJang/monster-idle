@@ -6,6 +6,8 @@ import * as L2 from './layer2.js';
 import * as PR from './prestige.js';
 import { playRewarded } from './ads.js';
 import { enterStage, MODE } from './combat.js';
+import { evoPrefix, evoStage, evoNextTier } from './sprites.js';
+import { monTier } from './companions.js';
 
 const $ = id => document.getElementById(id);
 let ctx = { refresh: () => {}, toast: () => {}, onLeadChange: () => {} };
@@ -131,9 +133,12 @@ function renderMonsters() {
 
   const tiles = L2.MONSTERS.map(m => {
     const o = open(m), lv = L2.monLevel(m.key), lead = S.mon === m.key;
+    // 도감도 지금 레벨의 진화형을 보여준다 — 키운 보람이 제일 먼저 눈에 들어오는 자리다.
+    // 접두사는 매니페스트에 그림이 있을 때만 붙으므로 404 가 나지 않는다.
+    const evo = evoPrefix('mon', m.key, monTier(m.key));
     return `<div class="mtile ${o ? '' : 'lock'} ${picked === m.key ? 'on' : ''}" data-pick="${m.key}">
       <!-- 그림이 아직 없는 몬스터(신규 추가분)는 404 로 깨진 아이콘이 뜬다. 숨기고 ? 를 띄운다 -->
-      <img src="assets/mon/${m.key}/idle_1.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <img src="assets/mon/${m.key}/${evo}idle_1.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
       <div class="noart" style="display:none">?</div>
       ${lead ? '<span class="lead">선두</span>' : ''}
       <div class="nm">${o ? m.name : '???'}</div>
@@ -148,6 +153,14 @@ function renderMonsters() {
   const can = o && S.shard >= cost;
   const lead = S.mon === m.key;
   const miles = L2.MILESTONES.map(x => `<span class="mile ${lv >= x ? 'on' : ''}">${x}</span>`).join('');
+  // 겉모습 단계 — "레벨을 올리면 모습이 변하나" 에 화면이 직접 답해야 한다.
+  // 그림이 없는 종(신규 추가분)은 줄 자체를 띄우지 않는다 — 안 변하는데 변한다고 하면 안 된다.
+  const tier = monTier(m.key);
+  const stage = evoStage('mon', m.key, tier), nextT = evoNextTier('mon', m.key, tier);
+  const evoLine = o && (stage > 1 || nextT)
+    ? `<div class="mevo">겉모습 <b>${stage}단계</b>${nextT
+        ? ` · Lv.${L2.MILESTONES[nextT - 1]} 에서 또 변합니다` : ' · 최종 모습'}</div>`
+    : '';
 
   $('growBody').innerHTML = `
     <div class="mgrid">${tiles}</div>
@@ -157,6 +170,7 @@ function renderMonsters() {
       <div class="d">${o
         ? '마일스톤 ' + miles + ' · 다음 레벨 🔹' + n0(cost)
         : '<b>스테이지 ' + m.unlock + '</b> 도달 시 해금'}</div>
+      ${evoLine}
       ${o ? `<div class="mbtn">
           <button data-lead="${m.key}" class="${lead ? 'sel' : ''}" ${lead ? 'disabled' : ''}>${lead ? '선두' : '선두로'}</button>
           <button data-lvup="${m.key}" ${can ? '' : 'disabled'}>+1 <span class="c">🔹${n0(cost)}</span></button>

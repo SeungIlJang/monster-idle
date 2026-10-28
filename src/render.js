@@ -457,7 +457,8 @@ export function render(dt) {
     const opt = { dx: lunge * W * 0.03, sx: 1 + lunge * 0.08, sy: 1 - lunge * 0.06, alpha: 0.92 };
     const own = compImage(c.id);
     if (own) drawSprite(own, cx, cy, h, boxOf('comp', c.id), opt);
-    else drawSprite(pick('mon', c.sprite, 'idle', 0), cx, cy, h, boxOf('mon', c.sprite), opt);
+    // 동료도 자기 레벨의 진화 모습으로 선다 — 수집한 몬스터를 키우는 보람이 전장에 보여야 한다
+    else drawSprite(pick('mon', c.sprite, 'idle', 0, c.tier || 0), cx, cy, h, boxOf('mon', c.sprite), opt);
   };
   const LEAD_D = 0.45;
   for (const c of comps) if (c.d <= LEAD_D) drawComp(c);      // 리드보다 뒤
@@ -466,15 +467,17 @@ export function render(dt) {
   // 포즈 그림이 있으면 그걸 쓴다(슬라임은 idle/attack/hit/dead 4장). 없으면 idle 로
   // 폴백하고 아래 변형으로 흉내낸다 — pick() 이 알아서 돌려준다.
   const pose = R.atkAnimT > 0 ? 'attack' : R.pHitT > 0 ? 'hit' : 'idle';
-  const pImg = pick('mon', S.mon, pose, 0);
+  // 리드도 레벨(마일스톤 티어)에 따라 겉모습이 바뀐다. 그림이 없으면 pick() 이 기본으로 내려준다
+  const leadTier = monTier(S.mon);
+  const pImg = pick('mon', S.mon, pose, 0, leadTier);
   const hasPose = frameCount('mon', S.mon, pose) > 0;
   const atk = Math.max(0, R.atkAnimT) / 0.25;               // 1 → 0
   const lungePhase = Math.sin((1 - atk) * Math.PI);          // 0 → 1 → 0
   // 포즈 그림이 이미 런지를 그리고 있으면 변형을 약하게 준다 — 둘 다 세게 주면 과장된다
   const k = hasPose && pose !== 'idle' ? 0.35 : 1;
   const bob = Math.sin(t * 3) * pH * 0.02;
-  // 리드도 레벨(마일스톤 티어)에 따라 커지고 표식이 붙는다
-  const leadTier = monTier(S.mon);
+  // 티어마다 3% 씩 커지고 표식이 붙는다 — **크기 변화는 여기가 전담한다**.
+  // 진화 그림은 캔버스 안에서 같은 크기로 모습만 바꾼다(sprites.js EVO_OF_TIER 주석).
   const pHt = pH * tierScale(leadTier);
   drawTier(W * 0.30, feet, pHt, leadTier);
   drawSprite(pImg, W * 0.30, feet + bob, pHt, boxOf('mon', S.mon), {
@@ -781,7 +784,7 @@ export function render(dt) {
 }
 
 export function preloadFor(stage) {
-  preload('mon', S.mon);
+  preload('mon', S.mon, monTier(S.mon));
   preload('hero', heroAt(stage).key);
   // 적과 배경은 5스테이지마다 바뀐다. 다음 장면 것도 미리 받아둬야 교체되는 순간
   // 몇 프레임 동안 빈 칸/맨 캔버스가 비친다. bgImage 는 캐시에 넣기만 하면 예열된다.
