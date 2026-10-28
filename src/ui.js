@@ -159,6 +159,7 @@ function renderDungeon() {
         + `<br>획득 🪙 <b>${fmt(res.Lgold)}</b>`;
     }
     save(); renderDungeon(); refresh();
+    showDunResult(k, res);
   };
   $('dunList').querySelectorAll('[data-dd]').forEach(el => el.onclick = () => { dSel[el.dataset.dd]--; renderDungeon(); });
   $('dunList').querySelectorAll('[data-du]').forEach(el => el.onclick = () => { dSel[el.dataset.du]++; renderDungeon(); });
@@ -325,6 +326,40 @@ export function refresh() {
   if (gr) gr.style.display = (L2.picks() >= L2.pickMax() || L2.masteryFree() > 0 || L2.researchReady()) ? 'block' : 'none';
 }
 
+/**
+ * 던전 결과 팝업.
+ *
+ * 던전은 즉시 판정이라 **전투 화면이 전혀 바뀌지 않는다.** 하루 2키뿐인 "오늘 할 일"인데
+ * 결과가 카드 맨 아래 11px 한 줄로 지나가서 "아무 일도 없었다" 로 읽혔다.
+ * 달성률 막대를 채워 보여 주는 게 핵심이다 — 완전 클리어 전까지는 최고 난이도가
+ * 0 에서 안 움직여서 얼마나 갔는지 흔적이 남지 않았다.
+ */
+function showDunResult(k, res) {
+  const def = DUN.DUNGEONS.find(d => d.key === k);
+  const boss = k === 'boss';
+  const frac = boss ? res.killed / res.total : res.frac;
+
+  $('drTitle').textContent = `${def.icon} ${def.name}`;
+  $('drSub').textContent = boss
+    ? `난이도 ${dSel[k]} · ${res.seconds.toFixed(1)}초 · ` +
+      (res.died ? '쓰러졌습니다' : res.full ? '완전 클리어!' : '시간 초과')
+    : `난이도 ${dSel[k]} · ${res.seconds}초`;
+
+  const bar = $('drFill').parentElement;
+  bar.classList.toggle('full', !!res.full);
+  $('drFill').style.width = '0%';
+  // 한 박자 뒤에 채워야 막대가 차오르는 게 보인다 (0% 로 깔고 바로 바꾸면 트랜지션이 안 돈다)
+  setTimeout(() => { $('drFill').style.width = (Math.min(1, frac) * 100).toFixed(1) + '%'; }, 30);
+
+  $('drScore').textContent = boss
+    ? `용사 ${res.killed} / ${res.total}명 격파`
+    : `수레 ${(res.frac * 100).toFixed(0)}% 파괴`;
+  $('drGain').textContent = boss ? `💎 ${n0(res.gem)}` : `🪙 ${fmt(res.Lgold)}`;
+  $('drNext').textContent = res.full ? `난이도 ${dSel[k] + 1} 해금!` : '';
+
+  $('dunRes').classList.add('on');
+}
+
 // ── 탭 ───────────────────────────────────────────────────────
 const PANEL_RENDER = {
   upg: renderUpgrade, gacha: renderGacha, dun: renderDungeon,
@@ -357,6 +392,7 @@ export function initUI() {
   initGrow({ refresh, toast, onLeadChange: () => preloadFor(R.stage) });
   initGacha({ refresh, toast });
   $('retryBtn').onclick = () => { retry(); refresh(); };
+  $('drClose').onclick = () => $('dunRes').classList.remove('on');
   const wb = $('wipeBtn');
   if (wb) wb.onclick = () => {
     if (confirm('정말 처음부터 다시 시작할까요? 이 기기의 저장 데이터가 사라집니다.')) {
