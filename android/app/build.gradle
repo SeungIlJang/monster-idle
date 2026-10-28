@@ -1,6 +1,6 @@
 apply plugin: 'com.android.application'
 
-// ?�로???�명 ?? android/keystore.properties (git ?�외). ?�으�?릴리?�는 ?�명 ?�이 빌드
+// ?�로???�명 ?? android/keystore.properties (git ?�외). ?�으�?릴리?�는 ?�명 ?�이 빌드
 def keystorePropsFile = rootProject.file('keystore.properties')
 def keystoreProps = new Properties()
 if (keystorePropsFile.exists()) keystorePropsFile.withInputStream { keystoreProps.load(it) }
@@ -12,8 +12,8 @@ android {
         applicationId "com.moduseries.monsteridle"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 5
-        versionName "1.0.4"
+        versionCode 6
+        versionName "1.0.5"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

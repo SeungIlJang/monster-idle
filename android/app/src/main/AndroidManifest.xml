@@ -15,7 +15,7 @@
              주의: 앱 ID 는 ~ 구분자, 광고 단위 ID 는 / 구분자로 형식이 다르다. -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713" />
+            android:value="ca-app-pub-9017259597860535~5020281909" />
 
         <!-- 세로 고정: 이 게임은 세로 모바일 전제로 레이아웃을 잡았다 -->
         <activity
