@@ -5,21 +5,12 @@
 // 30/365/730일 시뮬 판정을 다시 받아야 한다. 이 파일이 하는 일은
 // **이미 존재하는 수치에 몸을 주는 것**뿐이다.
 //
-// 누가 서는가: `comp` 배너에 자동 장착된 아이템 그대로(gacha.js equippedList).
-// 몇 기가 서는가: 열린 슬롯 수 = activeSlots('comp') — 스테이지 10/40/100/200/400 에서 하나씩.
-import { equippedList, CATALOG } from './gacha.js';
-
-// comp 아이템 id → 대역으로 쓸 몬스터 스프라이트.
-// assets/comp/<id>.png 를 넣으면 그쪽이 우선이다(배경과 같은 방식).
-// 도깨비불·그림자가 둘 다 ghost 인 건 전용 그림이 없는 동안의 임시 조치다.
-const STAND_IN = {
-  slimelet: 'slime',
-  bats: 'bat',
-  spore: 'mushroom',
-  wisp: 'ghost',
-  shard: 'golem',
-  shade: 'ghost',
-};
+// 누가 서는가: **내가 수집한 몬스터** 중 리드를 뺀 상위 레벨 순.
+// 몇 기가 서는가: 열린 슬롯 수 = activeSlots('comp') — 스테이지 10/40/100/200/400/14500.
+import { activeSlots } from './gacha.js';
+import { B } from './balance.js';
+import { S } from './state.js';
+import { monLevel } from './layer2.js';
 
 // 리드 기준 상대 배치. x 는 캔버스 폭 비율, y 는 리드 키 비율(음수 = 위 = 멀리).
 // 일부러 줄을 맞추지 않았다 — 줄을 세우면 "부대"가 아니라 "목록"으로 보인다.
@@ -61,24 +52,44 @@ export function compImage(id) {
  * 장착 목록이 슬롯보다 적으면 그만큼만 — 빈 자리를 채우지 않는다.
  */
 export function activeCompanions() {
-  const eq = equippedList('comp');
-  const out = [];
-  for (let i = 0; i < eq.length && i < SLOTS.length; i++) {
-    const def = CATALOG.comp.find(c => c.id === eq[i].id);
-    if (!def) continue;
-    out.push({
-      id: eq[i].id,
-      name: def.name,
-      rarity: eq[i].rarity,
-      sprite: STAND_IN[eq[i].id] || 'slime',
-      ...SLOTS[i],
-      phase: i * 1.7,          // 흔들림이 겹치지 않게
-      delay: i * 0.035,        // 공격이 리드보다 조금씩 늦게 — 어긋나야 여럿으로 보인다
-    });
-  }
+  // 전장에 서는 건 **내가 수집한 몬스터** 다. 리드를 뺀 나머지 중 레벨이 높은 순으로 세운다.
+  //
+  // 예전엔 동료 뽑기 아이템(작은 슬라임·박쥐 떼…)이 섰고, 그마저 전용 그림이 없어
+  // STAND_IN 으로 몬스터 그림을 빌려 쓰고 있었다. 그래서 화면에 버섯이 서 있어도
+  // "내가 키운 스포어링" 이 아니라 "스포어링 그림을 빌린 동료" 였다 —
+  // 9종을 모으고 레벨을 올려도 전장에 흔적이 없었다.
+  //
+  // 밸런스는 그대로다. 동료 뽑기 효과(gC)는 LDPS 에 따로 들어가고 여기서는
+  // **누가 서는지**만 정한다. 슬롯 수도 예전처럼 동료 배너의 해금 수를 쓴다.
+  const slots = Math.min(activeSlots('comp'), SLOTS.length);
+  const squad = B.roster.monsters
+    .filter(m => m.key !== S.mon && S.life >= m.unlock)   // 리드는 가운데 따로 선다
+    .sort((a, b) => (monLevel(b.key) - monLevel(a.key)) || a.unlock - b.unlock)
+    .slice(0, slots);
+
+  const out = squad.map((m, i) => ({
+    id: m.key,
+    name: m.name,
+    lv: monLevel(m.key),
+    tier: monTier(m.key),      // 마일스톤 티어 — 레벨이 오르면 겉모습이 달라진다
+    sprite: m.key,
+    ...SLOTS[i],
+    phase: i * 1.7,          // 흔들림이 겹치지 않게
+    delay: i * 0.035,        // 공격이 리드보다 조금씩 늦게 — 어긋나야 여럿으로 보인다
+  }));
   // 뒤에 있는 것부터 그려야 가까운 것이 앞에 온다
   return out.sort((a, b) => a.d - b.d);
 }
 
+/**
+ * 마일스톤 티어 (0~5). 레벨 10·25·50·75·100 을 넘을 때마다 1 씩 오른다.
+ * 외형 변화의 단위다 — 레벨 1 마다 바꾸면 변화가 안 읽히고, 마일스톤은 이미
+ * 공격력 보너스를 주는 지점이라 "뭔가 달라졌다" 와 보상이 같이 온다.
+ */
+export function monTier(key) {
+  const lv = monLevel(key);
+  return (B.layer2.collect.milestoneLevels || []).filter(x => lv >= x).length;
+}
+
 /** 동료 슬롯이 하나라도 열렸는가 — UI 안내용 */
-export const hasCompanions = () => equippedList('comp').length > 0;
+export const hasCompanions = () => activeCompanions().length > 0;

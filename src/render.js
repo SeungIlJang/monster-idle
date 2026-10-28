@@ -7,7 +7,7 @@ import { B, heroAt, zoneAt, sceneEvery, heroPool } from './balance.js';
 import { S } from './state.js';
 import { R, enrage } from './combat.js';
 import { pick, preload, boxOf, frameCount } from './sprites.js';
-import { activeCompanions, compImage } from './companions.js';
+import { activeCompanions, compImage, monTier } from './companions.js';
 import { L0, ratio, fmt } from './logmath.js';
 
 const WAVES = B.stage.waves;
@@ -280,6 +280,46 @@ function bar(x, y, w, h, frac, color) {
   ctx.fillRect(x, y, w * Math.max(0, Math.min(1, frac)), h);
 }
 
+// ── 레벨에 따른 외형 변화 ──
+// 레벨 1마다 바꾸면 변화가 안 읽히므로 **마일스톤 티어**(10·25·50·75·100)를 단위로 쓴다.
+// 그 지점은 이미 공격력 보너스를 주는 자리라, 보이는 변화와 보상이 같이 온다.
+// 진짜 진화 그림이 오기 전까지의 몫이다 — 그림 없이 캔버스로만 티를 낸다.
+const TIER_COL = [null, '#c98a5a', '#dfe6f2', '#ffd34d', '#b59bff', '#ff7ad5'];
+const tierScale = tier => 1 + tier * 0.03;        // 티어마다 3% 씩 커진다
+
+/** 발밑 고리 + 반짝임 + 배지. size 는 그 유닛의 그린 높이. */
+function drawTier(cx, cy, size, tier) {
+  if (!tier) return;
+  const col = TIER_COL[Math.min(tier, TIER_COL.length - 1)];
+  ctx.save();
+  // 발밑 고리 — 티어가 오를수록 진해진다
+  ctx.globalAlpha = 0.25 + tier * 0.1;
+  ctx.strokeStyle = col;
+  ctx.lineWidth = 1.5 + tier * 0.4;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, size * 0.42, size * 0.15, 0, 0, 7);
+  ctx.stroke();
+  // 티어 3 부터 주위에 반짝임이 돈다
+  if (tier >= 3) {
+    ctx.globalAlpha = 0.8;
+    ctx.fillStyle = col;
+    for (let i = 0; i < tier; i++) {
+      const a = t * 1.6 + i * (6.28 / tier);
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(a) * size * 0.45, cy - size * 0.5 + Math.sin(a) * size * 0.2, 1.6, 0, 7);
+      ctx.fill();
+    }
+  }
+  // 최고 티어는 머리 위에 표식
+  if (tier >= TIER_COL.length - 1) {
+    ctx.globalAlpha = 1;
+    ctx.font = Math.round(size * 0.3) + 'px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('✦', cx, cy - size * 1.02);
+  }
+  ctx.restore();
+}
+
 // ── 환경 입자 ── 배경이 흐르기만 하고 그 안엔 아무것도 안 움직이고 있었다.
 // 레퍼런스는 fx_dust·fx_autumn_leaf·fx_cloud 같은 걸 상시 띄운다. 지역마다 색과
 // 종류만 바꿔(balance.json 의 zones.list[].amb) 같은 코드로 돌린다.
@@ -408,9 +448,10 @@ export function render(dt) {
   const drawComp = c => {
     const e = (elapsed - c.delay) / ATK_DUR;
     const lunge = e > 0 && e < 1 ? Math.sin(e * Math.PI) : 0;
-    const h = base * 0.125 * c.s * laneS(c.d);
+    const h = base * 0.125 * c.s * laneS(c.d) * tierScale(c.tier || 0);
     const cx = W * (0.30 + c.dx);
     const cy = laneY(c.d) + Math.sin(t * 3 + c.phase) * h * 0.025;
+    drawTier(cx, cy, h, c.tier || 0);
     // 고리는 리드에게만 준다 — 여섯 개가 겹치면 바닥이 고리밭이 되고
     // 정작 "누가 주인공인지" 가 흐려진다.
     const opt = { dx: lunge * W * 0.03, sx: 1 + lunge * 0.08, sy: 1 - lunge * 0.06, alpha: 0.92 };
@@ -432,7 +473,11 @@ export function render(dt) {
   // 포즈 그림이 이미 런지를 그리고 있으면 변형을 약하게 준다 — 둘 다 세게 주면 과장된다
   const k = hasPose && pose !== 'idle' ? 0.35 : 1;
   const bob = Math.sin(t * 3) * pH * 0.02;
-  drawSprite(pImg, W * 0.30, feet + bob, pH, boxOf('mon', S.mon), {
+  // 리드도 레벨(마일스톤 티어)에 따라 커지고 표식이 붙는다
+  const leadTier = monTier(S.mon);
+  const pHt = pH * tierScale(leadTier);
+  drawTier(W * 0.30, feet, pHt, leadTier);
+  drawSprite(pImg, W * 0.30, feet + bob, pHt, boxOf('mon', S.mon), {
     dx: lungePhase * W * 0.05 * k,
     sx: 1 + lungePhase * 0.1 * k,
     sy: 1 - lungePhase * 0.08 * k,
