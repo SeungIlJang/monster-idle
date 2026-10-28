@@ -424,7 +424,7 @@
     "_quest": "일일퀘스트 3종 × 150 = 450",
     "bossRushBase": 250,
     "bossRushPerDiff": 10,
-    "_bossRush": "키 2회 = 약 500. 광고 2회를 더 보면 약 1,000",
+    "_bossRush": "키 2회 = 약 500. 광고 2회를 더 보면 약 1,000. bossRushPerDiff 는 난이도의 **로그**에 곱한다 — 선형이면 난이도가 본편을 따라가는 순간 젬이 예산을 수십 배로 넘는다.",
     "attendCycle": [
       80,
       120,

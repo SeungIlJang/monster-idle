@@ -34,8 +34,17 @@ export function adLeft(k) { ensureKeys(); return Math.max(0, D.adRunsPerDay - (S
 
 /** 클리어한 최고 난이도 (0 = 아직 없음) */
 export const clearedDiff = k => S.dun.diff[k] ?? 0;
-/** 도전 가능한 최고 난이도 — 클리어한 다음 단계까지, 단 본편 진행도를 넘지 못한다 */
-export const maxDiff = k => Math.max(1, Math.min(clearedDiff(k) + 1, Math.floor(S.life / 10) || 1));
+/**
+ * 도전 가능한 최고 난이도 — **본편 진행도만** 본다.
+ *
+ * 예전엔 `clearedDiff + 1` 로 한 칸씩만 열었다. 그런데 난이도 해금은 하루 최대 4칸인데
+ * 본편은 2일차에 이미 1,400층을 간다. 그래서 골드 수레 보상(기준 스테이지 = 난이도×10 에서
+ * 30분 파밍)이 본편 수입의 10^-143 수준으로 떨어져 **키를 넣어도 아무 일도 안 일어났다.**
+ * 격차는 영원히 벌어진다 — 본편 14,000층이면 쓸모있는 난이도 1,400 까지 350일이 걸린다.
+ *
+ * k 는 쓰지 않지만 호출부 시그니처를 유지한다.
+ */
+export const maxDiff = k => Math.max(1, Math.floor(S.life / 10) || 1);
 /** 해당 난이도의 기준 스테이지 */
 export const diffStage = d => d * 10;
 /** 본편을 10스테이지도 못 갔으면 던전이 열리지 않는다 */
@@ -66,7 +75,13 @@ export function simulateBossRush(diff) {
     killed++;
   }
   const full = killed >= D.bossCount;
-  const gem = Math.round((B.gems.bossRushBase + (diff - 1) * B.gems.bossRushPerDiff) * (killed / D.bossCount));
+  // 난이도 보너스는 **로그**다. 선형(난이도당 +10)이었을 때, 난이도 해금을 본편에 연동하자
+  // 본편 5,000층에서 하루 젬이 일일 수입의 1,233% 가 됐다. 젬은 §6 에서 하루 1,700 으로
+  // 역산해 둔 **예산이 정해진 재화**라 보상이 깊이를 따라 커지면 안 된다
+  // (깊이를 따라가야 하는 건 골드 쪽이고, 그건 기준 스테이지가 알아서 한다).
+  // 로그면 난이도 1→1,400 에서 250→281 이라 예산 안에 남으면서도 더 깊이 가면 조금 낫다.
+  const bonus = B.gems.bossRushPerDiff * Math.log10(Math.max(1, diff));
+  const gem = Math.round((B.gems.bossRushBase + bonus) * (killed / D.bossCount));
   return { killed, total: D.bossCount, full, died, seconds: t, gem, hpLeft: ratio(Lhp, LHP()) };
 }
 
