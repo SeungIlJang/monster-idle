@@ -491,7 +491,7 @@
     },
     "collect": {
       "_": "몬스터 10종을 고르게 키운다고 본다. 레벨 비용이 레벨에 비례(선형)라 총 레벨은 조각 누적의 제곱근으로 자란다.",
-      "monsters": 10,
+      "monsters": 12,
       "shardCostPerLevel": 50,
       "milestoneLevels": [
         10,
@@ -823,6 +823,24 @@
         "unlock": 3000,
         "ability": {"name": "화염", "desc": "치명피해 +60%, 치명확률 -5%p", "cdmg": 1.6, "critAdd": -0.05},
         "bolt": {"color": "#ff5a4a", "shape": "orb"}
+      },
+      {
+        "key": "spider",
+        "sheet": "Enemy_Arachne_Spider.png",
+        "dir": "Arachne_Spider",
+        "name": "아라크네",
+        "unlock": 6000,
+        "ability": {"name": "맹독", "desc": "더블샷 +25%p, 피해 -15%", "dblAdd": 0.25, "dmg": 0.85},
+        "bolt": {"color": "#9ae06a", "shape": "shard"}
+      },
+      {
+        "key": "wyrm",
+        "sheet": "Enemy_Basilisk_Wyrm.png",
+        "dir": "Basilisk_Wyrm",
+        "name": "바실리스크",
+        "unlock": 20000,
+        "ability": {"name": "광전", "desc": "피해 +35%, 받는 피해 +39%", "dmg": 1.35, "dr": 0.72},
+        "bolt": {"color": "#ff5ab0", "shape": "wedge"}
       }
     ],
     "heroes": [

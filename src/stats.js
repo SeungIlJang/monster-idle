@@ -57,6 +57,7 @@ export const nval = k => {
   // 잡몹 배수는 LDPS 에서 boss 와 대칭으로 건다.
   if (k === 'aspd' || k === 'cdmg' || k === 'rec') v *= ab(k);
   if (k === 'crit') v = Math.max(0, v + ab('critAdd', 0));
+  if (k === 'dbl') v = Math.max(0, v + ab('dblAdd', 0));   // 아라크네 맹독
   return v;
 };
 

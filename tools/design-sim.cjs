@@ -311,6 +311,7 @@ const nval = (S, k) => {                                                        
   let v = d.base + d.a * S.lv[k];
   if (k === 'aspd' || k === 'cdmg' || k === 'rec') v *= ab(k);
   if (k === 'crit') v = Math.max(0, v + ab('critAdd', 0));
+  if (k === 'dbl') v = Math.max(0, v + ab('dblAdd', 0));   // 아라크네 맹독
   return v;
 };
 

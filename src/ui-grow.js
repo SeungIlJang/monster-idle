@@ -132,7 +132,9 @@ function renderMonsters() {
   const tiles = L2.MONSTERS.map(m => {
     const o = open(m), lv = L2.monLevel(m.key), lead = S.mon === m.key;
     return `<div class="mtile ${o ? '' : 'lock'} ${picked === m.key ? 'on' : ''}" data-pick="${m.key}">
-      <img src="assets/mon/${m.key}/idle_1.png" alt="">
+      <!-- 그림이 아직 없는 몬스터(신규 추가분)는 404 로 깨진 아이콘이 뜬다. 숨기고 ? 를 띄운다 -->
+      <img src="assets/mon/${m.key}/idle_1.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="noart" style="display:none">?</div>
       ${lead ? '<span class="lead">선두</span>' : ''}
       <div class="nm">${o ? m.name : '???'}</div>
       <div class="sub">${o ? 'Lv.' + lv : m.unlock}</div>
