@@ -37,7 +37,8 @@ preloadFor(S.st);
 // 전투 로직이 재생 실패에 얽힌다. 기존 동작(클리어 시 갱신·예열)은 그대로 둔다.
 setEventHandler(ev => {
   switch (ev.type) {
-    case 'attack':    sfx.attack(); break;
+    case 'attack':    break;                    // 발사 자체는 조용하다 — 소리는 닿을 때 난다
+    case 'impact':    sfx.attack(); break;      // 투사체가 맞은 순간
     case 'playerHit': sfx.playerHit(); break;
     case 'kill':      sfx.kill(); break;
     case 'wave':      bgAdvance(); break;        // 웨이브를 넘길 때 한 걸음 더

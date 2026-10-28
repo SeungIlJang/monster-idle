@@ -661,6 +661,15 @@
   "offline": {
     "capHours": 12
   },
+  "combatFx": {
+    "_": "전투 타격 연출. 피해는 발사 즉시 적용되고 여기 값들은 **보이는 것만** 바꾼다 — 밸런스와 무관하다.",
+    "boltSec": 0.16,
+    "_boltSec": "투사체 비행 시간(초). 이만큼 숫자·피격·소리가 늦게 온다. 길면 굼떠 보이고 짧으면 안 보인다.",
+    "deathSec": 0.32,
+    "_deathSec": "적이 쓰러지는 연출 길이. dead 포즈 그림이 이미 있는데 안 쓰고 즉시 사라지고 있었다.",
+    "shards": 4,
+    "_shards": "명중 시 튀는 파편 수."
+  },
   "anim": {
     "monster": {
       "idle": 3,
@@ -729,7 +738,8 @@
         "dir": "Gloop_Slime",
         "name": "글룹",
         "unlock": 1,
-        "ability": {"name": "균형", "desc": "모든 피해 +10%", "dmg": 1.1}
+        "ability": {"name": "균형", "desc": "모든 피해 +10%", "dmg": 1.1},
+        "bolt": {"color": "#7fe08a", "shape": "orb"}
       },
       {
         "key": "goblin",
@@ -737,7 +747,8 @@
         "dir": "Grik_Goblin",
         "name": "그릭",
         "unlock": 10,
-        "ability": {"name": "탐욕", "desc": "골드 +40%, 피해 -15%", "gold": 1.4, "dmg": 0.85}
+        "ability": {"name": "탐욕", "desc": "골드 +40%, 피해 -15%", "gold": 1.4, "dmg": 0.85},
+        "bolt": {"color": "#ffd34d", "shape": "coin"}
       },
       {
         "key": "bat",
@@ -745,7 +756,8 @@
         "dir": "Nightwing_Bat",
         "name": "나이트윙",
         "unlock": 40,
-        "ability": {"name": "흡혈", "desc": "웨이브 회복 2배, 피해 -10%", "rec": 2.0, "dmg": 0.9}
+        "ability": {"name": "흡혈", "desc": "웨이브 회복 2배, 피해 -10%", "rec": 2.0, "dmg": 0.9},
+        "bolt": {"color": "#c98bff", "shape": "orb"}
       },
       {
         "key": "mushroom",
@@ -753,7 +765,8 @@
         "dir": "Sporeling_Mushroom",
         "name": "스포어링",
         "unlock": 100,
-        "ability": {"name": "포자", "desc": "잡몹 피해 +35%, 보스 피해 -20%", "nrm": 1.35, "boss": 0.8}
+        "ability": {"name": "포자", "desc": "잡몹 피해 +35%, 보스 피해 -20%", "nrm": 1.35, "boss": 0.8},
+        "bolt": {"color": "#9ae6b4", "shape": "orb"}
       },
       {
         "key": "skeleton",
@@ -761,7 +774,8 @@
         "dir": "Boneguard_Skeleton",
         "name": "본가드",
         "unlock": 200,
-        "ability": {"name": "뼈방패", "desc": "받는 피해 -25%, 피해 -10%", "dr": 1.33, "dmg": 0.9}
+        "ability": {"name": "뼈방패", "desc": "받는 피해 -25%, 피해 -10%", "dr": 1.33, "dmg": 0.9},
+        "bolt": {"color": "#dfe6f2", "shape": "shard"}
       },
       {
         "key": "wolf",
@@ -769,7 +783,8 @@
         "dir": "Fangwolf_Wolf",
         "name": "팽울프",
         "unlock": 400,
-        "ability": {"name": "질주", "desc": "공격속도 +25%, 치명피해 -20%", "aspd": 1.25, "cdmg": 0.8}
+        "ability": {"name": "질주", "desc": "공격속도 +25%, 치명피해 -20%", "aspd": 1.25, "cdmg": 0.8},
+        "bolt": {"color": "#8ad8ff", "shape": "wedge"}
       },
       {
         "key": "ghost",
@@ -777,7 +792,8 @@
         "dir": "Wraith_Ghost",
         "name": "레이스",
         "unlock": 700,
-        "ability": {"name": "원혼", "desc": "치명확률 +12%p, 최대체력 -20%", "critAdd": 0.12, "hp": 0.8}
+        "ability": {"name": "원혼", "desc": "치명확률 +12%p, 최대체력 -20%", "critAdd": 0.12, "hp": 0.8},
+        "bolt": {"color": "#b0a7ff", "shape": "orb"}
       },
       {
         "key": "orc",
@@ -785,7 +801,8 @@
         "dir": "Brakk_Orc",
         "name": "브락",
         "unlock": 1200,
-        "ability": {"name": "격노", "desc": "보스 피해 +170%, 잡몹 피해 -5%", "boss": 2.7, "nrm": 0.95}
+        "ability": {"name": "격노", "desc": "보스 피해 +170%, 잡몹 피해 -5%", "boss": 2.7, "nrm": 0.95},
+        "bolt": {"color": "#ff8a5a", "shape": "wedge"}
       },
       {
         "key": "golem",
@@ -793,7 +810,8 @@
         "dir": "Granite_Golem",
         "name": "그래니트",
         "unlock": 2000,
-        "ability": {"name": "암반", "desc": "최대체력 +60%, 공격속도 -15%", "hp": 1.6, "aspd": 0.85}
+        "ability": {"name": "암반", "desc": "최대체력 +60%, 공격속도 -15%", "hp": 1.6, "aspd": 0.85},
+        "bolt": {"color": "#b9a07a", "shape": "shard"}
       },
       {
         "key": "dragon",
@@ -801,7 +819,8 @@
         "dir": "Ignarion_RedDragon_Boss",
         "name": "이그나리온",
         "unlock": 3000,
-        "ability": {"name": "화염", "desc": "치명피해 +60%, 치명확률 -5%p", "cdmg": 1.6, "critAdd": -0.05}
+        "ability": {"name": "화염", "desc": "치명피해 +60%, 치명확률 -5%p", "cdmg": 1.6, "critAdd": -0.05},
+        "bolt": {"color": "#ff5a4a", "shape": "orb"}
       }
     ],
     "heroes": [

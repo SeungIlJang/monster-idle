@@ -30,6 +30,7 @@ export const R = {
   foeAtkT: 0,       // 적 공격 애니 잔여 시간 (적은 그룹 1타이머라 다 같이 휘두른다)
   skillCd: {},      // 스킬별 남은 쿨 (세이브하지 않는다 — 전투마다 새로 시작)
   skillFxT: 0,      // 스킬 섬광 잔여 시간
+  bolts: [],         // 날아가는 투사체 (연출 전용 — 피해는 발사 즉시 끝나 있다)
   fx: [],            // 데미지 숫자 등 연출
   farmClears: 0,     // 파밍으로 클리어한 횟수 (자동 재도전 판단용)
   banner: '',
@@ -65,6 +66,7 @@ export function enterStage(stage, mode = MODE.RUN) {
   // 스킬 쿨은 **초기화하지 않는다.** 초반 스테이지는 2초면 끝나는데 쿨은 5~13초라,
   // 진입마다 되돌리면 스킬이 영영 안 터지면서 평타만 35% 깎인 채로 남는다.
   R.waveIdx = 0;
+  R.bolts = [];
   R.LhpMax = LHP();
   R.Lhp = R.LhpMax;
   R.atkT = 0;
@@ -113,6 +115,26 @@ function fx(type, text, x, y, delay = 0) {
   if (R.fx.length > 60) R.fx.shift();
 }
 
+/**
+ * 투사체가 닿은 순간. **수치는 아무것도 바꾸지 않는다** — 맞은 티만 낸다.
+ * 피격 포즈·화면 흔들림·파편·소리가 전부 여기로 모여서 한 박자로 터진다.
+ */
+function onImpact(b) {
+  const e = R.enemies[b.idx];
+  if (e) e.hitT = 0.12;
+  R.shake = Math.max(R.shake, b.crit ? 0.16 : 0.07);
+  const n = B.combatFx.shards;
+  for (let i = 0; i < n; i++) {
+    fx('shard', '', b.idx, -6);
+    const c = R.fx[R.fx.length - 1];
+    c.life = 0.22 + Math.random() * 0.12;
+    c.vy = -40 - Math.random() * 90;
+    c.vjx = (Math.random() - 0.5) * 240;
+    c.jx = 0;
+  }
+  onEvent({ type: 'impact', crit: b.crit });
+}
+
 function gainGold() {
   // 리드 능력의 골드 배수(그릭 탐욕 등). 오프라인 보상은 offline.js 쪽에서 같이 건다.
   S.Lg = add(S.Lg, LeGOLD(R.stage, R.boss) + fromNum(ab('gold')));
@@ -121,6 +143,9 @@ function gainGold() {
 function onKill(e, idx) {
   // 스킬 처치(fireSkill)도 이 함수를 거친다 — 여기 한 곳만 울려야 두 번 나지 않는다
   onEvent({ type: 'kill' });
+  // dead 포즈 그림이 에셋에 있는데 안 쓰고 즉시 사라지고 있었다. 잠깐 쓰러뜨린다.
+  // 전투 판정에는 영향이 없다 — front()/aliveCount() 는 Lhp 로만 판단한다.
+  e.deadT = B.combatFx.deathSec;
   gainGold();
   bumpDaily('kill');
   fx('gold', '+' + fmt(LeGOLD(R.stage, R.boss)), idx, -16);
@@ -223,7 +248,18 @@ export function tick(dt) {
     if (f.vjx) { f.jx += f.vjx * dt; f.vy += 320 * dt; }   // 금화는 중력을 받아 포물선을 그린다
   }
   if (R.fx.length) R.fx = R.fx.filter(f => f.life > 0);
-  for (const e of R.enemies) if (e.hitT > 0) e.hitT -= dt;
+  for (const e of R.enemies) {
+    if (e.hitT > 0) e.hitT -= dt;
+    if (e.deadT > 0) e.deadT -= dt;        // 쓰러지는 연출이 끝나야 화면에서 지운다
+  }
+
+  // ── 투사체 ──
+  // 연출만 담당한다. 피해는 발사 시점에 이미 적용됐다.
+  for (const b of R.bolts) {
+    b.t += dt;
+    if (b.t >= b.dur && !b.hit) { b.hit = true; onImpact(b); }
+  }
+  if (R.bolts.length) R.bolts = R.bolts.filter(b => b.t < b.dur + 0.06);
 
   const f = front();
   if (!f) return;
@@ -253,10 +289,15 @@ export function tick(dt) {
     // normalShare() 는 스킬이 가져간 몫을 뺀 나머지다. 스킬이 없으면 1 이다.
     const Ldmg = LDPS(R.boss) - fromNum(nval('aspd')) - fromNum(critF())
                + fromNum(critMul * normalShare());
+    // **피해는 여기서 끝난다.** 아래 연출이 늦게 오더라도 수치는 이미 적용됐다 —
+    // 피해를 명중까지 미루면 DPS 가 비행시간만큼 깎여 시뮬과 어긋난다.
     f.Lhp = sub(f.Lhp, Ldmg);
-    f.hitT = 0.12;
     onEvent({ type: 'attack' });        // 실제 평타가 나간 순간 (연출이 아니라 사실)
     const idx = R.enemies.indexOf(f);
+    // 투사체 한 발. 도착하면 숫자·피격·소리가 한꺼번에 터진다.
+    const FXC = B.combatFx;
+    R.bolts.push({ idx, t: 0, dur: FXC.boltSec, crit, ph: Math.random() * 6.28 });
+    const T = FXC.boltSec;
     // 발수만큼 숫자를 나눠 띄운다. 연출이 아니라 사실이다 — 피해식에 shots() 가 이미 곱해져 있다.
     // shots() 는 더블샷·트리플샷이 확률 스탯이라 1~3 사이 실수다. 소수부를 확률로 처리하면
     // 평균 표시 발수가 기댓값과 정확히 맞고, 매 타격이 조금씩 달라져 보기에도 낫다.
@@ -264,7 +305,7 @@ export function tick(dt) {
     const n = Math.max(1, Math.floor(s) + (Math.random() < s % 1 ? 1 : 0));
     const per = fmt(Ldmg - Math.log10(n));     // log10 공간에서 나누기 = 빼기
     for (let i = 0; i < n; i++) {
-      fx(crit ? 'crit' : 'hit', per, idx, 0, i * 0.07);
+      fx(crit ? 'crit' : 'hit', per, idx, 0, T + i * 0.07);   // 명중 시점에 맞춰 뜬다
       // 무작위로만 흩으면 겹칠 때가 있다. 발 순서대로 부채꼴로 벌리고 거기에만 흔들림을 더한다.
       const c = R.fx[R.fx.length - 1];
       // 숫자는 자릿수가 늘면 길어진다(4.56e42 같은 것도 뜬다). 가로로만 벌리면
@@ -272,7 +313,6 @@ export function tick(dt) {
       c.jx = (i - (n - 1) / 2) * 42 + (Math.random() - 0.5) * 10;
       c.y = -i * 13;
     }
-    if (crit) R.shake = Math.max(R.shake, 0.16);
     if (f.Lhp <= L0) onKill(f, idx);
   }
 

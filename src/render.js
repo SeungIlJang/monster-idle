@@ -279,6 +279,55 @@ function bar(x, y, w, h, frac, color) {
   ctx.fillRect(x, y, w * Math.max(0, Math.min(1, frac)), h);
 }
 
+// 적 인덱스 → 화면 좌표. 매 프레임 적을 그리며 채우고, 투사체·파편이 그대로 쓴다.
+// 숫자 연출은 예전처럼 인덱스 근사 위치를 쓰지만 투사체는 실제로 맞아야 해서 좌표가 필요하다.
+const foePos = [];
+
+/** 투사체 한 발. 모양은 리드 몬스터의 bolt.shape, 색은 bolt.color (balance.json). */
+function drawBolt(x, y, u, b, size) {
+  const mon = B.roster.monsters.find(m => m.key === S.mon);
+  const col = mon?.bolt?.color || '#9ae6b4';
+  const shape = mon?.bolt?.shape || 'orb';
+  const r = size * (b.crit ? 0.11 : 0.085);
+  // 꼬리 — 지나온 쪽으로 옅게 늘어뜨린다. 점 하나만 날면 너무 빈약하다.
+  ctx.save();
+  ctx.globalAlpha = 0.3;
+  ctx.strokeStyle = col;
+  ctx.lineWidth = r * 1.1;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x - r * 2.6, y + r * 0.5);
+  ctx.lineTo(x, y);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.save();
+  ctx.fillStyle = col;
+  ctx.shadowColor = col;
+  ctx.shadowBlur = b.crit ? 12 : 6;
+  if (shape === 'wedge') {                 // 쐐기 — 날아가는 방향으로 뾰족하게
+    ctx.translate(x, y);
+    ctx.beginPath();
+    ctx.moveTo(r * 1.5, 0); ctx.lineTo(-r, -r * 0.8); ctx.lineTo(-r * 0.4, 0); ctx.lineTo(-r, r * 0.8);
+    ctx.closePath(); ctx.fill();
+  } else if (shape === 'shard') {          // 조각 — 회전하는 마름모
+    ctx.translate(x, y);
+    ctx.rotate(b.ph + u * 9);
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 1.3); ctx.lineTo(r * 0.8, 0); ctx.lineTo(0, r * 1.3); ctx.lineTo(-r * 0.8, 0);
+    ctx.closePath(); ctx.fill();
+  } else if (shape === 'coin') {           // 금화 — 납작하게 돌아간다
+    ctx.translate(x, y);
+    ctx.scale(Math.abs(Math.cos(b.ph + u * 11)) * 0.8 + 0.2, 1);
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#b07d10'; ctx.lineWidth = 1.5; ctx.stroke();
+  } else {                                  // orb
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+    ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.arc(x, y, r * 1.5, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+
 export function render(dt) {
   if (!ctx || !W || !H) return;
   t += dt;
@@ -370,33 +419,52 @@ export function render(dt) {
   // 한 기마다 용사가 다르다(combat.spawnWave 가 e.hero 를 심는다). 구세이브로 들어오면
   // e.hero 가 없으므로 예전처럼 구역 용사로 폴백한다.
   const lead = heroAt(R.stage);
-  const alive = R.enemies.filter(e => e.Lhp > L0);
-  const n = alive.length;
-  // 격자로 세우면 "줄" 이 보인다. 깊이를 지그재그로 주고 가로도 조금씩 어긋나게 둔다.
-  // 뒤 레인은 작고 위에, 앞 레인은 크고 아래에 — 그래야 한 바닥면 위에 흩어진 것으로 보인다.
-  const drawn = alive.map((e, i) => {
-    // 보스는 한 기뿐이다 — 흩을 이유가 없고 가운데 크게 서야 한다
-    if (R.boss) return { e, i, d: 0.5, x: W * 0.66 };
-    const d = FOE_LANES[i % FOE_LANES.length];
-    return { e, i, d, x: W * (0.56 + (i % 3) * 0.13 + (d - 0.5) * 0.06) };
-  }).sort((a, b) => a.d - b.d);           // 뒤에 있는 것부터 그린다
+  // 쓰러지는 중인 적도 그린다 — dead 포즈가 끝나야 사라진다.
+  // 레인은 **R.enemies 안의 제자리 번호**로 고른다. 살아있는 것만 세서 고르면
+  // 하나가 죽을 때마다 남은 적들이 레인을 갈아타며 툭 튄다.
+  const shown = [];
+  R.enemies.forEach((e, idx) => {
+    if (!(e.Lhp > L0 || e.deadT > 0)) return;
+    const d = R.boss ? 0.5 : FOE_LANES[idx % FOE_LANES.length];
+    const x = R.boss ? W * 0.66 : W * (0.56 + (idx % 3) * 0.13 + (d - 0.5) * 0.06);
+    shown.push({ e, idx, d, x });
+  });
+  shown.sort((a, b) => a.d - b.d);        // 뒤에 있는 것부터 그린다
 
-  for (const { e, i, d, x: ex } of drawn) {
+  for (const { e, idx, d, x: ex } of shown) {
     const ey = laneY(d);
     const h = eH * laneS(d);
     const eb = Math.sin(t * 2.4 + e.ph) * h * 0.015;
     const hit = e.hitT > 0 ? e.hitT / 0.12 : 0;
+    const dying = e.deadT > 0 ? e.deadT / (B.combatFx?.deathSec || 0.32) : 0;
+    foePos[idx] = { x: ex, y: ey - h * 0.55 };   // 투사체·파편이 겨눌 몸통 가운데
     // flip 을 쓰지 않는다 — 용사 그림이 이미 왼쪽(우리 쪽)을 보게 그려져 있다.
     // 뒤집으면 무기와 장식이 반대로 가고 기사의 방패가 바깥쪽으로 돌아간다.
-    const fPose = hit > 0 ? 'hit' : R.foeAtkT > 0 ? 'attack' : 'idle';
+    const fPose = dying > 0 ? 'dead' : hit > 0 ? 'hit' : R.foeAtkT > 0 ? 'attack' : 'idle';
     const hero = e.hero || lead;
-    drawSprite(pick('hero', hero.key, fPose, frame + i), ex, ey + eb, h, boxOf('hero', hero.key), {
-      dx: hit * 7,
+    if (dying > 0) ctx.globalAlpha = Math.max(0, dying);   // 쓰러지며 옅어진다
+    drawSprite(pick('hero', hero.key, fPose, frame + idx), ex, ey + eb, h, boxOf('hero', hero.key), {
+      dx: hit * 7 + (1 - dying) * (dying > 0 ? 14 : 0),    // 맞은 쪽으로 밀리며 쓰러진다
       sx: 1 + hit * 0.06,
-      ring: FOE,
+      ring: dying > 0 ? null : FOE,
     });
+    ctx.globalAlpha = 1;
+    if (dying > 0) continue;              // 쓰러지는 적은 체력바를 지운다
     const bw = h * 0.62;
     bar(ex - bw / 2, ey - h - 7, bw, 4, ratio(e.Lhp, e.Lmax), '#ff5a6e');
+  }
+
+  // ── 투사체 ── 리드에서 적까지 날아가고 꼬리를 남긴다.
+  // 피해는 이미 끝나 있고 이건 눈에 보이는 몫만 담당한다(combat.js 참조).
+  const boltFrom = { x: W * 0.30, y: feet - pH * 0.55 };
+  for (const b of R.bolts) {
+    const to = foePos[b.idx];
+    if (!to || b.t > b.dur) continue;
+    const u = Math.min(1, b.t / b.dur);
+    const bx = boltFrom.x + (to.x - boltFrom.x) * u;
+    // 살짝 포물선을 그려야 '날아간다' 로 읽힌다
+    const by = boltFrom.y + (to.y - boltFrom.y) * u - Math.sin(u * Math.PI) * pH * 0.30;
+    drawBolt(bx, by, u, b, pH);
   }
 
   ctx.textAlign = 'center';
@@ -436,6 +504,12 @@ export function render(dt) {
       ctx.strokeStyle = '#b07d10';
       ctx.lineWidth = 1.5;
       ctx.stroke();
+      continue;
+    }
+    if (f.type === 'shard') {           // 명중 파편 — 리드 색으로 튄다
+      const mon = B.roster.monsters.find(m => m.key === S.mon);
+      ctx.fillStyle = mon?.bolt?.color || '#9ae6b4';
+      ctx.fillRect(fx - 2, fy - 2, 4, 4);
       continue;
     }
     if (f.type === 'skill') { ctx.fillStyle = '#b59bff'; ctx.font = '800 20px system-ui'; }
