@@ -463,6 +463,8 @@
     "_왜": "스킬 배너는 지금까지 \"보스 버스트\" 라는 숫자로만 존재했다. 동료 때와 같이 이미 있는 수치에 몸을 준다. 피해를 더하면 로그 곡선상 의미도 없고(배속 검증 참고) 판정을 다시 받아야 한다.",
     "dpsShare": 0.35,
     "_dpsShare": "스킬이 가져가는 총 DPS 비율. 장착한 스킬이 없으면 0 이고 평타가 100% 를 낸다. 너무 높이면 쿨 사이에 피해가 끊겨 체감이 나빠진다.",
+    "fx": {"acid": ["#8ae06a", "splash"], "gust": ["#bfe9ff", "streak"], "shriek": ["#ff9ad5", "ring"], "grasp": ["#b59bff", "grip"], "breath": ["#ff8a4a", "cone"], "quake": ["#d9b06a", "crack"]},
+    "_fx": "스킬별 화면 연출. 6종이 전부 같은 섬광이면 무엇이 터졌는지 안 읽힌다. 연출 전용이라 피해와 무관하다.",
     "_cd": "스킬별 쿨타임(초). 서로 다르게 둬야 바가 번갈아 차오른다. 쿨이 길수록 한 방이 크다 — 몫이 쿨에 비례한다.",
     "cd": {
       "acid": 5,
@@ -689,43 +691,43 @@
     "list": [
       {
         "key": "forest",
-        "name": "몬스터 숲"
+        "name": "몬스터 숲", "amb": {"color": "#d8f5a0", "kind": "leaf"}
       },
       {
         "key": "swamp",
-        "name": "버섯 늪"
+        "name": "버섯 늪", "amb": {"color": "#9ae6ff", "kind": "mote"}
       },
       {
         "key": "highland",
-        "name": "바람 언덕"
+        "name": "바람 언덕", "amb": {"color": "#ffffff", "kind": "mote"}
       },
       {
         "key": "cave",
-        "name": "해골 동굴"
+        "name": "해골 동굴", "amb": {"color": "#8ad8ff", "kind": "mote"}
       },
       {
         "key": "canyon",
-        "name": "불타는 협곡"
+        "name": "불타는 협곡", "amb": {"color": "#ffb36b", "kind": "ember"}
       },
       {
         "key": "frost",
-        "name": "서리 평원"
+        "name": "서리 평원", "amb": {"color": "#ffffff", "kind": "snow"}
       },
       {
         "key": "shadow",
-        "name": "그림자 숲"
+        "name": "그림자 숲", "amb": {"color": "#b59bff", "kind": "mote"}
       },
       {
         "key": "ruins",
-        "name": "폐허 마을"
+        "name": "폐허 마을", "amb": {"color": "#d9cfae", "kind": "dust"}
       },
       {
         "key": "lava",
-        "name": "용암 지대"
+        "name": "용암 지대", "amb": {"color": "#ff7a4a", "kind": "ember"}
       },
       {
         "key": "sky",
-        "name": "하늘 성채"
+        "name": "하늘 성채", "amb": {"color": "#fff3b0", "kind": "mote"}
       }
     ]
   },

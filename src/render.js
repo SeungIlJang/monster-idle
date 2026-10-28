@@ -175,10 +175,11 @@ function drawBG(dt) {
   const set = bgLayers(key);
   if (set) {                       // 먼 하늘은 거의 안 움직이고 발밑 땅은 제 속도로 흐른다
     for (let i = 0; i < set.length; i++) drawScroll(set[i], bgX * LAYER_SPEED[i]);
+    ambTick(dt, key);
     return;
   }
   const img = bgImage(key);        // 층이 아직 없는 지역 — 통짜 배경을 단층으로 흘린다
-  if (img) { drawScroll(img, bgX); return; }
+  if (img) { drawScroll(img, bgX); ambTick(dt, key); return; }
 
   // 하늘 — 밝은 낮
   const sky = ctx.createLinearGradient(0, 0, 0, gy);
@@ -277,6 +278,48 @@ function bar(x, y, w, h, frac, color) {
   ctx.fillRect(x, y, w, h);
   ctx.fillStyle = color;
   ctx.fillRect(x, y, w * Math.max(0, Math.min(1, frac)), h);
+}
+
+// ── 환경 입자 ── 배경이 흐르기만 하고 그 안엔 아무것도 안 움직이고 있었다.
+// 레퍼런스는 fx_dust·fx_autumn_leaf·fx_cloud 같은 걸 상시 띄운다. 지역마다 색과
+// 종류만 바꿔(balance.json 의 zones.list[].amb) 같은 코드로 돌린다.
+const AMB_N = 18;
+let ambZone = '', amb = [];
+function ambTick(dt, zone) {
+  if (ambZone !== zone) {                 // 지역이 바뀌면 통째로 새로 뿌린다
+    ambZone = zone;
+    amb = Array.from({ length: AMB_N }, () => ({
+      x: Math.random(), y: Math.random(), r: 0.5 + Math.random() * 1.6,
+      vx: -0.004 - Math.random() * 0.012, vy: (Math.random() - 0.5) * 0.006,
+      ph: Math.random() * 6.28, sp: 0.6 + Math.random() * 1.6,
+    }));
+  }
+  const cfg = (B.zones.list.find(z => z.key === zone) || {}).amb;
+  if (!cfg) return;
+  const kind = cfg.kind;
+  ctx.save();
+  ctx.fillStyle = cfg.color;
+  for (const p of amb) {
+    // 눈·재는 떨어지고 나머지는 옆으로 흐른다
+    const fall = kind === 'snow' || kind === 'leaf' ? 0.016 : kind === 'ember' ? -0.022 : 0;
+    p.x += p.vx * dt * 60 * 0.016;
+    p.y += (p.vy + fall) * dt * 60 * 0.016;
+    p.ph += dt * p.sp;
+    if (p.x < -0.05) { p.x = 1.05; p.y = Math.random(); }
+    if (p.y < -0.05) p.y = 1.05;
+    if (p.y > 1.05) p.y = -0.05;
+    const px = (p.x + Math.sin(p.ph) * 0.012) * W;
+    const py = p.y * H * GROUND * 1.25;           // 지면 아래로는 안 내려간다
+    ctx.globalAlpha = (kind === 'ember' ? 0.75 : 0.42) * (0.6 + 0.4 * Math.sin(p.ph * 1.3));
+    if (kind === 'leaf') {                         // 잎 — 길쭉하게 회전
+      ctx.save(); ctx.translate(px, py); ctx.rotate(p.ph);
+      ctx.fillRect(-p.r * 2, -p.r * 0.7, p.r * 4, p.r * 1.4);
+      ctx.restore();
+    } else {
+      ctx.beginPath(); ctx.arc(px, py, p.r, 0, 7); ctx.fill();
+    }
+  }
+  ctx.restore();
 }
 
 // 적 인덱스 → 화면 좌표. 매 프레임 적을 그리며 채우고, 투사체·파편이 그대로 쓴다.
@@ -431,6 +474,21 @@ export function render(dt) {
   });
   shown.sort((a, b) => a.d - b.d);        // 뒤에 있는 것부터 그린다
 
+  // 보스 발밑 오라 — 상시 맥동한다. 보스가 "큰 적" 이 아니라 "보스" 로 읽히게 한다.
+  if (R.boss && shown.length) {
+    const d0 = shown[0].d, bx = shown[0].x, by = laneY(d0);
+    const pulse = 0.72 + 0.28 * Math.sin(t * 4.2);
+    const rw = eH * 0.72 * pulse, rh = rw * 0.3;
+    ctx.save();
+    const g = ctx.createRadialGradient(bx, by, 0, bx, by, rw);
+    const hot = enrage() > 1;                       // 광폭화하면 붉게 달아오른다
+    g.addColorStop(0, hot ? 'rgba(255,90,60,.55)' : 'rgba(255,190,80,.45)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.ellipse(bx, by, rw, rh, 0, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+
   for (const { e, idx, d, x: ex } of shown) {
     const ey = laneY(d);
     const h = eH * laneS(d);
@@ -483,11 +541,77 @@ export function render(dt) {
 
 
   // 스킬 섬광 — 전장을 한 번 밝힌다. 숫자만으로는 "터졌다" 가 안 읽힌다.
+  // ── 스킬 연출 ── 6종이 전부 같은 보라 섬광이면 무엇이 터졌는지 안 읽힌다.
+  // 모양·색은 balance.json 의 skills.fx 가 정한다(연출 전용, 피해와 무관).
   if (R.skillFxT > 0) {
-    ctx.globalAlpha = Math.min(0.35, R.skillFxT);
-    ctx.fillStyle = '#b59bff';
-    ctx.fillRect(0, 0, W, H);
-    ctx.globalAlpha = 1;
+    const def = (B.skills.fx || {})[R.skillFx] || ['#b59bff', 'flash'];
+    const [col, kind] = def;
+    const u = 1 - R.skillFxT / 0.35;             // 0 → 1
+    const a = Math.min(0.42, R.skillFxT);
+    const cy = H * GROUND * 0.92, cx = W * 0.66;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.fillStyle = col; ctx.strokeStyle = col;
+    if (kind === 'streak') {                      // 돌풍 — 가로로 긋는 선
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 5; i++) {
+        const yy = H * (0.28 + i * 0.1);
+        const x0 = W * (u * 1.5 - 0.5 + i * 0.05);
+        ctx.beginPath(); ctx.moveTo(x0 * W / W, yy); ctx.lineTo(x0 + W * 0.3, yy); ctx.stroke();
+      }
+    } else if (kind === 'ring') {                 // 비명 — 퍼지는 고리
+      ctx.lineWidth = 4;
+      for (let i = 0; i < 3; i++) {
+        ctx.globalAlpha = a * (1 - i * 0.3);
+        ctx.beginPath(); ctx.arc(cx, cy, W * (0.08 + u * 0.5) - i * 14, 0, 7); ctx.stroke();
+      }
+    } else if (kind === 'cone') {                 // 숨결 — 리드에서 뻗는 부채꼴
+      ctx.beginPath();
+      ctx.moveTo(W * 0.30, cy);
+      ctx.lineTo(W * (0.30 + u * 0.75), cy - H * 0.16);
+      ctx.lineTo(W * (0.30 + u * 0.75), cy + H * 0.10);
+      ctx.closePath(); ctx.fill();
+    } else if (kind === 'crack') {                // 지진 — 지면 균열
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 4; i++) {
+        const bx = W * (0.45 + i * 0.13);
+        ctx.beginPath(); ctx.moveTo(bx, cy);
+        ctx.lineTo(bx + (i % 2 ? 10 : -10), cy - H * 0.08 * u);
+        ctx.lineTo(bx + (i % 2 ? -6 : 6), cy - H * 0.15 * u);
+        ctx.stroke();
+      }
+    } else if (kind === 'grip') {                 // 포박 — 조여드는 테두리
+      ctx.lineWidth = 10 * (1 - u * 0.6);
+      const m = W * 0.06 * u;
+      ctx.strokeRect(m, m, W - m * 2, H - m * 2);
+    } else if (kind === 'splash') {               // 산성 — 번지는 얼룩
+      for (let i = 0; i < 7; i++) {
+        const an = i * 0.9 + u * 2;
+        ctx.globalAlpha = a * (1 - u) * 1.4;
+        ctx.beginPath();
+        ctx.arc(cx + Math.cos(an) * W * 0.18 * u, cy + Math.sin(an) * H * 0.10 * u, 10 + u * 16, 0, 7);
+        ctx.fill();
+      }
+    } else {                                      // 폴백 — 예전 전체 섬광
+      ctx.globalAlpha = Math.min(0.35, R.skillFxT);
+      ctx.fillRect(0, 0, W, H);
+    }
+    ctx.restore();
+  }
+
+  // ── 버프 가시화 ── 배속은 숫자로만 있어서 켜 둔 줄도 모른다. 가장자리에 속도선을 깐다.
+  if ((S.spd || 1) > 1) {
+    ctx.save();
+    ctx.globalAlpha = 0.16 + 0.06 * Math.sin(t * 9);
+    ctx.strokeStyle = '#ffd34d';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 6; i++) {
+      const yy = H * (0.1 + i * 0.16) + Math.sin(t * 6 + i) * 4;
+      const len = W * 0.09;
+      const x0 = (t * 320 + i * 140) % (W + len) - len;
+      ctx.beginPath(); ctx.moveTo(x0, yy); ctx.lineTo(x0 + len, yy); ctx.stroke();
+    }
+    ctx.restore();
   }
 
   // ── 데미지 숫자 · 금화 ──
@@ -551,6 +675,61 @@ export function render(dt) {
     ctx.strokeText(R.banner, W * 0.5, H * 0.18);
     ctx.fillText(R.banner, W * 0.5, H * 0.18);
     ctx.globalAlpha = 1;
+  }
+
+  // ── 보스 전용 체력바 ── 머리 위 작은 바로는 "보스" 가 안 읽힌다. 화면 위에 길게 깐다.
+  if (R.boss) {
+    const live = R.enemies.find(e => e.Lhp > L0);
+    if (live) {
+      const bw = W * 0.74, bx = (W - bw) / 2, by = H * 0.055;
+      const fr = ratio(live.Lhp, live.Lmax);
+      ctx.save();
+      ctx.fillStyle = 'rgba(8,11,24,.72)';
+      ctx.fillRect(bx - 3, by - 3, bw + 6, 14);
+      ctx.fillStyle = '#2a1118';
+      ctx.fillRect(bx, by, bw, 8);
+      const hot = enrage() > 1;
+      const g = ctx.createLinearGradient(bx, 0, bx + bw, 0);
+      g.addColorStop(0, hot ? '#ff4a3a' : '#ff5a6e');
+      g.addColorStop(1, hot ? '#ffb14a' : '#ff9a9a');
+      ctx.fillStyle = g;
+      ctx.fillRect(bx, by, bw * Math.max(0, Math.min(1, fr)), 8);
+      ctx.restore();
+    }
+  }
+
+  // ── 보스 등장 경고 ── 들어선 순간 1초. 가로 띠가 위아래로 열린다.
+  if (R.bossIntroT > 0) {
+    const u = 1 - R.bossIntroT / 1.0;                 // 0 → 1
+    const open = Math.min(1, u * 3);                  // 빠르게 열리고
+    const fade = R.bossIntroT < 0.3 ? R.bossIntroT / 0.3 : 1;   // 끝에서 사라진다
+    const bh = H * 0.17 * open;
+    ctx.save();
+    ctx.globalAlpha = 0.82 * fade;
+    ctx.fillStyle = 'rgba(14,4,8,.9)';
+    ctx.fillRect(0, H * 0.42 - bh / 2, W, bh);
+    ctx.strokeStyle = '#ff5a4a'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, H * 0.42 - bh / 2); ctx.lineTo(W, H * 0.42 - bh / 2);
+    ctx.moveTo(0, H * 0.42 + bh / 2); ctx.lineTo(W, H * 0.42 + bh / 2);
+    ctx.stroke();
+    if (open > 0.6) {
+      ctx.globalAlpha = fade;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffd34d';
+      ctx.font = '800 22px system-ui';
+      ctx.fillText('👑 보스 ' + R.heroName, W / 2, H * 0.42 + 8);
+    }
+    ctx.restore();
+  }
+
+  // ── 보스 처치 섬광 ──
+  if (R.bossSlainT > 0) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(0.75, R.bossSlainT * 1.5);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
   }
 
   ctx.restore();

@@ -30,6 +30,9 @@ export const R = {
   foeAtkT: 0,       // 적 공격 애니 잔여 시간 (적은 그룹 1타이머라 다 같이 휘두른다)
   skillCd: {},      // 스킬별 남은 쿨 (세이브하지 않는다 — 전투마다 새로 시작)
   skillFxT: 0,      // 스킬 섬광 잔여 시간
+  skillFx: null,    // 어떤 스킬이 터졌나 (연출 구분용)
+  bossIntroT: 0,    // 보스 등장 경고 잔여 시간
+  bossSlainT: 0,    // 보스 처치 섬광 잔여 시간
   bolts: [],         // 날아가는 투사체 (연출 전용 — 피해는 발사 즉시 끝나 있다)
   fx: [],            // 데미지 숫자 등 연출
   farmClears: 0,     // 파밍으로 클리어한 횟수 (자동 재도전 판단용)
@@ -74,6 +77,8 @@ export function enterStage(stage, mode = MODE.RUN) {
   R.stageTime = 0;
   if (mode === MODE.RUN) R.farmClears = 0;
   R.heroName = heroAt(R.stage).name;
+  // 보스 스테이지에 들어서는 순간은 10스테이지마다 오는 유일한 리듬이다. 경고를 띄운다.
+  R.bossIntroT = R.boss ? 1.0 : 0;
   spawnWave();
 }
 
@@ -146,6 +151,7 @@ function onKill(e, idx) {
   // dead 포즈 그림이 에셋에 있는데 안 쓰고 즉시 사라지고 있었다. 잠깐 쓰러뜨린다.
   // 전투 판정에는 영향이 없다 — front()/aliveCount() 는 Lhp 로만 판단한다.
   e.deadT = B.combatFx.deathSec;
+  if (R.boss) { R.bossSlainT = 0.5; R.shake = Math.max(R.shake, 0.45); }
   gainGold();
   bumpDaily('kill');
   fx('gold', '+' + fmt(LeGOLD(R.stage, R.boss)), idx, -16);
@@ -228,6 +234,7 @@ export function fireSkill(sk, secs) {
   const idx = R.enemies.indexOf(tgt);
   fx('skill', sk.icon + ' ' + fmt(Ldmg), idx, -4);
   R.skillFxT = 0.35;
+  R.skillFx = sk.id;
   R.shake = Math.max(R.shake, 0.2);
   if (tgt.Lhp <= L0) onKill(tgt, idx);
   return true;
@@ -240,6 +247,8 @@ export function tick(dt) {
   if (R.pHitT > 0) R.pHitT -= dt;
   if (R.foeAtkT > 0) R.foeAtkT -= dt;
   if (R.skillFxT > 0) R.skillFxT -= dt;
+  if (R.bossIntroT > 0) R.bossIntroT -= dt;
+  if (R.bossSlainT > 0) R.bossSlainT -= dt;
   // y 는 픽셀 오프셋(위로 떠오름). delay 가 남은 것은 아직 뜨지 않은 것이다.
   for (const f of R.fx) {
     if (f.delay > 0) { f.delay -= dt; continue; }
