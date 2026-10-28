@@ -57,11 +57,6 @@ for (const group of ['mon', 'hero']) {
     const out = {};
     let firstBox = null;
 
-    // 프레임 수가 아닌 항목(`evo` 같은 표시)은 그대로 들고 간다.
-    // 아래에서 `manifest[group][key] = out` 으로 항목을 통째로 갈아끼우기 때문에,
-    // 여기서 옮기지 않으면 이 도구를 한 번 더 돌리는 순간 진화 단계가 조용히 사라진다.
-    for (const k of Object.keys(entry)) if (typeof entry[k] !== 'number' && k !== 'box') out[k] = entry[k];
-
     for (const anim of Object.keys(entry)) {
       if (typeof entry[anim] !== 'number') continue;        // tight 같은 플래그는 건너뛴다
       const n = entry[anim];
@@ -101,6 +96,13 @@ for (const group of ['mon', 'hero']) {
         h: +(firstBox.h / firstBox.ch).toFixed(4),
       };
     }
+
+    // 프레임 수가 아닌 항목(`evo` 같은 표시)은 그대로 들고 간다.
+    // 바로 아래에서 항목을 통째로 갈아끼우기 때문에, 여기서 옮기지 않으면 이 도구를
+    // 한 번 더 돌리는 순간 진화 단계가 조용히 사라진다.
+    // 넣는 자리는 끝이다 — make-mon-evo 가 쓴 순서와 같아야 다시 돌려도 파일이 안 바뀐다.
+    for (const k of Object.keys(entry)) if (typeof entry[k] !== 'number' && k !== 'box') out[k] = entry[k];
+
     manifest[group][key] = out;
   }
 }
