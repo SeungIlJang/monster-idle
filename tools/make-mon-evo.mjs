@@ -34,9 +34,14 @@ const CX_TOL = 0.6;        // 가로 중심 허용 오차(px)
 const IDLE_TOL = 14;       // idle 내용 크기 허용 오차(px) — 넘으면 확대가 중복된다
 const RATIO_TOL = 0.15;    // 포즈/idle 크기비가 기본과 어긋나도 되는 폭
 
-const src = process.argv[2];
+// --check 는 **검사만** 한다. 아트 담당이 보내기 전에 직접 돌리는 용도다.
+// 패럴랙스 1차가 "규격은 맞는데 합쳐 놓으면 못 쓴다" 로 30장 통째로 되돌아갔다.
+// 보낼 때 확인할 방법이 없으면 같은 일이 반복된다.
+const args = process.argv.slice(2);
+const CHECK = args.includes('--check');
+const src = args.find(a => !a.startsWith('--'));
 if (!src || !fs.existsSync(src)) {
-  console.error('사용법: node tools/make-mon-evo.mjs <준비된폴더>');
+  console.error('사용법: node tools/make-mon-evo.mjs <준비된폴더> [--check]');
   process.exit(1);
 }
 
@@ -132,11 +137,13 @@ for (const key of Object.keys(manifest.mon || {})) {
 
     // 원본 바이트를 그대로 쓴다. png.mjs 로 다시 인코딩하면 오히려 커진다(make-mon.mjs 주석).
     for (const b of batch) {
-      const dest = path.join(dir, `t${st}_${b.pose}_1.png`);
-      fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(dest, b.raw);
-      // defringe 를 건너뛰게 등록한다 — 투명 픽셀이 (0,0,0) 인 생성 PNG 라 돌리면 가장자리가 망가진다
-      stamp[path.relative(ASSETS, dest).replaceAll('\\', '/')] = hash(b.raw);
+      if (!CHECK) {
+        const dest = path.join(dir, `t${st}_${b.pose}_1.png`);
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(dest, b.raw);
+        // defringe 를 건너뛰게 등록한다 — 투명 픽셀이 (0,0,0) 인 생성 PNG 라 돌리면 가장자리가 망가진다
+        stamp[path.relative(ASSETS, dest).replaceAll('\\', '/')] = hash(b.raw);
+      }
       taken++; bytes += b.raw.length;
     }
     got.push(st);
@@ -149,11 +156,18 @@ for (const key of Object.keys(manifest.mon || {})) {
 }
 
 if (reject.length) {
-  console.log('\n떨어뜨림 — 들이지 않았다:');
+  console.log(`\n${CHECK ? '고쳐야 할 것' : '떨어뜨림 — 들이지 않았다'}:`);
   for (const r of reject) console.log('  ✗ ' + r);
 }
 if (!taken) {
-  console.log('들인 게 없다. 매니페스트를 건드리지 않았다.');
+  console.log(CHECK ? '\n통과한 단계가 없습니다.' : '들인 게 없다. 매니페스트를 건드리지 않았다.');
+  process.exit(reject.length ? 1 : 0);
+}
+
+if (CHECK) {
+  console.log(`\n통과 ${taken}장 (${(bytes / 1048576).toFixed(2)}MB)`
+    + (reject.length ? ` · 위 ${reject.length}건을 고쳐 주세요` : ' — 전부 통과했습니다. 보내 주세요.'));
+  console.log('(검사만 했습니다 — 파일을 쓰지 않았습니다)');
   process.exit(reject.length ? 1 : 0);
 }
 
