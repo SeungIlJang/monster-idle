@@ -83,21 +83,41 @@ const BG = new Map();
 // 패럴랙스 층 — assets/bg/layers/<zone>_{1_sky,2_mid,3_ground}.png.
 // 셋이 **다 준비됐을 때만** 쓴다. 한 장이라도 없으면 통짜 배경으로 폴백한다
 // (아트가 한 지역씩 들어와도 게임이 안 깨지게).
-const LAYER_SPEED = [0.15, 0.45, 1.00];
-const LAYER_NAME = ['1_sky', '2_mid', '3_ground'];
+// 층 정의. **하늘은 선택이다** — 중경이 지평선 위를 전부 덮고 있으면 하늘은 한 픽셀도
+// 안 보인다(실측 0.0%). 그런 지역에 하늘 파일을 두면 2.6MB 를 받아서 안 그리는 꼴이라
+// 빼 뒀다. 나중에 중경 위쪽을 투명하게 고치면 파일만 다시 넣으면 된다 — 코드는 그대로다.
+const LAYER_DEF = [
+  { n: '1_sky', speed: 0.15, optional: true },
+  { n: '2_mid', speed: 0.45 },
+  { n: '3_ground', speed: 1.00 },
+];
 const LAYERS = new Map();
+/**
+ * 그릴 층들 또는 상태값.
+ *   배열  → 그린다
+ *   'wait' → 아직 받는 중. **통짜 배경을 부르면 안 된다** — 그걸 부르는 순간
+ *            층과 통짜를 둘 다 받아 지역당 289KB 를 더 쓴다(10지역 3.3MB).
+ *   null   → 필수 층이 없다. 통짜로 폴백한다.
+ */
 function bgLayers(key) {
   if (!LAYERS.has(key)) {
-    LAYERS.set(key, LAYER_NAME.map(n => {
+    LAYERS.set(key, LAYER_DEF.map(d => {
       const im = new Image();
-      im.src = new URL(`../assets/bg/layers/${key}_${n}.png`, import.meta.url).href;
+      im.src = new URL(`../assets/bg/layers/${key}_${d.n}.png`, import.meta.url).href;
       im.onerror = () => { im.failed = true; };
+      im.speed = d.speed; im.optional = d.optional;
       return im;
     }));
   }
   const set = LAYERS.get(key);
-  if (set.some(im => im.failed)) return null;
-  return set.every(im => im.complete && im.naturalWidth > 0) ? set : null;
+  if (set.some(im => im.failed && !im.optional)) return null;
+  const ready = set.filter(im => im.complete && im.naturalWidth > 0);
+  const need = set.filter(im => !im.optional);
+  if (!need.every(im => im.complete && im.naturalWidth > 0)) {
+    // 선택 층만 실패한 거면 기다릴 이유가 없다
+    return need.every(im => im.failed) ? null : 'wait';
+  }
+  return ready;
 }
 
 function bgImage(key) {
@@ -173,13 +193,17 @@ function drawBG(dt) {
   bgX += (BG_WALK + (bgRush > 0 ? BG_RUSH : 0)) * dt;
 
   const set = bgLayers(key);
-  if (set) {                       // 먼 하늘은 거의 안 움직이고 발밑 땅은 제 속도로 흐른다
-    for (let i = 0; i < set.length; i++) drawScroll(set[i], bgX * LAYER_SPEED[i]);
+  if (Array.isArray(set)) {        // 먼 하늘은 거의 안 움직이고 발밑 땅은 제 속도로 흐른다
+    for (const im of set) drawScroll(im, bgX * im.speed);
     ambTick(dt, key);
     return;
   }
-  const img = bgImage(key);        // 층이 아직 없는 지역 — 통짜 배경을 단층으로 흘린다
-  if (img) { drawScroll(img, bgX); ambTick(dt, key); return; }
+  // 'wait' 면 통짜를 **부르지 않는다**. 부르는 순간 층과 통짜를 둘 다 받는다.
+  // 잠깐 아래 그라데이션이 보이는 쪽이 지역당 289KB 를 더 받는 것보다 낫다.
+  if (set !== 'wait') {
+    const img = bgImage(key);      // 층이 없는 지역 — 통짜 배경을 단층으로 흘린다
+    if (img) { drawScroll(img, bgX); ambTick(dt, key); return; }
+  }
 
   // 하늘 — 밝은 낮
   const sky = ctx.createLinearGradient(0, 0, 0, gy);
@@ -800,10 +824,12 @@ export function preloadFor(stage) {
   preload('mon', S.mon, monTier(S.mon));
   preload('hero', heroAt(stage).key);
   // 적과 배경은 5스테이지마다 바뀐다. 다음 장면 것도 미리 받아둬야 교체되는 순간
-  // 몇 프레임 동안 빈 칸/맨 캔버스가 비친다. bgImage 는 캐시에 넣기만 하면 예열된다.
+  // 몇 프레임 동안 빈 칸/맨 캔버스가 비친다. 캐시에 넣기만 하면 예열된다.
   const next = stage + sceneEvery();
   // 한 웨이브에 지금까지 등장한 용사가 섞여 나오므로 풀 전체가 필요하다 (다음 구역 것까지).
   for (const h of heroPool(next)) preload('hero', h.key);
-  bgImage(zoneAt(stage).key);
-  bgImage(zoneAt(next).key);
+  // **층을 예열한다.** 예전엔 통짜(bgImage)를 예열했는데, 층이 생긴 뒤로는 그게
+  // 지역당 ~320KB 를 더 받는 일이 됐다 — 받아 놓고 한 번도 안 그린다.
+  bgLayers(zoneAt(stage).key);
+  bgLayers(zoneAt(next).key);
 }
