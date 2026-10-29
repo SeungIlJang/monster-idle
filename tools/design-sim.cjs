@@ -86,6 +86,36 @@ const BE = D.stage.bossEnrage || { after: 1e9, perSec: 0, cap: 1 };
 const enrageAt = tt => ARG.enrageOff ? 1
   : Math.min(NUM('eCap') ?? BE.cap, 1 + Math.max(0, tt - (NUM('eAfter') ?? BE.after)) * (NUM('ePerSec') ?? BE.perSec));
 
+// ── 관문 보스 ─────────────────────────────────────────────────
+// 측정상 사망 127회가 **전부 1일차** 였다. 그 뒤 364일은 한 번도 안 죽는다 —
+// 실패가 "죽음" 이 아니라 "너무 느림"(포기 187,072회)으로 바뀌어 있었다.
+// 관문은 **살아남는 시험**으로 되돌리는 장치다: 체력보다 공격력을 올리고 광폭화를
+// 앞당긴다. 체력만 올리면 또 느려질 뿐이라 긴장이 아니라 지루함이 된다.
+//
+// 영구 벽이 되면 안 된다(원칙 3). 실패해도 아래서 파밍하고 다시 오면 되고,
+// 전투력은 상한 없이 자라므로 언젠가는 뚫린다 — 얼마나 걸리는지를 시뮬이 답한다.
+const GT = D.stage.gate || {};
+const GATE = {
+  on: !ARG.gateOff && (NUM('gateEvery') ?? GT.every ?? 0) > 0,
+  every: NUM('gateEvery') ?? GT.every ?? 0,
+  hpMul: NUM('gateHp') ?? GT.hpMul ?? 1,
+  atkMul: NUM('gateAtk') ?? GT.atkMul ?? 1,
+  // 한 대당 플레이어 최대 체력의 몇 %. **이게 관문의 본체다.**
+  // 적 공격력을 키우는 길은 막혀 있다 — 측정상 1일차 이후 보스에게 죽으려면 ×10^6 이 필요했다.
+  hpPct: NUM('gatePct') ?? GT.hpPct ?? 0,
+  // 실패할수록 그 관문이 약해진다. **벽을 구조적으로 불가능하게 만드는 장치다.**
+  // 이게 없으면 관문 하나에서 7~20시간씩 막힌다(실측) — 판정 1(무진행 6시간)이 깨진다.
+  // 긴장은 유지된다: 처음 몇 번은 진짜로 죽고, 약화는 시도한 만큼만 쌓인다.
+  weaken: NUM('gWeaken') ?? GT.weakenPerFail ?? 0,
+  weakenMax: NUM('gWeakenMax') ?? GT.weakenMax ?? 0,
+  after: NUM('gAfter') ?? GT.enrage?.after ?? BE.after,
+  perSec: NUM('gPerSec') ?? GT.enrage?.perSec ?? BE.perSec,
+  cap: NUM('gCap') ?? GT.enrage?.cap ?? BE.cap,
+};
+const isGate = s => GATE.on && s % GATE.every === 0;
+const gateEnrageAt = tt => ARG.enrageOff ? 1
+  : Math.min(GATE.cap, 1 + Math.max(0, tt - GATE.after) * GATE.perSec);
+
 // ══════════════════════════════════════════════════ 환생(프레스티지)
 // 스테이지·골드·강화를 버리고 **영혼**을 받는다. 영혼은 피해에 곱해지며 영구다.
 //
@@ -347,8 +377,10 @@ function LDPS(S, boss) {
 }
 
 const isBoss = s => s % D.stage.bossEvery === 0;
-const LeHP   = (s, b) => LG.hp0  + (s - 1) * LG.hpGrow   + (b ? LG.bossHp : 0);
-const LeATK  = (s, b) => LG.atk0 + (s - 1) * LG.atkGrow  + (b ? LG.bossAtk : 0);
+const LgateHp  = s => isGate(s) ? fromNum(GATE.hpMul) : 0;
+const LgateAtk = s => isGate(s) ? fromNum(GATE.atkMul) : 0;
+const LeHP   = (s, b) => LG.hp0  + (s - 1) * LG.hpGrow   + (b ? LG.bossHp : 0) + LgateHp(s);
+const LeATK  = (s, b) => LG.atk0 + (s - 1) * LG.atkGrow  + (b ? LG.bossAtk : 0) + LgateAtk(s);
 const LeGOLD = (s, b) => LG.gold0 + (s - 1) * LG.goldGrow + (b ? LG.bossGold : 0) + fromNum(ab('gold'));
 
 const Linc = (S, s, b) => LeATK(s, b) + fromNum(D.enemy.aspd * (b ? 1 : D.stage.perWave(s))) - LDEF(S);
@@ -404,7 +436,7 @@ function spend(S) {
 // ══════════════════════════════════════════════════ 스테이지 1회 시도
 // 전투 중 회복 없음. 웨이브 사이에만 회복. 제한시간 없음 — 실패는 사망 또는 "너무 느림"(플레이어 포기).
 function attempt(S, s) {
-  const b = isBoss(s);
+  const b = isBoss(s), gate = isGate(s);
   const waves = b ? 1 : D.stage.waves;
   const per = b ? 1 : D.stage.perWave(s);
   const Lhp0 = LHP(S), Ldps = LDPS(S, b), Lehp = LeHP(s, b), Leatk = LeATK(s, b), Ldef = LDEF(S);
@@ -415,12 +447,30 @@ function attempt(S, s) {
   // (여기서 giveUpSeconds 를 흘려보내면 타임라인이 포기 사이클로 뒤덮인다)
   if (!(ttk >= 0) || !isFinite(ttk) || ttk * per * waves > D.player.giveUpSeconds)
     return { win: false, reason: 'slow', elapsed: 0, Lgold };
+
+  // ── 관문: 최대 체력 비례 피해 ──
+  // 한 대당 maxHP × hpPct 라 스탯으로 못 피한다. 적 공격속도 × 전투시간 = 맞는 횟수이므로
+  // **빨리 못 죽이면 반드시 죽는다**. 광폭화는 그 비율을 키워 시간을 더 조인다.
+  // 이게 관문의 전부다 — 나머지(hpMul·atkMul)는 연출용 보조다.
+  if (gate && GATE.hpPct > 0) {
+    const hits = ttk * D.enemy.aspd;
+    const enr = gateEnrageAt(ttk / 2);          // 전투 중간값으로 근사
+    // 실패한 만큼 피해가 줄어든다 — 시도할수록 반드시 뚫린다(영구 벽 방지)
+    const fails = S.gateFail?.get(s) || 0;
+    const soft = Math.max(1 - GATE.weakenMax, 1 - fails * GATE.weaken);
+    if (GATE.hpPct * soft * hits * enr >= 1) {
+      if (!S.gateFail) S.gateFail = new Map();
+      S.gateFail.set(s, fails + 1);
+      return { win: false, reason: 'dead', elapsed: ttk, Lgold };
+    }
+  }
   for (let w = 0; w < waves; w++) {
     let alive = per;
     while (alive > 0) {
       t += ttk;
       // 보스전만 광폭화가 붙는다 (b). t 는 이 스테이지에서 흐른 시간.
-      const Ldmg = Leatk + fromNum(D.enemy.aspd * alive) - Ldef + fromNum(ttk) + (b ? fromNum(enrageAt(t)) : 0);
+      const Ldmg = Leatk + fromNum(D.enemy.aspd * alive) - Ldef + fromNum(ttk)
+        + (b ? fromNum(gate ? gateEnrageAt(t) : enrageAt(t)) : 0);
       if (Ldmg >= Lhp) return { win: false, reason: 'dead', elapsed: t, Lgold };
       Lhp = Lsub(Lhp, Ldmg);
       alive--; Lgold = Ladd(Lgold, LeGOLD(s, b));
@@ -435,6 +485,7 @@ function run() {
   const S = newState();
   const log = [], daily = [];
   let t = 0, deaths = 0, slows = 0, lastUp = 0, stall = 0, farmT = 0, nextLog = 2, day = 0;
+  const gstat = { tries: 0, win: 0, slow: 0, dead: 0, stallS: 0 };   // 관문 계측
   const deadLog = [];
   const LOG_CAP = 20000; let logEvery = 1;      // 스냅샷 메모리 상한 (아래 솎아내기 참조)
   const T = DAYS * 86400;
@@ -467,7 +518,9 @@ function run() {
     if (d2 > day) { day = d2; addPulls(); layer2Day(S); daily.push({ day, ...snap() }); }
 
     const t0 = t;
+    const atGate = isGate(S.stage);
     const r = attempt(S, S.stage);
+    if (atGate) { gstat.tries++; if (r.win) gstat.win++; else if (r.reason === 'dead') gstat.dead++; else gstat.slow++; }
     S.Lgold = Ladd(S.Lgold, r.Lgold + LGOLD_MUL); spend(S);
     t += r.elapsed / SPEED_MUL;        // 배속은 전투 시간만 줄인다 (하루 수입은 그대로)
 
@@ -530,7 +583,7 @@ function run() {
     if (t - lastUp > 24 * 3600) break;        // 24시간 무진행 = 벽으로 보고 중단
     if (S.stage > 200000) break;              // 수치가 아니라 연산량 상한
   }
-  return { S, log, daily, deaths, slows, t, stall, farmT, pullsPerDay, deadLog, offlineS, lostS, sessions, prestiges };
+  return { S, log, daily, deaths, slows, t, stall, farmT, pullsPerDay, deadLog, offlineS, lostS, sessions, prestiges, gstat };
 }
 
 // ══════════════════════════════════════════════════ 지표 & 출력
@@ -642,6 +695,18 @@ console.log('\n[사망 시점]  1시간 ' + deadsIn(3600) + '회  ·  6시간 ' 
   + '   (보스전 ' + DL.filter(d => d.boss).length + ')');
 if (DL.length) console.log('  첫 사망 ' + hm(DL[0].t) + ' @ st' + DL[0].stage + (DL[0].boss ? ' (보스)' : ''));
 else console.log('  첫 사망 없음');
+// **1일차 이후** 사망이 이 기능의 존재 이유다. 전체 사망률은 1일차 몰림을 가려 버린다 —
+// 127회가 전부 1일차여도 "사망률 0.06%" 로 통과한다(관문 넣기 전 실측).
+if (GATE.on) {
+  const after = DL.filter(d => d.t > 86400);
+  const atGate = DL.filter(d => isGate(d.stage));
+  console.log('  [관문] ' + GATE.every + '층마다 · 체력 ×' + GATE.hpMul + ' 공격 ×' + GATE.atkMul
+    + ' · 광폭 ' + GATE.after + '초후 +' + (GATE.perSec * 100).toFixed(0) + '%/초(최대 ×' + GATE.cap + ')');
+  console.log('  [관문] 1일차 이후 사망 ' + after.length + '회  ·  관문에서 죽은 것 ' + atGate.length + '회'
+    + (after.length ? ' · 마지막 ' + hm(after[after.length - 1].t) : ''));
+  const G = R.gstat;
+  console.log('  [관문] 시도 ' + G.tries + '회 → 통과 ' + G.win + ' · 사망 ' + G.dead + ' · 너무 느려 포기 ' + G.slow);
+}
 if (ARG.deaths) {
   console.log('\n[사망 목록 — 앞 40건]');
   for (const d of DL.slice(0, 40)) console.log('  ' + f(hm(d.t), 10) + ' st' + f(d.stage, 6) + (d.boss ? '  👑' : ''));

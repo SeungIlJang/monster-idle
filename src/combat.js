@@ -2,7 +2,7 @@
 //   · 전투 중 회복 없음 — 회복 스탯은 웨이브 사이에만 작동
 //   · 제한시간 없음 — 유일한 실패 조건은 사망
 //   · 사망 시 직전 스테이지로 내려가 파밍하고, 플레이어가 재도전을 누른다
-import { B, perWave, isBoss, LeHP, LeATK, LeGOLD, heroAt, foeAt, chapterLabel } from './balance.js';
+import { B, perWave, isBoss, isGate, gateCfg, LeHP, LeATK, LeGOLD, heroAt, foeAt, chapterLabel } from './balance.js';
 import { S, save } from './state.js';
 import { LDPS, LHP, LDEF, nval, shots, critF, Linc, bestFarmStage, canClear, ab } from './stats.js';
 import { bump as bumpDaily } from './daily.js';
@@ -19,6 +19,7 @@ export const R = {
   mode: MODE.RUN,
   stage: 1,
   boss: false,
+  gate: false,       // 관문 보스인가 — 최대 체력 비례 피해가 붙는다
   waveIdx: 0,
   enemies: [],
   Lhp: L0,
@@ -66,6 +67,7 @@ export function enterStage(stage, mode = MODE.RUN) {
   R.mode = mode;
   R.stage = Math.max(1, stage);
   R.boss = isBoss(R.stage);
+  R.gate = R.boss && isGate(R.stage);
   // 스킬 쿨은 **초기화하지 않는다.** 초반 스테이지는 2초면 끝나는데 쿨은 5~13초라,
   // 진입마다 되돌리면 스킬이 영영 안 터지면서 평타만 35% 깎인 채로 남는다.
   R.waveIdx = 0;
@@ -79,6 +81,12 @@ export function enterStage(stage, mode = MODE.RUN) {
   R.heroName = heroAt(R.stage).name;
   // 보스 스테이지에 들어서는 순간은 10스테이지마다 오는 유일한 리듬이다. 경고를 띄운다.
   R.bossIntroT = R.boss ? 1.0 : 0;
+  // 관문은 더 크게 알린다 — 규칙이 다른 싸움이라는 걸 모르면 그냥 억울하게 죽는다
+  if (R.gate) {
+    const soft = gateSoft(R.stage);
+    banner('⛩️ 관문 — 오래 끌면 쓰러진다'
+      + (soft < 1 ? ` (${Math.round((1 - soft) * 100)}% 약화됨)` : ''), 2.6, true);
+  }
   spawnWave();
 }
 
@@ -94,9 +102,36 @@ export function enterStage(stage, mode = MODE.RUN) {
  * 효과가 0 이었고 45초부터 보스 사망이 생겼다(30일 기준 0회 → 8회).
  */
 export function enrage() {
-  const e = B.stage.bossEnrage;
+  const e = R.gate ? (gateCfg().enrage || B.stage.bossEnrage) : B.stage.bossEnrage;
   if (!R.boss || !e) return 1;
   return Math.min(e.cap, 1 + Math.max(0, R.stageTime - e.after) * e.perSec);
+}
+
+// ── 관문 ─────────────────────────────────────────────────────
+/** 이 관문이 실패로 얼마나 약해졌나 (1 = 그대로, 0.2 = 80% 약화) */
+export function gateSoft(stage = R.stage) {
+  const g = gateCfg();
+  if (!g) return 1;
+  const fails = S.gateFail?.[stage] || 0;
+  return Math.max(1 - (g.weakenMax || 0), 1 - fails * (g.weakenPerFail || 0));
+}
+
+/**
+ * 관문이 한 대에 깎는 비율 (최대 체력 대비). 광폭화가 붙어 시간이 갈수록 커진다.
+ * **스탯으로 줄일 수 없다** — 이게 관문의 전부다. 빨리 죽이는 수밖에 없다.
+ */
+export function gateBite() {
+  const g = gateCfg();
+  if (!R.gate || !g || !(g.hpPct > 0)) return 0;
+  return g.hpPct * gateSoft() * enrage();
+}
+
+/** 지금 속도로 관문을 버틸 수 있는 남은 시간(초). UI 가 경고에 쓴다 */
+export function gateSecondsLeft() {
+  const bite = gateBite();
+  if (!(bite > 0)) return Infinity;
+  const frac = R.LhpMax > L0 ? ratio(R.Lhp, R.LhpMax) : 0;
+  return frac / (bite * B.enemy.aspd);
 }
 
 function front() {
@@ -210,12 +245,18 @@ function onKill(e, idx) {
 
 function playerDied() {
   const retryAt = R.stage;
+  // 관문에서 죽으면 그 관문이 약해진다. **벽을 구조적으로 막는 장치다** —
+  // 없으면 관문 하나에서 7~20시간 막히는 게 시뮬에서 재현됐다(판정 1 위반).
+  const wasGate = R.gate;
+  if (wasGate) S.gateFail[retryAt] = (S.gateFail[retryAt] || 0) + 1;
   // 한 칸씩 내려가면 사망 연쇄에 빠진다 — 클리어 가능한 깊이를 바로 계산해서 간다
   const farmAt = S.farm > 0 ? S.farm : bestFarmStage(Math.max(1, retryAt - 1));
   R.farmClears = 0;
   // 어디로 왜 가는지 말해 준다. 측정해 보니 첫 1시간에 16~17번 죽는데(2~3분에 한 번),
   // 전부 자동 복구라 "졌다" 도 "돌아왔다" 도 체감되지 않았다. 사건이 보이지 않으면 긴장도 없다.
-  banner('쓰러졌다 — ' + chapterLabel(farmAt) + ' 에서 힘을 모은다', 2.4, true);
+  banner(wasGate
+    ? `관문에 막혔다 — 다음엔 ${Math.round((1 - gateSoft(retryAt)) * 100)}% 약해진다`
+    : '쓰러졌다 — ' + chapterLabel(farmAt) + ' 에서 힘을 모은다', 2.4, true);
   onEvent({ type: 'death', stage: retryAt, farmAt });
   save();
   enterStage(farmAt, MODE.FARM);
@@ -336,8 +377,13 @@ export function tick(dt) {
     if (n > 0) {
       R.foeAtkT = 0.22;
       const Ldmg = LeATK(R.stage, R.boss) + fromNum(n) - LDEF() + fromNum(enrage());
-      if (Ldmg >= R.Lhp) { R.Lhp = L0; playerDied(); return; }
-      R.Lhp = sub(R.Lhp, Ldmg);
+      // 관문은 **최대 체력 비례** 로 한 번 더 문다. 방어·체력을 올려도 줄지 않는다 —
+      // 이게 있어야 "빨리 못 죽이면 내가 죽는다" 가 성립한다(balance.json stage.gate 참조).
+      const bite = gateBite();
+      const Lbite = bite > 0 ? R.LhpMax + fromNum(bite) : L0;
+      const Ltotal = Lbite > L0 ? add(Ldmg, Lbite) : Ldmg;
+      if (Ltotal >= R.Lhp) { R.Lhp = L0; playerDied(); return; }
+      R.Lhp = sub(R.Lhp, Ltotal);
       R.pHitT = 0.18;        // 피격 포즈
       onEvent({ type: 'playerHit' });
     }

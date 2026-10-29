@@ -5,7 +5,7 @@
 // 용사는 Idle/Attack/Hit/Dead 프레임이 멀쩡해서 프레임 애니를 그대로 쓴다.
 import { B, heroAt, zoneAt, sceneEvery, heroPool } from './balance.js';
 import { S } from './state.js';
-import { R, enrage } from './combat.js';
+import { R, enrage, gateSecondsLeft, gateSoft } from './combat.js';
 import { pick, preload, boxOf, frameCount } from './sprites.js';
 import { activeCompanions, compImage, monTier } from './companions.js';
 import { L0, ratio, fmt } from './logmath.js';
@@ -742,6 +742,19 @@ export function render(dt) {
       g.addColorStop(1, hot ? '#ffb14a' : '#ff9a9a');
       ctx.fillStyle = g;
       ctx.fillRect(bx, by, bw * Math.max(0, Math.min(1, fr)), 8);
+      // ── 관문: 남은 시간 ──
+      // 관문은 스탯으로 못 버티고 **시간**에 죽는다. 그 시간이 안 보이면 왜 죽었는지
+      // 알 수 없어 그냥 억울하다. 보스 체력바 바로 아래에 같이 깐다.
+      const left = gateSecondsLeft();
+      if (isFinite(left)) {
+        const urgent = left < 10;
+        ctx.font = '800 11px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = urgent ? '#ff6b6b' : '#ffd34d';
+        const soft = gateSoft();
+        ctx.fillText('⛩️ 관문 · 버틸 수 있는 시간 ' + Math.max(0, left).toFixed(0) + '초'
+          + (soft < 1 ? `  (${Math.round((1 - soft) * 100)}% 약화됨)` : ''), W / 2, by + 24);
+      }
       ctx.restore();
     }
   }

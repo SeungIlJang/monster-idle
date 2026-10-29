@@ -44,6 +44,23 @@ export const perWave = s => {
 
 export const isBoss = s => s % B.stage.bossEvery === 0;
 
+/**
+ * 관문 보스 — 일정 층마다 오는 **살아남는 시험**.
+ *
+ * 일반 보스는 체력만 6배라, 측정해 보니 1일차 이후로는 아무도 안 죽었다(365일 사망 127회가
+ * 전부 1일차). 실패가 "죽음" 이 아니라 "너무 느림" 으로 바뀌어 있었다.
+ * 적 공격력을 키우는 길은 막혀 있다 — 그걸로 죽이려면 배수가 10^6 은 돼야 했다.
+ * 체력·방어가 적 공격력을 완전히 앞질러 자라기 때문이다.
+ *
+ * 그래서 관문은 **플레이어 최대 체력 비례**로 때린다. 스탯으로 못 피하고 DPS 로만 뚫린다.
+ * 자세한 수치 근거는 balance.json 의 stage.gate 주석에 있다.
+ */
+export const gateCfg = () => B.stage.gate || null;
+export const isGate = s => {
+  const g = gateCfg();
+  return !!g && g.every > 0 && s % g.every === 0;
+};
+
 /** 스테이지 s 의 적 수치 (log10) */
 export const LeHP = (s, boss = isBoss(s)) => LG.hp0 + (s - 1) * LG.hpGrow + (boss ? LG.bossHp : 0);
 export const LeATK = (s, boss = isBoss(s)) => LG.atk0 + (s - 1) * LG.atkGrow + (boss ? LG.bossAtk : 0);

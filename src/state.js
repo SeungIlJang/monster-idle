@@ -34,6 +34,9 @@ export function defaults() {
     daily: { date: '', kill: 0, pull: 0, stage: 0, claimed: {} },
     attend: { last: '', streak: 0 },       // last 는 "받은 날" — 띄운 날이 아니다
     ev: { id: '', p: 0, claimed: {} },     // 기간 이벤트 진행 (id 가 바뀌면 통째로 버린다)
+    // 관문별 실패 횟수 "스테이지번호" → 횟수. 실패할수록 그 관문이 약해진다.
+    // **저장해야 한다** — 앱을 껐다 켜면 약화가 사라져 영구 벽이 될 수 있다.
+    gateFail: {},
     // 2단계 레이어
     shard: 0, ore: 0,
     mine: { pick: 0, t: 0, day: '', bomb: 0, grid: null, top: 0, depth: 0 },
@@ -71,6 +74,7 @@ function migrate(d) {
   s.attend = { ...base.attend, ...(d.attend || {}) };
   s.ev = { ...base.ev, ...(d.ev || {}) };
   s.ev.claimed = { ...(d.ev?.claimed || {}) };
+  s.gateFail = { ...(d.gateFail || {}) };
   s.mine = { ...base.mine, ...(d.mine || {}) };
   s.monLv = { ...(d.monLv || {}) };
   s.mastery = { ...base.mastery, ...(d.mastery || {}) };
