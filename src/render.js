@@ -7,7 +7,7 @@ import { B, heroAt, zoneAt, sceneEvery, heroPool } from './balance.js';
 import { S } from './state.js';
 import { R, enrage, gateSecondsLeft, gateSoft } from './combat.js';
 import { pick, preload, boxOf, frameCount } from './sprites.js';
-import { activeCompanions, compImage, monTier } from './companions.js';
+import { activeCompanions, compImage, monTier, skyCompanions } from './companions.js';
 import { L0, ratio, fmt } from './logmath.js';
 
 const WAVES = B.stage.waves;
@@ -181,6 +181,63 @@ function drawScroll(img, offset) {
     } else {
       ctx.drawImage(img, x, y, dw, dh);
     }
+  }
+}
+
+/**
+ * 뽑기 동료 — 하늘에 둥둥 뜬다.
+ *
+ * 수집한 몬스터가 땅을 꽉 채워서(리드 + 6기) 자리가 없었고, 그래서 6종의 그림이
+ * 통째로 안 쓰이고 있었다. 하늘로 올리면 지면 캐릭터와 안 겹치고
+ * "따라다니는 정령" 으로 읽혀 몬스터와 역할이 헷갈리지 않는다.
+ *
+ * 등급은 **빛 색**으로 구별한다. 6종이 균등 확률이라 종류로는 세기를 알 수 없고,
+ * 실제로 세기를 정하는 건 등급뿐이다 — 보이는 것과 수치가 같은 것을 가리켜야 한다.
+ */
+function drawSky(base) {
+  const list = skyCompanions();
+  if (!list.length) return;
+  // 지면 동료가 약 20px 인데 0.085 로 뒀더니 25px 이라 하늘 쪽이 더 커 보였다 —
+  // 멀리 있는 것이 더 크면 거리감이 깨진다. 지면 동료보다 작게 잡는다.
+  const h = base * 0.062;
+  for (const c of list) {
+    const img = compImage(c.id);
+    if (!img) continue;
+    const cx = W * c.x;
+    const cy = H * c.y + Math.sin(t * 1.6 + c.phase) * h * 0.14;   // 느리게 오르내린다
+    const size = h * c.s;
+    ctx.save();
+    // 등급 후광. 용암·설원처럼 밝은 지역에서는 그라데이션만으로는 묻혀서
+    // **고리**를 같이 그린다 — 색이 선으로 남아야 등급이 읽힌다.
+    const glow = 0.22 + c.rarity * 0.09;
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.85);
+    g.addColorStop(0, c.color + Math.round(glow * 255).toString(16).padStart(2, '0'));
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(cx, cy, size * 0.85, 0, 7); ctx.fill();
+    ctx.strokeStyle = c.color;
+    ctx.globalAlpha = 0.5 + c.rarity * 0.11;
+    ctx.lineWidth = Math.max(1, size * 0.045);
+    ctx.beginPath(); ctx.ellipse(cx, cy + size * 0.42, size * 0.42, size * 0.13, 0, 0, 7); ctx.stroke();
+    ctx.globalAlpha = 1;
+    // 밝은 배경에서 그림이 배경에 녹지 않게 어두운 그림자를 깐다
+    ctx.shadowColor = 'rgba(8,10,22,.55)';
+    ctx.shadowBlur = size * 0.22;
+    ctx.shadowOffsetY = size * 0.06;
+    drawSprite(img, cx, cy + size * 0.5, size, boxOf('comp', c.id), {});
+    ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+    // 강화가 붙은 것만 작게 표시한다 — 전부 띄우면 하늘이 글자밭이 된다
+    if (c.enh > 0) {
+      ctx.globalAlpha = 1;
+      ctx.font = '800 9px system-ui';
+      ctx.textAlign = 'center';
+      ctx.strokeStyle = 'rgba(12,18,34,.8)';
+      ctx.lineWidth = 2.5;
+      ctx.strokeText('+' + c.enh, cx, cy - size * 0.52);
+      ctx.fillStyle = c.color;
+      ctx.fillText('+' + c.enh, cx, cy - size * 0.52);
+    }
+    ctx.restore();
   }
 }
 
@@ -495,6 +552,7 @@ export function render(dt) {
 
   const feet = laneY(0.45);          // 리드가 서는 깊이
   const base = Math.min(W, H);
+  drawSky(base);                     // 뽑기 동료 — 땅이 꽉 차서 하늘에 띄운다
   // 몬스터는 내용에 딱 맞게 잘라낸 크롭이고 용사 PNG 는 128x128 에 여백이 많다.
   // 같은 높이로 그리면 몬스터가 거인처럼 보여서, 보이는 크기가 맞도록 따로 잡는다.
   // 몬스터 크롭은 여백이 없고 용사 PNG 는 여백이 커서, 같은 기준으로는 몬스터가 커 보인다

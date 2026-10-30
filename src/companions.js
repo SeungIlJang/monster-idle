@@ -7,7 +7,7 @@
 //
 // 누가 서는가: **내가 수집한 몬스터** 중 리드를 뺀 상위 레벨 순.
 // 몇 기가 서는가: 열린 슬롯 수 = activeSlots('comp') — 스테이지 10/40/100/200/400/14500.
-import { activeSlots } from './gacha.js';
+import { activeSlots, equippedList, RARITIES, gachaRev } from './gacha.js';
 import { B } from './balance.js';
 import { S } from './state.js';
 import { monLevel } from './layer2.js';
@@ -86,6 +86,45 @@ export function activeCompanions() {
  * 외형 변화의 단위다 — 레벨 1 마다 바꾸면 변화가 안 읽히고, 마일스톤은 이미
  * 공격력 보너스를 주는 지점이라 "뭔가 달라졌다" 와 보상이 같이 온다.
  */
+// ── 뽑기 동료 — 하늘에 뜬다 ──────────────────────────────────
+// 전장에 서는 건 **수집한 몬스터** 이고, 뽑기 동료는 지금까지 숫자로만 존재했다.
+// 6종(작은 슬라임·박쥐 떼·버섯 포자·도깨비불·돌조각·그림자)에 그림이 있는데도
+// 그릴 자리가 없어 `assets/comp/*.png` 가 통째로 안 쓰이고 있었다.
+//
+// 땅은 이미 리드 + 몬스터 6기로 꽉 차서 **하늘**에 올린다. 지면 캐릭터와 겹치지 않고,
+// "따라다니는 정령" 으로 읽혀서 수집한 몬스터와 역할이 헷갈리지 않는다.
+//
+// 좌표는 캔버스 비율이다. 왼쪽(내 편) 위, 보스 체력바(y 0.055)보다 아래,
+// 리드 이름표(지면 근처)보다 위에 둔다.
+const SKY = [
+  { x: 0.105, y: 0.255, s: 1.00 },
+  { x: 0.205, y: 0.205, s: 0.90 },
+  { x: 0.295, y: 0.270, s: 0.95 },
+  { x: 0.075, y: 0.375, s: 0.86 },
+  { x: 0.180, y: 0.345, s: 1.02 },
+  { x: 0.280, y: 0.400, s: 0.88 },
+];
+
+/**
+ * 지금 하늘에 뜨는 뽑기 동료들. 장착된 것만 뜬다 —
+ * 보유만 한 건 뜨지 않는다(장착 효과와 화면이 어긋나면 안 된다).
+ */
+let skyCache = null, skyRev = -1, skyLife = -1;
+export function skyCompanions() {
+  // 렌더가 매 프레임 부른다. equippedList 는 인벤토리를 전부 훑고 정렬하므로
+  // 그대로 두면 60회/초로 돈다 — 바뀐 적이 없으면 지난 결과를 그대로 준다.
+  if (skyCache && skyRev === gachaRev && skyLife === S.life) return skyCache;
+  const eq = equippedList('comp');
+  const out = eq.slice(0, SKY.length).map((it, i) => ({
+    id: it.id, name: it.name, rarity: it.rarity, enh: it.enh, val: it.val,
+    color: RARITIES[it.rarity]?.color || '#9aa7c7',   // 등급은 **빛 색**으로 읽힌다
+    ...SKY[i],
+    phase: i * 1.3,          // 둥둥 뜨는 주기를 어긋나게
+  }));
+  skyRev = gachaRev; skyLife = S.life;
+  return (skyCache = out);
+}
+
 export function monTier(key) {
   const lv = monLevel(key);
   return (B.layer2.collect.milestoneLevels || []).filter(x => lv >= x).length;

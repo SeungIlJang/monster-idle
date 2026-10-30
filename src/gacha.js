@@ -112,7 +112,12 @@ export function equippedList(banner) {
  * 인벤토리에서 배너별 보유/장착 효과 합(%)을 다시 계산한다.
  * S.own / S.eqv 는 파생 캐시이므로 인벤토리나 진행도가 바뀔 때마다 불러야 한다.
  */
+// 인벤토리/진행도가 바뀐 횟수. 렌더가 매 프레임 equippedList 를 다시 정렬하지 않도록
+// 이 값으로 캐시를 무효화한다 (companions.skyCompanions 참조).
+export let gachaRev = 0;
+
 export function recomputeGacha() {
+  gachaRev++;
   for (const b of BANNERS) {
     const inv = S.inv[b.key] || {};
     let sum = 0;
