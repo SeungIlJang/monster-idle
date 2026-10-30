@@ -64,6 +64,9 @@ function spawnWave() {
   const period = 1 / B.enemy.aspd;
   R.enemies = heroes.map((hero, i) => ({
     Lhp, Lmax: Lhp, hitT: 0, healT: 0, ph: Math.random() * 6.28, hero,
+    // 힐러가 이번 웨이브에 채울 수 있는 총량(아군 최대체력 대비). 바닥나면 더 못 채운다 —
+    // 이게 없으면 회복이 DPS 를 넘는 순간 적이 영영 안 죽는다(실측: 2분간 100% 고정).
+    healLeft: hero?.healBudget || 0,
     // 적마다 자기 타이머를 쥔다. 예전엔 그룹 1타이머라 **여덟 종이 동시에 같은 포즈**로
     // 바뀌어 기계처럼 보였다. 주기는 같고 시작 위상만 흩는다 —
     // 같은 시간에 같은 횟수를 때리므로 **총 피해는 그대로**다(시뮬 수식 불변).
@@ -415,8 +418,8 @@ export function tick(dt) {
  * 작아도 역할은 분명하다: 긴 싸움일수록 누적이 커지고, 체력바가 **올라가는 게 보인다**.
  */
 function foeHeal(healer) {
-  const pct = healer.hero?.healPct || 0;
-  if (!(pct > 0)) return;
+  const pct = Math.min(healer.hero?.healPct || 0, healer.healLeft);
+  if (!(pct > 0)) return;                        // 총량이 바닥났으면 아무것도 안 한다
   let tgt = null, worst = Infinity;
   for (const e of R.enemies) {
     if (e === healer || !(e.Lhp > L0) || e.hero?.support) continue;
@@ -425,6 +428,7 @@ function foeHeal(healer) {
   }
   if (!tgt) return;                              // 다친 아군이 없으면 아무 일도 없다
   tgt.Lhp = Math.min(tgt.Lmax, add(tgt.Lhp, tgt.Lmax + fromNum(pct)));
+  healer.healLeft -= pct;                        // 쓴 만큼 줄어든다
   tgt.healT = 0.45;                              // 회복 표시
   R.foeBolts.push({                              // 힐러 → 아군 광선 (적을 향하지 않는다)
     idx: R.enemies.indexOf(healer), to: R.enemies.indexOf(tgt),

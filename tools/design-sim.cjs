@@ -148,7 +148,10 @@ function supportsIn(stage, wave, n) {
   }
   return list.filter(isSup).length;
 }
-const HEAL_PCT = NUM('healPct') ?? (HEROES.find(isSup)?.healPct ?? 0);
+// 힐러가 웨이브 통틀어 채울 수 있는 **총량**(아군 최대체력 대비).
+// 비율(초당 %)로 모델링하면 안 된다 — 회복이 DPS 를 넘는 경우를 시뮬은 '느림→파밍' 으로
+// 흡수하지만 게임에는 그 탈출구가 없어 그냥 갇힌다. 총량이면 발산이 구조적으로 불가능하다.
+const HEAL_BUDGET = NUM('healBudget') ?? (HEROES.find(isSup)?.healBudget ?? 0);
 const gateEnrageAt = tt => ARG.enrageOff ? 1
   : Math.min(GATE.cap, 1 + Math.max(0, tt - GATE.after) * GATE.perSec);
 
@@ -481,17 +484,11 @@ function attempt(S, s) {
 
   // ── 힐러 ──
   // 보스는 힐러가 아니다(bossHeroAt 가 막는다). 잡몹 웨이브만 본다.
-  // 힐러는 **공격하지 않고** 아군을 초당 healPct×최대체력 만큼 채운다.
-  // 그래서 실효 DPS 가 그만큼 깎인다 — 깎인 뒤가 0 이하면 아무리 때려도 안 죽는다.
+  // 힐러는 **공격하지 않고** 아군을 채운다. 다만 웨이브당 총량이 정해져 있어서
+  // 결국 "이 웨이브의 적 체력이 그만큼 늘어난 것" 과 같다 — 발산하지 않는다.
   const sup = b ? 0 : supportsIn(s, 0, per);
-  // **로그로 계산한다.** 선형으로 바꾸면 깊은 층 적 체력(10^300+)이 Infinity 가 되어
-  // 멀쩡한 설정도 벽으로 보인다 — 실제로 한 번 그렇게 재서 16,063 을 6,235 로 오판했다.
-  // 초당 회복량 = sup × healPct × 적최대체력 × 공격속도.
-  const Lheal = (sup > 0 && HEAL_PCT > 0)
-    ? Lehp + fromNum(sup * HEAL_PCT * D.enemy.aspd) : L0;
-  const Leff = Lheal > L0 ? Lsub(Ldps, Lheal) : Ldps;   // 회복을 뺀 실효 DPS
-  const ttk = (b || Lheal <= L0) ? ratio(Lehp, Ldps)
-    : (Leff > L0 ? ratio(Lehp, Leff) : Infinity);       // 회복이 DPS 를 넘으면 안 죽는다
+  const extra = sup * HEAL_BUDGET;                      // 체력 몇 기분이 더 늘어나는가
+  const ttk = ratio(Lehp, Ldps) * (b || !per ? 1 : (per + extra) / per);
   // 너무 느릴 것 같으면 즉시 판단해서 그만둔다 — 시간을 소모하지 않는다.
   // (여기서 giveUpSeconds 를 흘려보내면 타임라인이 포기 사이클로 뒤덮인다)
   if (!(ttk >= 0) || !isFinite(ttk) || ttk * per * waves > D.player.giveUpSeconds)
