@@ -390,6 +390,52 @@ function ambTick(dt, zone) {
 // 숫자 연출은 예전처럼 인덱스 근사 위치를 쓰지만 투사체는 실제로 맞아야 해서 좌표가 필요하다.
 const foePos = [];
 
+/**
+ * 적이 날리는 한 발. 용사마다 색·모양이 다르다(balance.json roster.heroes[].atk).
+ * 내 투사체(drawBolt)와 모양 집합이 다르다 — 화살·바위·쐐기처럼 "맞는 쪽" 이 읽히게.
+ */
+function drawFoeBolt(x, y, u, b, size) {
+  // 내 투사체(0.085)보다 크게 잡는다. 처음엔 0.075 로 뒀더니 반지름이 2.7px 이라
+  // 캔버스 픽셀을 세야 보일 정도였다 — 적 공격은 "맞고 있다" 가 읽혀야 한다.
+  const r = size * 0.14;
+  ctx.save();
+  // 꼬리 — 지나온 쪽(적 방향, 오른쪽)으로 길게 늘어뜨린다
+  ctx.globalAlpha = 0.32;
+  ctx.strokeStyle = b.color;
+  ctx.lineWidth = r * 1.2;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x + r * 4.2, y - r * 0.5);
+  ctx.lineTo(x, y);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.shadowColor = b.color;      // 발광 — 배경이 어두운 지역에서도 선이 산다
+  ctx.shadowBlur = r * 2.2;
+  ctx.fillStyle = b.color;
+  ctx.beginPath();
+  if (b.shape === 'arrow') {
+    ctx.moveTo(x - r * 1.6, y); ctx.lineTo(x + r, y - r * 0.7); ctx.lineTo(x + r, y + r * 0.7);
+  } else if (b.shape === 'rock') {
+    ctx.moveTo(x - r, y - r * 0.6); ctx.lineTo(x + r * 0.2, y - r);
+    ctx.lineTo(x + r, y + r * 0.3); ctx.lineTo(x - r * 0.3, y + r);
+  } else if (b.shape === 'wedge') {
+    ctx.moveTo(x - r * 1.4, y); ctx.lineTo(x + r, y - r); ctx.lineTo(x + r * 0.3, y); ctx.lineTo(x + r, y + r);
+  } else if (b.shape === 'shard') {
+    ctx.moveTo(x - r * 1.3, y); ctx.lineTo(x, y - r * 0.8); ctx.lineTo(x + r * 1.1, y); ctx.lineTo(x, y + r * 0.8);
+  } else {
+    ctx.arc(x, y, r, 0, 7);
+  }
+  ctx.fill();
+  // 광선(지원형)은 가늘게 빛나는 선으로 — 때리는 게 아니라 "채워 준다" 로 읽혀야 한다
+  if (b.type === 'beam') {
+    ctx.globalAlpha = 0.5 * (1 - u);
+    ctx.strokeStyle = b.color;
+    ctx.lineWidth = r * 0.5;
+    ctx.beginPath(); ctx.arc(x, y, r * 2.1, 0, 7); ctx.stroke();
+  }
+  ctx.restore();
+}
+
 /** 투사체 한 발. 모양은 리드 몬스터의 bolt.shape, 색은 bolt.color (balance.json). */
 function drawBolt(x, y, u, b, size) {
   const mon = B.roster.monsters.find(m => m.key === S.mon);
@@ -570,7 +616,8 @@ export function render(dt) {
     foePos[idx] = { x: ex, y: ey - h * 0.55 };   // 투사체·파편이 겨눌 몸통 가운데
     // flip 을 쓰지 않는다 — 용사 그림이 이미 왼쪽(우리 쪽)을 보게 그려져 있다.
     // 뒤집으면 무기와 장식이 반대로 가고 기사의 방패가 바깥쪽으로 돌아간다.
-    const fPose = dying > 0 ? 'dead' : hit > 0 ? 'hit' : R.foeAtkT > 0 ? 'attack' : 'idle';
+    // 공격 포즈도 **적마다** 다르다 — 예전엔 그룹 타이머라 전원이 동시에 휘둘렀다
+    const fPose = dying > 0 ? 'dead' : hit > 0 ? 'hit' : e.aPose > 0 ? 'attack' : 'idle';
     const hero = e.hero || lead;
     if (dying > 0) ctx.globalAlpha = Math.max(0, dying);   // 쓰러지며 옅어진다
     drawSprite(pick('hero', hero.key, fPose, frame + idx), ex, ey + eb, h, boxOf('hero', hero.key), {
@@ -595,6 +642,66 @@ export function render(dt) {
     // 살짝 포물선을 그려야 '날아간다' 로 읽힌다
     const by = boltFrom.y + (to.y - boltFrom.y) * u - Math.sin(u * Math.PI) * pH * 0.30;
     drawBolt(bx, by, u, b, pH);
+  }
+
+  // ── 적 공격 ── 적에서 나에게 날아온다.
+  // 예전엔 적이 때려도 포즈만 바뀌었다 — 투사체도 섬광도 흔들림도 없어서
+  // 맞고 있다는 걸 체력바 숫자로만 알 수 있었다. 용사마다 다른 색·모양으로 날린다.
+  const meAt = { x: W * 0.30, y: feet - pH * 0.55 };
+  for (const b of R.foeBolts) {
+    if (b.t > b.dur) continue;
+    const from = foePos[b.idx];
+    if (!from) continue;
+    const u = Math.min(1, b.t / b.dur);
+    if (b.type === 'slash') {
+      // 근접 — 날아갈 게 없다. 적 앞에 베기 섬광만 그린다.
+      const a = 1 - u;
+      ctx.save();
+      ctx.globalAlpha = a * 0.9;
+      ctx.strokeStyle = b.color;
+      ctx.shadowColor = b.color;
+      ctx.shadowBlur = eH * 0.18;
+      ctx.lineWidth = Math.max(3, eH * 0.09);
+      ctx.lineCap = 'round';
+      const sx = from.x - eH * 0.34, sy = from.y;
+      const r = eH * 0.58;
+      ctx.beginPath();
+      ctx.arc(sx, sy, r, -0.9 + u * 0.7, 0.5 + u * 0.7);
+      ctx.stroke();
+      ctx.restore();
+      continue;
+    }
+    const bx = from.x + (meAt.x - from.x) * u;
+    const by = from.y + (meAt.y - from.y) * u - Math.sin(u * Math.PI) * pH * 0.22;
+    drawFoeBolt(bx, by, u, b, pH);
+  }
+
+  // 착탄 섬광 — 막 닿은 발은 내 쪽에 한 번 터진다. 날아오기만 하고 끝나면 "맞았다" 가 약하다.
+  for (const b of R.foeBolts) {
+    const age = b.t - b.dur;
+    if (age < 0 || age > 0.12) continue;
+    const a = 1 - age / 0.12;
+    ctx.save();
+    ctx.globalAlpha = a * 0.7;
+    const rr = pH * (0.12 + (1 - a) * 0.22);
+    const g = ctx.createRadialGradient(meAt.x, meAt.y, 0, meAt.x, meAt.y, rr);
+    g.addColorStop(0, b.color);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(meAt.x, meAt.y, rr, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+
+  // 맞은 직후 가장자리가 붉어진다 — 화면 전체를 덮지 않아 전투가 가려지지 않는다
+  if (R.hurtT > 0) {
+    const a = Math.min(0.5, R.hurtT * 1.6);
+    ctx.save();
+    const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.32, W / 2, H / 2, Math.max(W, H) * 0.62);
+    g.addColorStop(0, 'rgba(255,40,50,0)');
+    g.addColorStop(1, `rgba(255,40,50,${a.toFixed(3)})`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
   }
 
   ctx.textAlign = 'center';
@@ -690,8 +797,11 @@ export function render(dt) {
   for (const f of R.fx) {
     if (f.delay > 0) continue;                  // 아직 뜰 차례가 아니다
     ctx.globalAlpha = Math.max(0, Math.min(1, f.life * 1.6));
-    const fx = W * (0.62 + (f.x - 1) * 0.055) + (f.jx || 0);
-    const fy = feet - eH * 1.05 + f.y;
+    // 'foe' 는 **내가 받은** 피해다. 적 쪽에 띄우면 누가 맞았는지 거꾸로 읽힌다.
+    const fx = f.type === 'foe'
+      ? W * 0.30 + (f.jx || 0)
+      : W * (0.62 + (f.x - 1) * 0.055) + (f.jx || 0);
+    const fy = (f.type === 'foe' ? feet - pH * 1.15 : feet - eH * 1.05) + f.y;
     if (f.type === 'coin') {
       ctx.beginPath();
       ctx.arc(fx, fy, 5, 0, 7);
@@ -708,7 +818,8 @@ export function render(dt) {
       ctx.fillRect(fx - 2, fy - 2, 4, 4);
       continue;
     }
-    if (f.type === 'skill') { ctx.fillStyle = '#b59bff'; ctx.font = '800 20px system-ui'; }
+    if (f.type === 'foe') { ctx.fillStyle = '#ff6b6b'; ctx.font = '800 14px system-ui'; }
+    else if (f.type === 'skill') { ctx.fillStyle = '#b59bff'; ctx.font = '800 20px system-ui'; }
     else if (f.type === 'crit') { ctx.fillStyle = '#ffe24a'; ctx.font = '800 22px system-ui'; }
     else if (f.type === 'gold') { ctx.fillStyle = '#ffd34d'; ctx.font = '800 15px system-ui'; }
     else { ctx.fillStyle = '#fff'; ctx.font = '800 16px system-ui'; }

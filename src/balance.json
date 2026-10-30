@@ -33,7 +33,7 @@
       "perSec": 0.08,
       "cap": 4
     },
-      "gate": {
+    "gate": {
       "_": "관문 보스. 측정상 사망 127회가 전부 1일차였고 그 뒤 364일은 한 번도 안 죽는다 — 실패가 '죽음' 이 아니라 '너무 느림'(포기 187,072회)으로 바뀌어 있었다. 관문은 그걸 살아남는 시험으로 되돌린다.",
       "_why": "**피해가 플레이어 최대 체력 비례다.** 적 공격력을 키우는 방식은 통하지 않는다 — 측정해 보니 1일차 이후 보스에게 죽게 하려면 공격력 배수가 10^6 은 돼야 했다. 체력·방어가 적 공격력을 완전히 앞질러 있어서, 배수를 키워 봐야 긴장은 안 생기고 느려지기만 한다.",
       "_how": "hpPct 는 한 대당 최대 체력의 몇 %인가. 적 공격속도가 0.7/초라 2%면 약 71초, 3%면 48초 안에 못 죽이면 죽는다. 스탯으로는 못 피하고 **DPS 로만** 뚫린다 — 그게 이 게임의 진짜 성장축이다.",
@@ -47,9 +47,13 @@
       "hpPct": 0.005,
       "weakenPerFail": 0.05,
       "weakenMax": 0.8,
-      "enrage": { "after": 20, "perSec": 0.18, "cap": 3 }
+      "enrage": {
+        "after": 20,
+        "perSec": 0.18,
+        "cap": 3
+      }
     },
-  "_timeLimit": "제한시간은 없다. 제한시간은 영구 벽을 만든다(원칙 3). 실패 조건은 사망뿐이고, 관문도 마찬가지다 — 죽으면 아래서 다시 키워 오면 된다."
+    "_timeLimit": "제한시간은 없다. 제한시간은 영구 벽을 만든다(원칙 3). 실패 조건은 사망뿐이고, 관문도 마찬가지다 — 죽으면 아래서 다시 키워 오면 된다."
   },
   "player": {
     "_": "giveUpSeconds 는 UI 가 '너무 느림'을 안내하는 기준. 게임 규칙상 실패가 아니다.",
@@ -479,7 +483,32 @@
     "_왜": "스킬 배너는 지금까지 \"보스 버스트\" 라는 숫자로만 존재했다. 동료 때와 같이 이미 있는 수치에 몸을 준다. 피해를 더하면 로그 곡선상 의미도 없고(배속 검증 참고) 판정을 다시 받아야 한다.",
     "dpsShare": 0.35,
     "_dpsShare": "스킬이 가져가는 총 DPS 비율. 장착한 스킬이 없으면 0 이고 평타가 100% 를 낸다. 너무 높이면 쿨 사이에 피해가 끊겨 체감이 나빠진다.",
-    "fx": {"acid": ["#8ae06a", "splash"], "gust": ["#bfe9ff", "streak"], "shriek": ["#ff9ad5", "ring"], "grasp": ["#b59bff", "grip"], "breath": ["#ff8a4a", "cone"], "quake": ["#d9b06a", "crack"]},
+    "fx": {
+      "acid": [
+        "#8ae06a",
+        "splash"
+      ],
+      "gust": [
+        "#bfe9ff",
+        "streak"
+      ],
+      "shriek": [
+        "#ff9ad5",
+        "ring"
+      ],
+      "grasp": [
+        "#b59bff",
+        "grip"
+      ],
+      "breath": [
+        "#ff8a4a",
+        "cone"
+      ],
+      "quake": [
+        "#d9b06a",
+        "crack"
+      ]
+    },
     "_fx": "스킬별 화면 연출. 6종이 전부 같은 섬광이면 무엇이 터졌는지 안 읽힌다. 연출 전용이라 피해와 무관하다.",
     "_cd": "스킬별 쿨타임(초). 서로 다르게 둬야 바가 번갈아 차오른다. 쿨이 길수록 한 방이 크다 — 몫이 쿨에 비례한다.",
     "cd": {
@@ -561,7 +590,11 @@
     "unlockStage": 3000,
     "_unlockStage": "마지막 해금(이그나리온 3000층) 직후. 첫 회차는 해금 투어를 온전히 겪고 나서 환생이 열린다.",
     "soulDiv": 10,
-    "shop": { "c0": 10, "g": 1.15, "r": 1.08 },
+    "shop": {
+      "c0": 10,
+      "g": 1.15,
+      "r": 1.08
+    },
     "_shop": "가격 c0×g^lv, 레벨당 피해 ×r. 시뮬 365일 검증: 환생 4회·상점 Lv.30·5판정 통과."
   },
   "events": {
@@ -707,43 +740,83 @@
     "list": [
       {
         "key": "forest",
-        "name": "몬스터 숲", "amb": {"color": "#d8f5a0", "kind": "leaf"}
+        "name": "몬스터 숲",
+        "amb": {
+          "color": "#d8f5a0",
+          "kind": "leaf"
+        }
       },
       {
         "key": "swamp",
-        "name": "버섯 늪", "amb": {"color": "#9ae6ff", "kind": "mote"}
+        "name": "버섯 늪",
+        "amb": {
+          "color": "#9ae6ff",
+          "kind": "mote"
+        }
       },
       {
         "key": "highland",
-        "name": "바람 언덕", "amb": {"color": "#ffffff", "kind": "mote"}
+        "name": "바람 언덕",
+        "amb": {
+          "color": "#ffffff",
+          "kind": "mote"
+        }
       },
       {
         "key": "cave",
-        "name": "해골 동굴", "amb": {"color": "#8ad8ff", "kind": "mote"}
+        "name": "해골 동굴",
+        "amb": {
+          "color": "#8ad8ff",
+          "kind": "mote"
+        }
       },
       {
         "key": "canyon",
-        "name": "불타는 협곡", "amb": {"color": "#ffb36b", "kind": "ember"}
+        "name": "불타는 협곡",
+        "amb": {
+          "color": "#ffb36b",
+          "kind": "ember"
+        }
       },
       {
         "key": "frost",
-        "name": "서리 평원", "amb": {"color": "#ffffff", "kind": "snow"}
+        "name": "서리 평원",
+        "amb": {
+          "color": "#ffffff",
+          "kind": "snow"
+        }
       },
       {
         "key": "shadow",
-        "name": "그림자 숲", "amb": {"color": "#b59bff", "kind": "mote"}
+        "name": "그림자 숲",
+        "amb": {
+          "color": "#b59bff",
+          "kind": "mote"
+        }
       },
       {
         "key": "ruins",
-        "name": "폐허 마을", "amb": {"color": "#d9cfae", "kind": "dust"}
+        "name": "폐허 마을",
+        "amb": {
+          "color": "#d9cfae",
+          "kind": "dust"
+        }
       },
       {
         "key": "lava",
-        "name": "용암 지대", "amb": {"color": "#ff7a4a", "kind": "ember"}
+        "name": "용암 지대",
+        "amb": {
+          "color": "#ff7a4a",
+          "kind": "ember"
+        }
       },
       {
         "key": "sky",
-        "name": "하늘 성채", "amb": {"color": "#fff3b0", "kind": "mote"}
+        "name": "하늘 성채",
+        "amb": {
+          "color": "#fff3b0",
+          "kind": "mote"
+        }
       }
     ]
   },
@@ -756,8 +829,15 @@
         "dir": "Gloop_Slime",
         "name": "글룹",
         "unlock": 1,
-        "ability": {"name": "균형", "desc": "모든 피해 +10%", "dmg": 1.1},
-        "bolt": {"color": "#7fe08a", "shape": "orb"}
+        "ability": {
+          "name": "균형",
+          "desc": "모든 피해 +10%",
+          "dmg": 1.1
+        },
+        "bolt": {
+          "color": "#7fe08a",
+          "shape": "orb"
+        }
       },
       {
         "key": "goblin",
@@ -765,8 +845,16 @@
         "dir": "Grik_Goblin",
         "name": "그릭",
         "unlock": 10,
-        "ability": {"name": "탐욕", "desc": "골드 +40%, 피해 -15%", "gold": 1.4, "dmg": 0.85},
-        "bolt": {"color": "#ffd34d", "shape": "coin"}
+        "ability": {
+          "name": "탐욕",
+          "desc": "골드 +40%, 피해 -15%",
+          "gold": 1.4,
+          "dmg": 0.85
+        },
+        "bolt": {
+          "color": "#ffd34d",
+          "shape": "coin"
+        }
       },
       {
         "key": "bat",
@@ -774,8 +862,16 @@
         "dir": "Nightwing_Bat",
         "name": "나이트윙",
         "unlock": 40,
-        "ability": {"name": "흡혈", "desc": "웨이브 회복 2배, 피해 -10%", "rec": 2.0, "dmg": 0.9},
-        "bolt": {"color": "#c98bff", "shape": "orb"}
+        "ability": {
+          "name": "흡혈",
+          "desc": "웨이브 회복 2배, 피해 -10%",
+          "rec": 2.0,
+          "dmg": 0.9
+        },
+        "bolt": {
+          "color": "#c98bff",
+          "shape": "orb"
+        }
       },
       {
         "key": "mushroom",
@@ -783,8 +879,16 @@
         "dir": "Sporeling_Mushroom",
         "name": "스포어링",
         "unlock": 100,
-        "ability": {"name": "포자", "desc": "잡몹 피해 +35%, 보스 피해 -20%", "nrm": 1.35, "boss": 0.8},
-        "bolt": {"color": "#9ae6b4", "shape": "orb"}
+        "ability": {
+          "name": "포자",
+          "desc": "잡몹 피해 +35%, 보스 피해 -20%",
+          "nrm": 1.35,
+          "boss": 0.8
+        },
+        "bolt": {
+          "color": "#9ae6b4",
+          "shape": "orb"
+        }
       },
       {
         "key": "skeleton",
@@ -792,8 +896,16 @@
         "dir": "Boneguard_Skeleton",
         "name": "본가드",
         "unlock": 200,
-        "ability": {"name": "뼈방패", "desc": "받는 피해 -25%, 피해 -10%", "dr": 1.33, "dmg": 0.9},
-        "bolt": {"color": "#dfe6f2", "shape": "shard"}
+        "ability": {
+          "name": "뼈방패",
+          "desc": "받는 피해 -25%, 피해 -10%",
+          "dr": 1.33,
+          "dmg": 0.9
+        },
+        "bolt": {
+          "color": "#dfe6f2",
+          "shape": "shard"
+        }
       },
       {
         "key": "wolf",
@@ -801,8 +913,16 @@
         "dir": "Fangwolf_Wolf",
         "name": "팽울프",
         "unlock": 400,
-        "ability": {"name": "질주", "desc": "공격속도 +25%, 치명피해 -20%", "aspd": 1.25, "cdmg": 0.8},
-        "bolt": {"color": "#8ad8ff", "shape": "wedge"}
+        "ability": {
+          "name": "질주",
+          "desc": "공격속도 +25%, 치명피해 -20%",
+          "aspd": 1.25,
+          "cdmg": 0.8
+        },
+        "bolt": {
+          "color": "#8ad8ff",
+          "shape": "wedge"
+        }
       },
       {
         "key": "ghost",
@@ -810,8 +930,16 @@
         "dir": "Wraith_Ghost",
         "name": "레이스",
         "unlock": 700,
-        "ability": {"name": "원혼", "desc": "치명확률 +12%p, 최대체력 -20%", "critAdd": 0.12, "hp": 0.8},
-        "bolt": {"color": "#b0a7ff", "shape": "orb"}
+        "ability": {
+          "name": "원혼",
+          "desc": "치명확률 +12%p, 최대체력 -20%",
+          "critAdd": 0.12,
+          "hp": 0.8
+        },
+        "bolt": {
+          "color": "#b0a7ff",
+          "shape": "orb"
+        }
       },
       {
         "key": "orc",
@@ -819,8 +947,16 @@
         "dir": "Brakk_Orc",
         "name": "브락",
         "unlock": 1200,
-        "ability": {"name": "격노", "desc": "보스 피해 +170%, 잡몹 피해 -5%", "boss": 2.7, "nrm": 0.95},
-        "bolt": {"color": "#ff8a5a", "shape": "wedge"}
+        "ability": {
+          "name": "격노",
+          "desc": "보스 피해 +170%, 잡몹 피해 -5%",
+          "boss": 2.7,
+          "nrm": 0.95
+        },
+        "bolt": {
+          "color": "#ff8a5a",
+          "shape": "wedge"
+        }
       },
       {
         "key": "golem",
@@ -828,8 +964,16 @@
         "dir": "Granite_Golem",
         "name": "그래니트",
         "unlock": 2000,
-        "ability": {"name": "암반", "desc": "최대체력 +60%, 공격속도 -15%", "hp": 1.6, "aspd": 0.85},
-        "bolt": {"color": "#b9a07a", "shape": "shard"}
+        "ability": {
+          "name": "암반",
+          "desc": "최대체력 +60%, 공격속도 -15%",
+          "hp": 1.6,
+          "aspd": 0.85
+        },
+        "bolt": {
+          "color": "#b9a07a",
+          "shape": "shard"
+        }
       },
       {
         "key": "dragon",
@@ -837,8 +981,16 @@
         "dir": "Ignarion_RedDragon_Boss",
         "name": "이그나리온",
         "unlock": 3000,
-        "ability": {"name": "화염", "desc": "치명피해 +60%, 치명확률 -5%p", "cdmg": 1.6, "critAdd": -0.05},
-        "bolt": {"color": "#ff5a4a", "shape": "orb"}
+        "ability": {
+          "name": "화염",
+          "desc": "치명피해 +60%, 치명확률 -5%p",
+          "cdmg": 1.6,
+          "critAdd": -0.05
+        },
+        "bolt": {
+          "color": "#ff5a4a",
+          "shape": "orb"
+        }
       },
       {
         "key": "spider",
@@ -846,8 +998,16 @@
         "dir": "Arachne_Spider",
         "name": "아라크네",
         "unlock": 6000,
-        "ability": {"name": "맹독", "desc": "더블샷 +25%p, 피해 -15%", "dblAdd": 0.25, "dmg": 0.85},
-        "bolt": {"color": "#9ae06a", "shape": "shard"}
+        "ability": {
+          "name": "맹독",
+          "desc": "더블샷 +25%p, 피해 -15%",
+          "dblAdd": 0.25,
+          "dmg": 0.85
+        },
+        "bolt": {
+          "color": "#9ae06a",
+          "shape": "shard"
+        }
       },
       {
         "key": "wyrm",
@@ -855,51 +1015,99 @@
         "dir": "Basilisk_Wyrm",
         "name": "바실리스크",
         "unlock": 20000,
-        "ability": {"name": "광전", "desc": "피해 +35%, 받는 피해 +39%", "dmg": 1.35, "dr": 0.72},
-        "bolt": {"color": "#ff5ab0", "shape": "wedge"}
+        "ability": {
+          "name": "광전",
+          "desc": "피해 +35%, 받는 피해 +39%",
+          "dmg": 1.35,
+          "dr": 0.72
+        },
+        "bolt": {
+          "color": "#ff5ab0",
+          "shape": "wedge"
+        }
       }
     ],
     "heroes": [
       {
         "key": "warrior",
         "dir": "Kael_Ironblade_Warrior",
-        "name": "카엘"
+        "name": "카엘",
+        "atk": {
+          "type": "slash",
+          "color": "#ff8a4a"
+        }
       },
       {
         "key": "knight",
         "dir": "Aldric_Aegis_Knight",
-        "name": "알드릭"
+        "name": "알드릭",
+        "atk": {
+          "type": "slash",
+          "color": "#9ec8ff"
+        }
       },
       {
         "key": "rogue",
         "dir": "Sylas_Nightveil_Rogue",
-        "name": "사일러스"
+        "name": "사일러스",
+        "atk": {
+          "type": "bolt",
+          "shape": "shard",
+          "color": "#b0ffd0"
+        }
       },
       {
         "key": "mage",
         "dir": "Lyra_Arcanis_Mage",
-        "name": "라이라"
+        "name": "라이라",
+        "atk": {
+          "type": "bolt",
+          "shape": "orb",
+          "color": "#8ab4ff"
+        }
       },
       {
         "key": "cleric",
         "dir": "Elira_Dawnlight_Cleric",
-        "name": "엘리라"
+        "name": "엘리라",
+        "atk": {
+          "type": "beam",
+          "color": "#ffe79a"
+        },
+        "support": true
       },
       {
         "key": "archer",
         "dir": "Rina_Windarrow_Archer",
-        "name": "리나"
+        "name": "리나",
+        "atk": {
+          "type": "bolt",
+          "shape": "arrow",
+          "color": "#d9f08a"
+        }
       },
       {
         "key": "emage",
         "dir": "Terra_Stoneheart_EarthMage",
-        "name": "테라"
+        "name": "테라",
+        "atk": {
+          "type": "bolt",
+          "shape": "rock",
+          "color": "#d9b06a"
+        }
       },
       {
         "key": "dmage",
         "dir": "Nyx_Shadowveil_DarkMage",
-        "name": "닉스"
+        "name": "닉스",
+        "atk": {
+          "type": "bolt",
+          "shape": "wedge",
+          "color": "#c08aff"
+        }
       }
-    ]
+    ],
+    "_heroAtk": "용사별 공격 연출. type: slash(근접 섬광) · bolt(투사체) · beam(지원 광선). 적 8종이 외형만 다르고 행동이 전부 같아서 사실상 1종으로 보였다 — 수치는 건드리지 않고 보이는 것만 가른다.",
+    "_support": "support: 지원형. 혼자 나오면 안 된다(지원할 대상이 없다). 보스로도 안 나온다. 지금까지 보스로 안 나온 건 sceneEvery·bossEvery·용사 수가 우연히 안 겹쳐서였다 — 셋 중 하나만 바뀌면 조용히 깨진다."
   }
 }

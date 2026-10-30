@@ -131,5 +131,35 @@ export function foeAt(stage, wave, slot) {
   return rest[(h >>> 8) % rest.length];
 }
 
+/**
+ * 지원형(백마법사 엘리라)은 **혼자 나오면 안 된다** — 아군을 채워 주는 역할이라
+ * 지원할 대상이 없으면 말이 안 된다. 실측으로 전원 지원형 웨이브가 0.49% 나왔다
+ * (9,000웨이브 중 44회, 23·24층처럼 초반에도).
+ *
+ * 한 기를 비지원형으로 바꿔서 고친다. 전부 새로 뽑지 않는 이유는 그러면 같은 시드에
+ * 같은 결과가 안 나와 재현이 깨지기 때문이다 — **가장 뒤 슬롯 하나만** 바꾼다.
+ */
+export const isSupport = h => !!(h && h.support);
+export function fixSupportOnly(list, stage, wave) {
+  if (!list.length || !list.every(isSupport)) return list;
+  const alt = heroPool(stage).filter(h => !isSupport(h));
+  if (!alt.length) return list;                        // 비지원형이 아직 없으면 어쩔 수 없다
+  const out = list.slice();
+  out[out.length - 1] = alt[hash(stage, wave, 99) % alt.length];
+  return out;
+}
+
+/**
+ * 보스는 그 구역의 용사 본인인데, 지원형이 걸리면 혼자 서게 된다.
+ * 지금까지 안 걸린 건 sceneEvery(5)·bossEvery(10)·용사 수(8)가 **우연히** 안 겹쳐서다 —
+ * 셋 중 하나만 바뀌면 조용히 깨진다. 명시적으로 막는다.
+ */
+export function bossHeroAt(stage) {
+  const h = heroAt(stage);
+  if (!isSupport(h)) return h;
+  const pool = heroPool(stage).filter(x => !isSupport(x));
+  return pool.length ? pool[(stage / B.stage.bossEvery | 0) % pool.length] : h;
+}
+
 /** 해금된 플레이어 몬스터 목록 */
 export const unlockedMonsters = best => B.roster.monsters.filter(m => best >= m.unlock);

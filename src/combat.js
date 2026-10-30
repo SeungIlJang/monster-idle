@@ -2,7 +2,8 @@
 //   · 전투 중 회복 없음 — 회복 스탯은 웨이브 사이에만 작동
 //   · 제한시간 없음 — 유일한 실패 조건은 사망
 //   · 사망 시 직전 스테이지로 내려가 파밍하고, 플레이어가 재도전을 누른다
-import { B, perWave, isBoss, isGate, gateCfg, LeHP, LeATK, LeGOLD, heroAt, foeAt, chapterLabel } from './balance.js';
+import { B, perWave, isBoss, isGate, gateCfg, LeHP, LeATK, LeGOLD, heroAt, foeAt,
+  fixSupportOnly, bossHeroAt, chapterLabel } from './balance.js';
 import { S, save } from './state.js';
 import { LDPS, LHP, LDEF, nval, shots, critF, Linc, bestFarmStage, canClear, ab } from './stats.js';
 import { bump as bumpDaily } from './daily.js';
@@ -28,13 +29,14 @@ export const R = {
   foeT: 0,
   atkAnimT: 0,      // 공격 애니 재생 잔여 시간
   pHitT: 0,         // 플레이어 피격 애니 잔여 시간
-  foeAtkT: 0,       // 적 공격 애니 잔여 시간 (적은 그룹 1타이머라 다 같이 휘두른다)
   skillCd: {},      // 스킬별 남은 쿨 (세이브하지 않는다 — 전투마다 새로 시작)
   skillFxT: 0,      // 스킬 섬광 잔여 시간
   skillFx: null,    // 어떤 스킬이 터졌나 (연출 구분용)
   bossIntroT: 0,    // 보스 등장 경고 잔여 시간
   bossSlainT: 0,    // 보스 처치 섬광 잔여 시간
   bolts: [],         // 날아가는 투사체 (연출 전용 — 피해는 발사 즉시 끝나 있다)
+  foeBolts: [],      // 적 → 나. 같은 규칙이다 (피해는 이미 끝나 있다)
+  hurtT: 0,          // 맞은 직후 화면 가장자리가 붉어지는 잔여 시간
   fx: [],            // 데미지 숫자 등 연출
   farmClears: 0,     // 파밍으로 클리어한 횟수 (자동 재도전 판단용)
   banner: '',
@@ -54,12 +56,20 @@ function banner(text, sec = 1.6, big = false) { R.banner = text; R.bannerT = sec
 function spawnWave() {
   const n = R.boss ? 1 : perWave(R.stage);
   const Lhp = LeHP(R.stage, R.boss);
-  R.enemies = [];
-  for (let i = 0; i < n; i++) {
-    // 보스는 그 구역의 용사 **본인** 이다 — 섞지 않는다. 잡몹만 지금까지 본 용사들로 채운다.
-    const hero = R.boss ? heroAt(R.stage) : foeAt(R.stage, R.waveIdx, i);
-    R.enemies.push({ Lhp, Lmax: Lhp, hitT: 0, ph: Math.random() * 6.28, hero });
-  }
+  // 보스는 그 구역의 용사 **본인** 이다 — 섞지 않는다. 잡몹만 지금까지 본 용사들로 채운다.
+  // 지원형(백마법사)은 혼자 설 수 없다 — 보스로도, 전원 지원형으로도 안 나온다.
+  let heroes = R.boss
+    ? [bossHeroAt(R.stage)]
+    : fixSupportOnly([...Array(n)].map((_, i) => foeAt(R.stage, R.waveIdx, i)), R.stage, R.waveIdx);
+  const period = 1 / B.enemy.aspd;
+  R.enemies = heroes.map((hero, i) => ({
+    Lhp, Lmax: Lhp, hitT: 0, ph: Math.random() * 6.28, hero,
+    // 적마다 자기 타이머를 쥔다. 예전엔 그룹 1타이머라 **여덟 종이 동시에 같은 포즈**로
+    // 바뀌어 기계처럼 보였다. 주기는 같고 시작 위상만 흩는다 —
+    // 같은 시간에 같은 횟수를 때리므로 **총 피해는 그대로**다(시뮬 수식 불변).
+    atkT: period * ((i + 0.5) / heroes.length),
+    aPose: 0,                                  // 이 적의 공격 포즈 잔여 시간
+  }));
 }
 
 /** 스테이지 진입. mode 가 FARM 이면 클리어해도 전진하지 않고 계속 반복한다. */
@@ -72,10 +82,10 @@ export function enterStage(stage, mode = MODE.RUN) {
   // 진입마다 되돌리면 스킬이 영영 안 터지면서 평타만 35% 깎인 채로 남는다.
   R.waveIdx = 0;
   R.bolts = [];
+  R.foeBolts = [];
   R.LhpMax = LHP();
   R.Lhp = R.LhpMax;
   R.atkT = 0;
-  R.foeT = 1 / B.enemy.aspd;      // 적이 선공하지 않도록 한 박자 늦게
   R.stageTime = 0;
   if (mode === MODE.RUN) R.farmClears = 0;
   R.heroName = heroAt(R.stage).name;
@@ -286,7 +296,6 @@ export function tick(dt) {
   if (R.shake > 0) R.shake -= dt;
   if (R.atkAnimT > 0) R.atkAnimT -= dt;
   if (R.pHitT > 0) R.pHitT -= dt;
-  if (R.foeAtkT > 0) R.foeAtkT -= dt;
   if (R.skillFxT > 0) R.skillFxT -= dt;
   if (R.bossIntroT > 0) R.bossIntroT -= dt;
   if (R.bossSlainT > 0) R.bossSlainT -= dt;
@@ -310,6 +319,15 @@ export function tick(dt) {
     if (b.t >= b.dur && !b.hit) { b.hit = true; onImpact(b); }
   }
   if (R.bolts.length) R.bolts = R.bolts.filter(b => b.t < b.dur + 0.06);
+
+  // 적 쪽도 같은 규칙 — 날아오는 그림만이고 피해는 이미 끝나 있다.
+  if (R.hurtT > 0) R.hurtT -= dt;
+  for (const b of R.foeBolts) {
+    b.t += dt;
+    if (b.t >= b.dur && !b.hit) { b.hit = true; onFoeImpact(b); }
+  }
+  // 착탄 섬광(render)이 dur+0.12 까지 쓰므로 그보다 늦게 치운다
+  if (R.foeBolts.length) R.foeBolts = R.foeBolts.filter(b => b.t < b.dur + 0.14);
 
   const f = front();
   if (!f) return;
@@ -369,25 +387,64 @@ export function tick(dt) {
   // 스킬 — 쿨마다 모아둔 몫을 한 번에. 평타는 그만큼 줄어 있으므로 총량은 같다.
   tickSkills(R.skillCd, dt, fireSkill);
 
-  // 적 공격 (그룹 1타이머 · 살아있는 수에 비례 · 방어 비율감소)
-  R.foeT -= dt;
-  if (R.foeT <= 0) {
-    R.foeT = 1 / B.enemy.aspd;
-    const n = aliveCount();
-    if (n > 0) {
-      R.foeAtkT = 0.22;
-      const Ldmg = LeATK(R.stage, R.boss) + fromNum(n) - LDEF() + fromNum(enrage());
-      // 관문은 **최대 체력 비례** 로 한 번 더 문다. 방어·체력을 올려도 줄지 않는다 —
-      // 이게 있어야 "빨리 못 죽이면 내가 죽는다" 가 성립한다(balance.json stage.gate 참조).
-      const bite = gateBite();
-      const Lbite = bite > 0 ? R.LhpMax + fromNum(bite) : L0;
-      const Ltotal = Lbite > L0 ? add(Ldmg, Lbite) : Ldmg;
-      if (Ltotal >= R.Lhp) { R.Lhp = L0; playerDied(); return; }
-      R.Lhp = sub(R.Lhp, Ltotal);
-      R.pHitT = 0.18;        // 피격 포즈
-      onEvent({ type: 'playerHit' });
-    }
+  // 적 공격 — **적마다 제 타이머**로 때린다.
+  // 예전엔 그룹 1타이머가 살아있는 수에 비례한 피해를 한 번에 줬다. 총량은 같지만
+  // 여덟 종이 동시에 같은 포즈로 바뀌어 적이 사실상 1종처럼 보였다.
+  // 주기(1/aspd)와 한 기당 피해는 그대로라 **시간당 총 피해가 바뀌지 않는다** —
+  // 시뮬의 `aspd × alive` 모델과 그대로 맞는다.
+  const period = 1 / B.enemy.aspd;
+  for (const e of R.enemies) {
+    if (!(e.Lhp > L0)) continue;                 // 죽은 적은 안 때린다 (= 예전의 alive 비례)
+    if (e.aPose > 0) e.aPose -= dt;
+    e.atkT -= dt;
+    if (e.atkT > 0) continue;
+    e.atkT += period;
+    e.aPose = 0.22;
+    if (foeStrike(e)) return;                    // 죽었으면 더 처리하지 않는다
   }
+}
+
+/**
+ * 적 공격 연출 한 발. 피해는 이미 끝나 있고 여기는 보이는 몫만 맡는다.
+ * 근접(slash)은 날아갈 게 없어 바로 닿고, 투사체·광선은 적에서 나까지 날아온다.
+ */
+function spawnFoeBolt(e, Ldmg) {
+  const idx = R.enemies.indexOf(e);
+  const type = e.hero?.atk?.type || 'bolt';
+  R.foeBolts.push({
+    idx, type, t: 0, Ldmg,
+    dur: type === 'slash' ? 0.07 : (B.combatFx?.boltSec || 0.16),
+    color: e.hero?.atk?.color || '#ff8a8a',
+    shape: e.hero?.atk?.shape || 'orb',
+  });
+  if (R.foeBolts.length > 24) R.foeBolts.shift();
+}
+
+/** 적 공격이 나에게 닿은 순간. **수치는 아무것도 바꾸지 않는다** — 맞은 티만 낸다. */
+function onFoeImpact(b) {
+  R.pHitT = 0.18;                                  // 피격 포즈
+  R.hurtT = Math.max(R.hurtT, 0.22);               // 가장자리 붉어짐
+  // 적이 때릴 때 화면이 전혀 안 흔들렸다 — 맞고 있다는 걸 체력바 숫자로만 알 수 있었다.
+  // 내가 때릴 때(0.07)보다 약하게 준다. 매 초 여러 번 맞으므로 같게 주면 멀미가 난다.
+  R.shake = Math.max(R.shake, R.boss ? 0.06 : 0.035);
+  fx('foe', '-' + fmt(b.Ldmg), 0, -4);
+  onEvent({ type: 'playerHit' });
+}
+
+/** 적 한 기의 타격. 죽었으면 true */
+function foeStrike(e) {
+  const Ldmg = LeATK(R.stage, R.boss) - LDEF() + fromNum(enrage());
+  // 관문은 **최대 체력 비례** 로 한 번 더 문다. 방어·체력을 올려도 줄지 않는다 —
+  // 이게 있어야 "빨리 못 죽이면 내가 죽는다" 가 성립한다(balance.json stage.gate 참조).
+  // 관문은 보스전이라 적이 한 기뿐이므로 물리는 횟수가 예전과 같다.
+  const bite = gateBite();
+  const Lbite = bite > 0 ? R.LhpMax + fromNum(bite) : L0;
+  const Ltotal = Lbite > L0 ? add(Ldmg, Lbite) : Ldmg;
+  // 피해는 **지금** 들어간다. 날아가는 그림은 연출일 뿐이다(플레이어 투사체와 같은 규칙).
+  if (Ltotal >= R.Lhp) { R.Lhp = L0; playerDied(); return true; }
+  R.Lhp = sub(R.Lhp, Ltotal);
+  spawnFoeBolt(e, Ltotal);
+  return false;
 }
 
 /** 재도전: 최고 기록 다음 스테이지로 복귀 */
