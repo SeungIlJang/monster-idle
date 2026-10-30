@@ -63,7 +63,7 @@ function spawnWave() {
     : fixSupportOnly([...Array(n)].map((_, i) => foeAt(R.stage, R.waveIdx, i)), R.stage, R.waveIdx);
   const period = 1 / B.enemy.aspd;
   R.enemies = heroes.map((hero, i) => ({
-    Lhp, Lmax: Lhp, hitT: 0, ph: Math.random() * 6.28, hero,
+    Lhp, Lmax: Lhp, hitT: 0, healT: 0, ph: Math.random() * 6.28, hero,
     // 적마다 자기 타이머를 쥔다. 예전엔 그룹 1타이머라 **여덟 종이 동시에 같은 포즈**로
     // 바뀌어 기계처럼 보였다. 주기는 같고 시작 위상만 흩는다 —
     // 같은 시간에 같은 횟수를 때리므로 **총 피해는 그대로**다(시뮬 수식 불변).
@@ -396,12 +396,41 @@ export function tick(dt) {
   for (const e of R.enemies) {
     if (!(e.Lhp > L0)) continue;                 // 죽은 적은 안 때린다 (= 예전의 alive 비례)
     if (e.aPose > 0) e.aPose -= dt;
+    if (e.healT > 0) e.healT -= dt;
     e.atkT -= dt;
     if (e.atkT > 0) continue;
     e.atkT += period;
     e.aPose = 0.22;
+    // 힐러는 **때리지 않는다.** 아군 체력만 채운다 — 그래서 혼자 나올 수도 없다.
+    if (e.hero?.support) { foeHeal(e); continue; }
     if (foeStrike(e)) return;                    // 죽었으면 더 처리하지 않는다
   }
+}
+
+/**
+ * 힐러 한 번. 가장 많이 다친 **비힐러** 아군을 채운다.
+ *
+ * 회복량은 작다(최대 체력의 0.2%). 크게 주면 회복이 플레이어 DPS 를 넘는 순간
+ * 적이 영영 안 죽어 벽이 된다 — 시뮬에서 0.003 부터 무진행이 6시간을 넘었다.
+ * 작아도 역할은 분명하다: 긴 싸움일수록 누적이 커지고, 체력바가 **올라가는 게 보인다**.
+ */
+function foeHeal(healer) {
+  const pct = healer.hero?.healPct || 0;
+  if (!(pct > 0)) return;
+  let tgt = null, worst = Infinity;
+  for (const e of R.enemies) {
+    if (e === healer || !(e.Lhp > L0) || e.hero?.support) continue;
+    const frac = ratio(e.Lhp, e.Lmax);
+    if (frac < worst && frac < 1) { worst = frac; tgt = e; }
+  }
+  if (!tgt) return;                              // 다친 아군이 없으면 아무 일도 없다
+  tgt.Lhp = Math.min(tgt.Lmax, add(tgt.Lhp, tgt.Lmax + fromNum(pct)));
+  tgt.healT = 0.45;                              // 회복 표시
+  R.foeBolts.push({                              // 힐러 → 아군 광선 (적을 향하지 않는다)
+    idx: R.enemies.indexOf(healer), to: R.enemies.indexOf(tgt),
+    type: 'heal', t: 0, dur: 0.3, Ldmg: L0,
+    color: healer.hero?.atk?.color || '#8ef0a8', shape: 'orb',
+  });
 }
 
 /**
@@ -422,6 +451,7 @@ function spawnFoeBolt(e, Ldmg) {
 
 /** 적 공격이 나에게 닿은 순간. **수치는 아무것도 바꾸지 않는다** — 맞은 티만 낸다. */
 function onFoeImpact(b) {
+  if (b.type === 'heal') return;        // 아군에게 간 광선이다 — 나는 맞지 않았다
   R.pHitT = 0.18;                                  // 피격 포즈
   R.hurtT = Math.max(R.hurtT, 0.22);               // 가장자리 붉어짐
   // 적이 때릴 때 화면이 전혀 안 흔들렸다 — 맞고 있다는 걸 체력바 숫자로만 알 수 있었다.

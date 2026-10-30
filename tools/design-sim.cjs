@@ -113,6 +113,42 @@ const GATE = {
   cap: NUM('gCap') ?? GT.enrage?.cap ?? BE.cap,
 };
 const isGate = s => GATE.on && s % GATE.every === 0;
+
+// ── 지원형(힐러) ─────────────────────────────────────────────
+// 백마법사는 **공격하지 않고 아군 체력을 채운다**. 두 방향으로 작용한다:
+//   · 공격을 안 하니 그 수만큼 적 DPS 가 내려간다 (플레이어에게 유리)
+//   · 아군을 채우니 적 실효 체력이 오른다 (플레이어에게 불리)
+// 적의 13% 가 힐러(실측)라 어느 쪽이 큰지는 재 봐야 안다 — 그래서 구성을 정확히 모델링한다.
+const HEROES = B.roster.heroes;
+const SCENE = D.stage.sceneEvery || D.stage.bossEvery;
+const hRot = s => HEROES[Math.floor((s - 1) / SCENE) % HEROES.length];
+const hPool = s => HEROES.slice(0, Math.min(HEROES.length, Math.floor((s - 1) / SCENE) + 1));
+function hHash(a, b2, c) {
+  let h = Math.imul(a ^ 0x9e3779b9, 0x85ebca6b);
+  h ^= Math.imul(b2 + 0x165667b1, 0xc2b2ae35);
+  h ^= Math.imul(c + 0x27d4eb2f, 0x165667b1);
+  h ^= h >>> 15; return h >>> 0;
+}
+const isSup = h => !!(h && h.support);
+function foeAtSim(stage, wave, slot) {
+  const lead = hRot(stage);
+  const rest = hPool(stage).filter(h => h !== lead);
+  if (!rest.length) return lead;
+  const h = hHash(stage, wave, slot);
+  if (h % 100 < D.stage.leadFoePct) return lead;
+  return rest[(h >>> 8) % rest.length];
+}
+/** 그 웨이브의 힐러 수 (src/balance.js fixSupportOnly 와 같은 규칙) */
+function supportsIn(stage, wave, n) {
+  if (ARG.healOff) return 0;
+  let list = [...Array(n)].map((_, i) => foeAtSim(stage, wave, i));
+  if (list.length && list.every(isSup)) {
+    const alt = hPool(stage).filter(h => !isSup(h));
+    if (alt.length) list[list.length - 1] = alt[hHash(stage, wave, 99) % alt.length];
+  }
+  return list.filter(isSup).length;
+}
+const HEAL_PCT = NUM('healPct') ?? (HEROES.find(isSup)?.healPct ?? 0);
 const gateEnrageAt = tt => ARG.enrageOff ? 1
   : Math.min(GATE.cap, 1 + Math.max(0, tt - GATE.after) * GATE.perSec);
 
@@ -442,7 +478,20 @@ function attempt(S, s) {
   const Lhp0 = LHP(S), Ldps = LDPS(S, b), Lehp = LeHP(s, b), Leatk = LeATK(s, b), Ldef = LDEF(S);
   const Lrec = fromNum(nval(S, 'rec'));
   let Lhp = Lhp0, t = 0, Lgold = L0;
-  const ttk = ratio(Lehp, Ldps);
+
+  // ── 힐러 ──
+  // 보스는 힐러가 아니다(bossHeroAt 가 막는다). 잡몹 웨이브만 본다.
+  // 힐러는 **공격하지 않고** 아군을 초당 healPct×최대체력 만큼 채운다.
+  // 그래서 실효 DPS 가 그만큼 깎인다 — 깎인 뒤가 0 이하면 아무리 때려도 안 죽는다.
+  const sup = b ? 0 : supportsIn(s, 0, per);
+  // **로그로 계산한다.** 선형으로 바꾸면 깊은 층 적 체력(10^300+)이 Infinity 가 되어
+  // 멀쩡한 설정도 벽으로 보인다 — 실제로 한 번 그렇게 재서 16,063 을 6,235 로 오판했다.
+  // 초당 회복량 = sup × healPct × 적최대체력 × 공격속도.
+  const Lheal = (sup > 0 && HEAL_PCT > 0)
+    ? Lehp + fromNum(sup * HEAL_PCT * D.enemy.aspd) : L0;
+  const Leff = Lheal > L0 ? Lsub(Ldps, Lheal) : Ldps;   // 회복을 뺀 실효 DPS
+  const ttk = (b || Lheal <= L0) ? ratio(Lehp, Ldps)
+    : (Leff > L0 ? ratio(Lehp, Leff) : Infinity);       // 회복이 DPS 를 넘으면 안 죽는다
   // 너무 느릴 것 같으면 즉시 판단해서 그만둔다 — 시간을 소모하지 않는다.
   // (여기서 giveUpSeconds 를 흘려보내면 타임라인이 포기 사이클로 뒤덮인다)
   if (!(ttk >= 0) || !isFinite(ttk) || ttk * per * waves > D.player.giveUpSeconds)
@@ -469,7 +518,10 @@ function attempt(S, s) {
     while (alive > 0) {
       t += ttk;
       // 보스전만 광폭화가 붙는다 (b). t 는 이 스테이지에서 흐른 시간.
-      const Ldmg = Leatk + fromNum(D.enemy.aspd * alive) - Ldef + fromNum(ttk)
+      // 힐러는 때리지 않는다 — 살아있는 수가 아니라 **공격하는 수** 에 비례한다
+      const hitters = b ? alive : Math.max(0, alive - Math.min(sup, alive));
+      if (hitters <= 0) { alive--; Lgold = Ladd(Lgold, LeGOLD(s, b)); continue; }
+      const Ldmg = Leatk + fromNum(D.enemy.aspd * hitters) - Ldef + fromNum(ttk)
         + (b ? fromNum(gate ? gateEnrageAt(t) : enrageAt(t)) : 0);
       if (Ldmg >= Lhp) return { win: false, reason: 'dead', elapsed: t, Lgold };
       Lhp = Lsub(Lhp, Ldmg);

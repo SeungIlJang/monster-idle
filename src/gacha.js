@@ -34,13 +34,15 @@ export const CATALOG = {
     { id: 'quake', name: '대지 가르기', icon: '🪨' },
     { id: 'shriek', name: '비명', icon: '💢' },
   ],
+  // atk 는 **연출 전용** 이다. 6종이 균등 확률이고 성능도 같아서 수치에는 아무 영향이 없다 —
+  // 하늘에 떠서 가만히 있으면 "장식" 으로 보이므로 각자 제 무기로 싸우는 모습만 준다.
   comp: [
-    { id: 'slimelet', name: '작은 슬라임', icon: '🟢' },
-    { id: 'bats', name: '박쥐 떼', icon: '🦇' },
-    { id: 'spore', name: '버섯 포자', icon: '🍄' },
-    { id: 'wisp', name: '도깨비불', icon: '🔮' },
-    { id: 'shard', name: '돌조각', icon: '🪨' },
-    { id: 'shade', name: '그림자', icon: '👤' },
+    { id: 'slimelet', name: '작은 슬라임', icon: '🟢', atk: { color: '#7fd96a', shape: 'orb' } },
+    { id: 'bats', name: '박쥐 떼', icon: '🦇', atk: { color: '#b78adf', shape: 'wing' } },
+    { id: 'spore', name: '버섯 포자', icon: '🍄', atk: { color: '#ff9ad5', shape: 'puff' } },
+    { id: 'wisp', name: '도깨비불', icon: '🔮', atk: { color: '#9fe8ff', shape: 'flame' } },
+    { id: 'shard', name: '돌조각', icon: '🪨', atk: { color: '#d9b06a', shape: 'rock' } },
+    { id: 'shade', name: '그림자', icon: '👤', atk: { color: '#9a7ad6', shape: 'wedge' } },
   ],
 };
 

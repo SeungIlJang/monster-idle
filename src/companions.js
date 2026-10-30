@@ -7,7 +7,7 @@
 //
 // 누가 서는가: **내가 수집한 몬스터** 중 리드를 뺀 상위 레벨 순.
 // 몇 기가 서는가: 열린 슬롯 수 = activeSlots('comp') — 스테이지 10/40/100/200/400/14500.
-import { activeSlots, equippedList, RARITIES, gachaRev } from './gacha.js';
+import { activeSlots, equippedList, RARITIES, gachaRev, CATALOG } from './gacha.js';
 import { B } from './balance.js';
 import { S } from './state.js';
 import { monLevel } from './layer2.js';
@@ -73,6 +73,7 @@ export function activeCompanions() {
     lv: monLevel(m.key),
     tier: monTier(m.key),      // 마일스톤 티어 — 레벨이 오르면 겉모습이 달라진다
     sprite: m.key,
+    bolt: m.bolt || { color: '#9ae6b4', shape: 'orb' },   // 자기 무기로 쏜다(연출 전용)
     ...SLOTS[i],
     phase: i * 1.7,          // 흔들림이 겹치지 않게
     delay: i * 0.035,        // 공격이 리드보다 조금씩 늦게 — 어긋나야 여럿으로 보인다
@@ -118,6 +119,7 @@ export function skyCompanions() {
   const out = eq.slice(0, SKY.length).map((it, i) => ({
     id: it.id, name: it.name, rarity: it.rarity, enh: it.enh, val: it.val,
     color: RARITIES[it.rarity]?.color || '#9aa7c7',   // 등급은 **빛 색**으로 읽힌다
+    atk: CATALOG.comp.find(x => x.id === it.id)?.atk || { color: '#cfe6ff', shape: 'orb' },
     ...SKY[i],
     phase: i * 1.3,          // 둥둥 뜨는 주기를 어긋나게
   }));

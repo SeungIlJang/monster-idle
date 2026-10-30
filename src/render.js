@@ -184,6 +184,101 @@ function drawScroll(img, offset) {
   }
 }
 
+// ── 동료 공격 연출 ───────────────────────────────────────────
+// **전적으로 연출이다.** 피해는 리드의 LDPS 하나로 끝나 있고(동료 뽑기 효과 gC 도 거기 들어간다),
+// 여기서 나가는 탄은 수치를 1 도 건드리지 않는다. 그래서 combat.js 가 아니라 렌더가 통째로 들고 있다 —
+// 전투 로직에 연출이 섞이면 "맞췄는데 왜 피해가 다르지" 를 나중에 의심하게 된다.
+//
+// 리드의 공격 주기에 묶지 않는다. 깊은 층에서는 공격속도가 올라 초당 수십 발이 되는데
+// 동료 12기가 같이 쏘면 화면이 탄막이 된다. 각자 느린 제 주기로 쏜다.
+const ALLY_PERIOD = 1.15;       // 한 기가 쏘는 간격(초)
+let allyUnits = [];             // 이번 프레임의 사격 주체 {px,py,sz,w}
+const allyBolts = [];
+let allyT = [];                 // 기체별 다음 발사까지 남은 시간
+
+function allyTick(dt, units, target) {
+  if (allyT.length !== units.length) {
+    // 기수가 바뀌면 위상을 고르게 흩는다 — 같이 쏘면 한 덩어리로 보인다
+    allyT = units.map((_, i) => ALLY_PERIOD * ((i + 0.5) / Math.max(1, units.length)));
+  }
+  for (let i = 0; i < units.length; i++) {
+    allyT[i] -= dt;
+    if (allyT[i] > 0) continue;
+    allyT[i] += ALLY_PERIOD;
+    if (!target) continue;                       // 때릴 게 없으면 쏘지 않는다
+    const u = units[i];
+    allyBolts.push({
+      x0: u.px, y0: u.py, x1: target.x, y1: target.y,
+      t: 0, dur: 0.26, color: u.w.color, shape: u.w.shape || 'orb', sz: u.sz,
+    });
+    if (allyBolts.length > 40) allyBolts.shift();
+  }
+  for (const b of allyBolts) b.t += dt;
+  for (let i = allyBolts.length - 1; i >= 0; i--) if (allyBolts[i].t > allyBolts[i].dur + 0.1) allyBolts.splice(i, 1);
+}
+
+/** 동료 탄 한 발. 리드 탄(drawBolt)과 모양 집합이 다르다 — 누가 쐈는지 구별돼야 한다. */
+function drawAllyBolt(b) {
+  const u = Math.min(1, b.t / b.dur);
+  if (u >= 1) {                                   // 착탄 — 작게 터진다
+    const a = 1 - Math.min(1, (b.t - b.dur) / 0.1);
+    if (a <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = a * 0.75;
+    ctx.fillStyle = b.color;
+    ctx.beginPath(); ctx.arc(b.x1, b.y1, b.sz * (0.5 + (1 - a) * 0.6), 0, 7); ctx.fill();
+    ctx.restore();
+    return;
+  }
+  const x = b.x0 + (b.x1 - b.x0) * u;
+  const y = b.y0 + (b.y1 - b.y0) * u - Math.sin(u * Math.PI) * b.sz * 2.2;
+  const r = b.sz;
+  ctx.save();
+  ctx.globalAlpha = 0.3;
+  ctx.strokeStyle = b.color;
+  ctx.lineWidth = r * 1.1;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x - (b.x1 - b.x0) * 0.035, y - (b.y1 - b.y0) * 0.035);
+  ctx.lineTo(x, y);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.shadowColor = b.color;
+  ctx.shadowBlur = r * 2;
+  ctx.fillStyle = b.color;
+  ctx.beginPath();
+  if (b.shape === 'wing') {                       // 박쥐 — 날개 두 쪽
+    ctx.moveTo(x, y); ctx.lineTo(x - r * 1.6, y - r); ctx.lineTo(x - r * 0.5, y);
+    ctx.lineTo(x - r * 1.6, y + r); ctx.lineTo(x, y);
+    ctx.moveTo(x, y); ctx.lineTo(x + r * 1.6, y - r); ctx.lineTo(x + r * 0.5, y);
+    ctx.lineTo(x + r * 1.6, y + r);
+  } else if (b.shape === 'puff') {                // 포자 — 뭉게뭉게
+    ctx.arc(x, y, r * 0.9, 0, 7);
+    ctx.arc(x + r * 0.8, y - r * 0.4, r * 0.6, 0, 7);
+    ctx.arc(x - r * 0.7, y + r * 0.3, r * 0.55, 0, 7);
+  } else if (b.shape === 'flame') {               // 도깨비불 — 위로 뾰족
+    ctx.moveTo(x, y - r * 1.5); ctx.lineTo(x + r * 0.8, y + r * 0.6);
+    ctx.lineTo(x, y + r * 0.2); ctx.lineTo(x - r * 0.8, y + r * 0.6);
+  } else if (b.shape === 'rock') {
+    ctx.moveTo(x - r, y - r * 0.6); ctx.lineTo(x + r * 0.2, y - r);
+    ctx.lineTo(x + r, y + r * 0.3); ctx.lineTo(x - r * 0.3, y + r);
+  } else if (b.shape === 'wedge') {
+    ctx.moveTo(x + r * 1.4, y); ctx.lineTo(x - r, y - r); ctx.lineTo(x - r * 0.3, y); ctx.lineTo(x - r, y + r);
+  } else if (b.shape === 'shard') {
+    ctx.moveTo(x + r * 1.3, y); ctx.lineTo(x, y - r * 0.8); ctx.lineTo(x - r * 1.1, y); ctx.lineTo(x, y + r * 0.8);
+  } else if (b.shape === 'streak') {
+    ctx.moveTo(x + r * 1.6, y - r * 0.4); ctx.lineTo(x - r * 1.2, y); ctx.lineTo(x + r * 1.6, y + r * 0.4);
+  } else if (b.shape === 'ring') {
+    ctx.arc(x, y, r * 0.95, 0, 7);
+  } else if (b.shape === 'coin') {
+    ctx.ellipse(x, y, r * 0.75, r, 0, 0, 7);
+  } else {
+    ctx.arc(x, y, r * 0.95, 0, 7);
+  }
+  ctx.fill();
+  ctx.restore();
+}
+
 /**
  * 뽑기 동료 — 하늘에 둥둥 뜬다.
  *
@@ -238,6 +333,8 @@ function drawSky(base) {
       ctx.fillText('+' + c.enh, cx, cy - size * 0.52);
     }
     ctx.restore();
+    // 하늘 동료도 쏜다 — 떠 있기만 하면 장식으로 보인다
+    allyUnits.push({ px: cx, py: cy + size * 0.1, sz: size * 0.12, w: c.atk });
   }
 }
 
@@ -548,6 +645,7 @@ export function render(dt) {
     const s = R.shake * 14;
     ctx.translate((Math.random() - 0.5) * s, (Math.random() - 0.5) * s);
   }
+  allyUnits = [];                   // 이번 프레임의 사격 주체를 다시 모은다
   drawBG(dt);
 
   const feet = laneY(0.45);          // 리드가 서는 깊이
@@ -583,6 +681,8 @@ export function render(dt) {
     // 고리는 리드에게만 준다 — 여섯 개가 겹치면 바닥이 고리밭이 되고
     // 정작 "누가 주인공인지" 가 흐려진다.
     const opt = { dx: lunge * W * 0.03, sx: 1 + lunge * 0.08, sy: 1 - lunge * 0.06, alpha: 0.92 };
+    // 지면 동료도 제 무기로 쏜다 — 살짝 내지르기만 해서 가만히 있는 것처럼 보였다
+    allyUnits.push({ px: cx + h * 0.3, py: cy - h * 0.55, sz: h * 0.1, w: c.bolt });
     const own = compImage(c.id);
     if (own) drawSprite(own, cx, cy, h, boxOf('comp', c.id), opt);
     // 동료도 자기 레벨의 진화 모습으로 선다 — 수집한 몬스터를 키우는 보람이 전장에 보여야 한다
@@ -686,7 +786,19 @@ export function render(dt) {
     ctx.globalAlpha = 1;
     if (dying > 0) continue;              // 쓰러지는 적은 체력바를 지운다
     const bw = h * 0.62;
-    bar(ex - bw / 2, ey - h - 7, bw, 4, ratio(e.Lhp, e.Lmax), '#ff5a6e');
+    // 회복 중이면 바를 초록으로 — **올라가는 게 보여야** 힐러가 일하는 걸 안다
+    bar(ex - bw / 2, ey - h - 7, bw, 4, ratio(e.Lhp, e.Lmax), e.healT > 0 ? '#5ee88a' : '#ff5a6e');
+    if (e.healT > 0) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, e.healT * 2.2);
+      ctx.font = '800 10px system-ui';
+      ctx.textAlign = 'center';
+      ctx.strokeStyle = 'rgba(12,18,34,.8)'; ctx.lineWidth = 2.5;
+      ctx.strokeText('+', ex, ey - h - 12);
+      ctx.fillStyle = '#8ef0a8';
+      ctx.fillText('+', ex, ey - h - 12);
+      ctx.restore();
+    }
   }
 
   // ── 투사체 ── 리드에서 적까지 날아가고 꼬리를 남긴다.
@@ -702,6 +814,13 @@ export function render(dt) {
     drawBolt(bx, by, u, b, pH);
   }
 
+  // ── 동료 사격 ── 지면 몬스터와 하늘 뽑기 동료가 각자 제 무기로 쏜다.
+  // 수치는 전혀 건드리지 않는다 — 리드의 LDPS 가 이미 전부를 포함한다.
+  let aimIdx = -1;
+  for (let i = 0; i < R.enemies.length; i++) if (R.enemies[i].Lhp > L0 && foePos[i]) { aimIdx = i; break; }
+  allyTick(dt, allyUnits, aimIdx >= 0 ? foePos[aimIdx] : null);
+  for (const b of allyBolts) drawAllyBolt(b);
+
   // ── 적 공격 ── 적에서 나에게 날아온다.
   // 예전엔 적이 때려도 포즈만 바뀌었다 — 투사체도 섬광도 흔들림도 없어서
   // 맞고 있다는 걸 체력바 숫자로만 알 수 있었다. 용사마다 다른 색·모양으로 날린다.
@@ -711,6 +830,28 @@ export function render(dt) {
     const from = foePos[b.idx];
     if (!from) continue;
     const u = Math.min(1, b.t / b.dur);
+    // 힐러 — 나를 겨누지 않는다. **아군에게** 빛이 간다.
+    if (b.type === 'heal') {
+      const to = foePos[b.to];
+      if (!to) continue;
+      ctx.save();
+      ctx.globalAlpha = (1 - u) * 0.85;
+      ctx.strokeStyle = b.color;
+      ctx.shadowColor = b.color;
+      ctx.shadowBlur = eH * 0.2;
+      ctx.lineWidth = Math.max(2, eH * 0.055);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      // 살짝 위로 휜다 — 직선이면 공격처럼 보인다
+      ctx.quadraticCurveTo((from.x + to.x) / 2, Math.min(from.y, to.y) - eH * 0.5, to.x, to.y);
+      ctx.stroke();
+      ctx.globalAlpha = (1 - u) * 0.6;
+      ctx.fillStyle = b.color;
+      ctx.beginPath(); ctx.arc(to.x, to.y, eH * 0.16 * (0.6 + u), 0, 7); ctx.fill();
+      ctx.restore();
+      continue;
+    }
     if (b.type === 'slash') {
       // 근접 — 날아갈 게 없다. 적 앞에 베기 섬광만 그린다.
       const a = 1 - u;
