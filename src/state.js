@@ -4,7 +4,7 @@ import { B, STAT_KEYS } from './balance.js';
 import { L0 } from './logmath.js';
 
 const KEY = 'monsteridle';
-const SAVE_VERSION = 1;
+const SAVE_VERSION = 2;
 
 export function defaults() {
   const lv = {};
@@ -78,6 +78,10 @@ function migrate(d) {
   s.mine = { ...base.mine, ...(d.mine || {}) };
   s.monLv = { ...(d.monLv || {}) };
   s.mastery = { ...base.mastery, ...(d.mastery || {}) };
+  // v2: 마스터리 노드의 뜻이 바뀌었다(광폭이 'DPS' → '보스 특화'). 예전 배분을 그대로 두면
+  // 찍은 적 없는 트레이드오프가 소급 적용된다 — 한 번 전부 돌려준다.
+  // 포인트 자체는 몬스터 레벨에서 나오므로 지우는 건 '어디에 썼나' 뿐이다.
+  if ((Number(d.v) || 1) < 2) for (const k of Object.keys(s.mastery)) s.mastery[k] = 0;
   s.rs = { ...base.rs, ...(d.rs || {}) };
   s.shard = Number.isFinite(s.shard) ? Math.max(0, Math.floor(s.shard)) : 0;
   s.ore = Number.isFinite(s.ore) ? Math.max(0, Math.floor(s.ore)) : 0;

@@ -75,8 +75,18 @@ export function resetMastery() {
   for (const n of MASTERY_NODES) S.mastery[n.key] = 0;
   return true;
 }
-/** 노드 배수 (실수) */
-export const masteryMul = nodeKey => Math.pow(L2.mastery.perPoint, S.mastery[nodeKey] || 0);
+/**
+ * 노드 배수 (실수). 노드마다 배수가 다르다 —
+ * 예전엔 전부 perPoint 하나를 써서 포식과 광폭이 **같은 노드**였다(§마스터리 주석).
+ * which: 'mul'(기본) 또는 'nrmMul'(광폭이 잡몹에게 주는 감소)
+ */
+const NODE = k => MASTERY_NODES.find(n => n.key === k);
+export const masteryMul = (nodeKey, which = 'mul') => {
+  const d = NODE(nodeKey);
+  const m = d?.[which];
+  if (!(m > 0)) return 1;
+  return Math.pow(m, S.mastery[nodeKey] || 0);
+};
 
 // ══════════════════════════════════════════════ 연구
 export const researchLv = () => S.rs.lv || 0;
@@ -120,7 +130,11 @@ export const milestoneMul = () => 1 + (milestoneCount() * L2.collect.milestoneAt
 /** 공격력 배수 = 마스터리 공격 노드 × 연구 × 마일스톤 */
 export const atkMul = () => masteryMul('atk') * researchMul() * milestoneMul();
 export const hpMul = () => masteryMul('hp');
-export const dpsMul = () => masteryMul('dps');
+/**
+ * 탐식 — 획득 골드 배수. 전부 피해 배수로 수렴하는 이 게임에서
+ * 갈라지는 몇 안 되는 축이라 여기가 **선택**이 된다: 지금의 화력이냐, 투자냐.
+ */
+export const goldMul = () => masteryMul('gold');
 
 export function ensureLayer2() {
   _mineDaily();

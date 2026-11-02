@@ -279,17 +279,22 @@ function layer2Day(S) {
 // 마스터리 포인트는 3노드(공격·체력·광폭)에 고르게 분배된다고 본다.
 // 피해에 기여하는 건 공격·광폭 둘이고 체력은 생존으로 간다.
 const masteryPts = S => (NOL2 ? 0 : S.monLv) / L2.mastery.nodes.length;
+const MNODE = k => L2.mastery.nodes.find(n => n.key === k) || {};
 /** 2단계가 공격력에 주는 로그 배수 */
 function Llayer2Atk(S) {
   if (NOL2) return 0;
-  return masteryPts(S) * fromNum(L2.mastery.perPoint)         // 마스터리 공격 노드
+  return masteryPts(S) * fromNum(MNODE('atk').mul || 1)       // 마스터리 공격 노드
        + S.rsLv * fromNum(L2.research.atkPerLevel)            // 연구 (승산)
        + fromNum(1 + S.milestones * L2.collect.milestoneAtkPct / 100);   // 수집 마일스톤 (가산)
 }
 /** 체력 노드 */
-const Llayer2Hp = S => (NOL2 ? 0 : masteryPts(S) * fromNum(L2.mastery.perPoint));
-/** 광폭 노드 — DPS 에 곱해진다 */
-const Llayer2Dps = S => (NOL2 ? 0 : masteryPts(S) * fromNum(L2.mastery.perPoint));
+const Llayer2Hp = S => (NOL2 ? 0 : masteryPts(S) * fromNum(MNODE('hp').mul || 1));
+/**
+ * 탐식 노드 — **골드**에 곱해진다. 피해가 아니다.
+ * 예전엔 광폭(dps)이 공격 노드와 같은 배수를 LDPS 에 그대로 곱해서 둘이 같은 노드였다.
+ * 보스 특화로 바꿔 봤다가 접었다 — 보스가 전투 시간의 8% 뿐이라 순손실이었다.
+ */
+const Llayer2Gold = S => (NOL2 ? 0 : masteryPts(S) * fromNum(MNODE('gold').mul || 1));
 
 /** 진행도에 따라 열린 슬롯 수 */
 const activeSlots = (b, best) => b.slotUnlock.filter(u => best >= u).length;
@@ -409,7 +414,7 @@ function LDPS(S, boss) {
   const critF = 1 + Math.min(1, nval(S, 'crit')) * (nval(S, 'cdmg') - 1);
   const shots = 1 + Math.min(1, nval(S, 'dbl')) + Math.min(1, nval(S, 'trp'));
   const nrmF = boss ? 1 : 1 + nval(S, 'nrm');
-  let L = LATK(S) + Llayer2Dps(S) + fromNum(critF * shots * nrmF * nval(S, 'aspd') * (1 + gC(S) / 100)
+  let L = LATK(S) + fromNum(critF * shots * nrmF * nval(S, 'aspd') * (1 + gC(S) / 100)
                                      * ab('dmg') * (boss ? ab('boss') : ab('nrm')));
   if (boss) L += Lburst(S);
   return L + Lsoul(S);
@@ -570,7 +575,7 @@ function run() {
     const atGate = isGate(S.stage);
     const r = attempt(S, S.stage);
     if (atGate) { gstat.tries++; if (r.win) gstat.win++; else if (r.reason === 'dead') gstat.dead++; else gstat.slow++; }
-    S.Lgold = Ladd(S.Lgold, r.Lgold + LGOLD_MUL); spend(S);
+    S.Lgold = Ladd(S.Lgold, r.Lgold + LGOLD_MUL + Llayer2Gold(S)); spend(S);
     t += r.elapsed / SPEED_MUL;        // 배속은 전투 시간만 줄인다 (하루 수입은 그대로)
 
     if (r.win) {
@@ -597,7 +602,7 @@ function run() {
       const fs = Math.max(1, S.stage - 1), fb = isBoss(fs);
       const ttkF = ratio(LeHP(fs, fb), LDPS(S, fb));
       const kills = Math.max(0, Math.min(D.player.farmSeconds * SPEED_MUL / Math.max(ttkF, 1e-6), 1e4));
-      if (kills > 0) S.Lgold = Ladd(S.Lgold, LeGOLD(fs, fb) + fromNum(kills) + LGOLD_MUL);
+      if (kills > 0) S.Lgold = Ladd(S.Lgold, LeGOLD(fs, fb) + fromNum(kills) + LGOLD_MUL + Llayer2Gold(S));
       spend(S);
       t += D.player.farmSeconds; farmT += D.player.farmSeconds;
     }
@@ -619,7 +624,7 @@ function run() {
       // 게임과 같은 기준: 최고 클리어 **직전** 스테이지의 초당 골드 × 상한까지의 시간
       const credit = Math.min(gapS, CAP_S);
       const Lps = LgoldPerSec(S, Math.max(1, S.best - 1));
-      if (Lps > L0 && isFinite(Lps)) S.Lgold = Ladd(S.Lgold, Lps + fromNum(credit) + fromNum(OFFLINE_AD));
+      if (Lps > L0 && isFinite(Lps)) S.Lgold = Ladd(S.Lgold, Lps + fromNum(credit) + fromNum(OFFLINE_AD) + Llayer2Gold(S));
       offlineS += credit; lostS += gapS - credit;
       t += gapS;
       // 자리를 비운 것은 **무진행이 아니다.** lastUp 을 같이 밀지 않으면 공백이 그대로

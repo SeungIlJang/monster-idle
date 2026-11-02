@@ -207,7 +207,7 @@ function renderMastery() {
   const nodes = L2.MASTERY_NODES.map(nd => {
     const lv = S.mastery[nd.key] || 0;
     const now = L2.masteryMul(nd.key);
-    const next = now * B.layer2.mastery.perPoint;
+    const next = now * (nd.mul || 1);        // 노드마다 배수가 다르다(§마스터리)
     // 찍으면 뭐가 되는지를 **찍기 전에** 보여준다. 미리보기가 없으면 고민이 생기지 않는다.
     const prev = free >= 1
       ? `<span class="pv">×${now.toFixed(3)} → <b>×${next.toFixed(3)}</b></span>`
@@ -223,7 +223,8 @@ function renderMastery() {
   $('growBody').innerHTML =
     `<div class="d" style="font-size:11px;opacity:.65;line-height:1.6;margin-bottom:9px">
        남은 포인트 <b style="color:#8ad8ff">${free}</b> / 총 ${L2.masteryPoints()}.
-       노드는 <b>승산</b>이라 레벨이 쌓일수록 복리로 붙습니다.
+       노드는 <b>승산</b>이라 레벨이 쌓일수록 복리로 붙습니다.<br>
+       <b>셋이 서로 다른 것</b>을 올립니다 — 화력이냐, 생존이냐, 투자냐.
      </div>` + nodes +
     `<button id="mReset" style="width:100%;margin-top:8px;background:#3a2030;color:#ffb4b4;
        border:1px solid #6a3545;border-radius:10px;padding:9px;font-size:12px;font-weight:700;cursor:pointer">

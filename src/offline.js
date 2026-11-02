@@ -14,7 +14,7 @@ export function LgoldPerSec(stage) {
   const floor = 1 / Math.max(1e-9, nval('aspd'));
   const ttk = Math.max(ratio(LeHP(stage, boss), LDPS(boss)), floor);
   if (!isFinite(ttk)) return -Infinity;
-  return LeGOLD(stage, boss) + fromNum(ab('gold')) - fromNum(ttk);   // 리드 능력의 골드 배수
+  return LeGOLD(stage, boss) + fromNum(ab('gold') * goldMul()) - fromNum(ttk);  // 리드 능력 + 마스터리 탐식
 }
 
 /**

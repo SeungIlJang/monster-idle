@@ -10,6 +10,7 @@ import { bump as bumpDaily } from './daily.js';
 import { recomputeGacha } from './gacha.js';
 import { crossed } from './unlocks.js';
 import { tickSkills, normalShare } from './skills.js';
+import { goldMul } from './layer2.js';
 import { L0, add, sub, ratio, fromNum, fmt } from './logmath.js';
 
 export const MODE = { RUN: 'run', FARM: 'farm' };
@@ -190,7 +191,8 @@ function onImpact(b) {
 
 function gainGold() {
   // 리드 능력의 골드 배수(그릭 탐욕 등). 오프라인 보상은 offline.js 쪽에서 같이 건다.
-  S.Lg = add(S.Lg, LeGOLD(R.stage, R.boss) + fromNum(ab('gold')));
+  // 마스터리 탐식 노드가 여기 곱해진다 — 오프라인 보상도 offline.js 에서 같이 건다
+  S.Lg = add(S.Lg, LeGOLD(R.stage, R.boss) + fromNum(ab('gold') * goldMul()));
 }
 
 function onKill(e, idx) {
@@ -349,7 +351,7 @@ export function tick(dt) {
     R.atkAnimT = Math.min(0.25, interval * 0.6);
     const crit = Math.random() < Math.min(1, nval('crit'));
     // 실제 피해를 **LDPS 에서 끌어온다.** 식을 두 벌 쓰면 반드시 어긋난다 —
-    // 실제로 어긋나 있었다: gC(동료 배너)와 dpsMul(마스터리 광폭)이 표시 DPS 와
+    // 실제로 어긋나 있었다: gC(동료 배너)와 마스터리 노드가 표시 DPS 와
     // canClear 판단에만 있고 피해에는 없어서, 표시가 406배일 때 타격은 1.12배였다.
     // 동료 배너와 광폭 노드가 통째로 무력했고, 부풀려진 DPS 로 못 깨는 스테이지에
     // 계속 도전해 죽었다. 시뮬은 줄곧 올바른 쪽(LDPS)을 검증해 왔다.

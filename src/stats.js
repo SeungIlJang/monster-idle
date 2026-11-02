@@ -3,7 +3,7 @@
 import { B, STAT_KEYS, perWave, isBoss, LeATK, LeHP } from './balance.js';
 import { S } from './state.js';
 import { fromNum, geoSum, ratio, sub } from './logmath.js';
-import { atkMul, hpMul, dpsMul } from './layer2.js';
+import { atkMul, hpMul } from './layer2.js';
 import { Lsoul } from './prestige.js';
 
 const SD = k => B.stats[k];
@@ -89,7 +89,7 @@ export function LDPS(boss) {
   const nrmF = boss ? 1 : 1 + nval('nrm');
   const Lp = Lsoul();                      // 환생 상점 보너스 (승산 → 로그에서는 덧셈)
   // dmg 는 전체, boss/잡몹 배수는 상대에 따라 갈린다 (nrm 쪽은 nval('nrm') 에서 이미 반영됐다)
-  let L = LATK() + fromNum(critF() * shots() * nrmF * nval('aspd') * (1 + gC() / 100) * dpsMul()
+  let L = LATK() + fromNum(critF() * shots() * nrmF * nval('aspd') * (1 + gC() / 100)
                            * ab('dmg') * (boss ? ab('boss') : ab('nrm'))) + Lp;
   if (boss) L += Lburst();
   return L;
