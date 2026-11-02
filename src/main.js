@@ -40,7 +40,8 @@ setEventHandler(ev => {
     case 'attack':    break;                    // 발사 자체는 조용하다 — 소리는 닿을 때 난다
     case 'impact':    sfx.attack(); break;      // 투사체가 맞은 순간
     case 'playerHit': sfx.playerHit(); break;
-    case 'kill':      sfx.kill(); break;
+    // 연쇄가 길수록 배경이 더 달린다 — 화면이 같이 앞으로 쏠려야 "몰아친다" 가 읽힌다
+    case 'kill':      sfx.kill(); if (R.chain >= 3) bgAdvance(0.18 + Math.min(R.chain, 10) * 0.02); break;
     case 'wave':      bgAdvance(); break;        // 웨이브를 넘길 때 한 걸음 더
     // 클리어마다 다음 장면 자원을 예열한다 (적·배경이 5스테이지마다 바뀐다)
     case 'stageClear': refresh(); preloadFor(ev.stage + 1); bgAdvance(1.1); break;   // 스테이지는 더 길게
@@ -87,7 +88,19 @@ function loop(now) {
   if (dt > 0.1) dt = 0.1;            // 탭 복귀 시 점프 방지
   // 배속은 **라이브 루프에만** 건다. 오프라인 보상은 실제 경과 시간으로 따로 계산하므로
   // 여기서 늘려도 그쪽은 영향받지 않는다(시뮬이 검증한 것도 전투 처리량뿐이다).
-  const sdt = dt * (S.spd || 1);
+  let sdt = dt * (S.spd || 1);
+  // ── 히트스톱 ── 큰 타격에 몇 프레임 멈춘다.
+  // 멈춘 시간은 **버리지 않고 모아 둔다** — 그냥 건너뛰면 전투 처리량이 깎여
+  // 시뮬과 어긋난다(치명타가 5.6초마다, 처치는 더 자주 온다).
+  if (R.freeze > 0) {
+    R.freeze -= dt;
+    R.freezeBank += sdt;
+    render(0);             // dt 0 — 화면이 그대로 멈춘다
+    renderSkillBar();
+    requestAnimationFrame(loop);
+    return;
+  }
+  if (R.freezeBank > 0) { sdt += R.freezeBank; R.freezeBank = 0; }   // 모아 둔 시간을 돌려준다
   tick(sdt);
   render(sdt);
   renderSkillBar();        // 쿨 채움은 매 프레임 — DOM 은 구성이 바뀔 때만 다시 만든다

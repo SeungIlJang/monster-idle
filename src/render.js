@@ -5,7 +5,7 @@
 // 용사는 Idle/Attack/Hit/Dead 프레임이 멀쩡해서 프레임 애니를 그대로 쓴다.
 import { B, heroAt, zoneAt, sceneEvery, heroPool } from './balance.js';
 import { S } from './state.js';
-import { R, enrage, gateSecondsLeft, gateSoft } from './combat.js';
+import { R, enrage, gateSecondsLeft, gateSoft, CHAIN_WARM } from './combat.js';
 import { pick, preload, boxOf, frameCount } from './sprites.js';
 import { activeCompanions, compImage, monTier, skyCompanions } from './companions.js';
 import { L0, ratio, fmt } from './logmath.js';
@@ -888,6 +888,33 @@ export function render(dt) {
     g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(meAt.x, meAt.y, rr, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+
+  // ── 처치 연쇄 ── 몰아칠수록 화면이 달아오른다.
+  // 전투의 1초차와 30초차가 똑같이 생긴 게 지루함의 뿌리였다 — 시간축에 변화를 준다.
+  // **수치는 아무것도 안 바뀐다.** 빨리 쓰는 것 자체가 이미 보상이고 여기는 보이는 몫이다.
+  if (R.chain >= CHAIN_WARM) {
+    const heat = Math.min(1, (R.chain - CHAIN_WARM + 1) / 7);   // 3연속부터 10연속까지 차오른다
+    const fade = Math.min(1, R.chainT / 0.6);                   // 끊기면 빠르게 식는다
+    const a = heat * fade;
+    ctx.save();
+    const g = ctx.createRadialGradient(W / 2, H * 0.62, Math.min(W, H) * 0.3,
+                                       W / 2, H * 0.62, Math.max(W, H) * 0.72);
+    g.addColorStop(0, 'rgba(255,170,60,0)');
+    g.addColorStop(1, `rgba(255,150,40,${(a * 0.30).toFixed(3)})`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    // 연쇄 수 — 리드 위에 뜬다. 숫자가 없으면 "뭔가 밝아졌다" 로만 읽힌다.
+    ctx.globalAlpha = Math.min(1, fade * 1.2);
+    ctx.textAlign = 'center';
+    ctx.font = `800 ${Math.round(13 + heat * 9)}px system-ui`;
+    ctx.strokeStyle = 'rgba(40,16,4,.85)'; ctx.lineWidth = 3;
+    // 이름표(feet-pH-38)·HP(feet-pH-26) 위로 올린다 — 겹치면 둘 다 안 읽힌다
+    const cy = feet - pH - 56;
+    ctx.strokeText(R.chain + ' 연쇄', W * 0.30, cy);
+    ctx.fillStyle = heat > 0.6 ? '#ffd34d' : '#ffb04a';
+    ctx.fillText(R.chain + ' 연쇄', W * 0.30, cy);
     ctx.restore();
   }
 

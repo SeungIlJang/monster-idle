@@ -16,6 +16,13 @@ import { L0, add, sub, ratio, fromNum, fmt } from './logmath.js';
 export const MODE = { RUN: 'run', FARM: 'farm' };
 // 파밍을 이만큼 돌면 전투력 판단과 무관하게 한 번 찔러본다 (canClear 가 보수적일 때의 안전장치)
 export const AUTO_RETRY_CLEARS = 3;
+/**
+ * 처치 연쇄가 끊기기까지의 여유(초). 평타가 0.63초마다라 2.2초면
+ * "쉬지 않고 쓸고 있다" 와 "막혔다" 가 갈린다 — 너무 길면 늘 켜져 있어 의미가 없다.
+ */
+const CHAIN_HOLD = 2.2;
+/** 화면이 달아오르기 시작하는 연쇄 수 */
+export const CHAIN_WARM = 3;
 
 export const R = {
   mode: MODE.RUN,
@@ -38,6 +45,20 @@ export const R = {
   bolts: [],         // 날아가는 투사체 (연출 전용 — 피해는 발사 즉시 끝나 있다)
   foeBolts: [],      // 적 → 나. 같은 규칙이다 (피해는 이미 끝나 있다)
   hurtT: 0,          // 맞은 직후 화면 가장자리가 붉어지는 잔여 시간
+  // ── 히트스톱 ──
+  // 큰 타격에 몇 프레임 멈춘다. 방치형은 플레이어가 **보고만 있는** 게임이라
+  // 타격감이 거의 전부인데, 멈춤이 전혀 없어서 같은 숫자가 가볍게 지나갔다.
+  //
+  // **멈춘 시간은 버리지 않는다.** 치명타가 5.6초마다, 처치는 더 자주 오므로
+  // 그냥 건너뛰면 전투 처리량이 1~3% 깎여 시뮬과 어긋난다.
+  // 멈추는 동안의 dt 를 freezeBank 에 모아 두고 풀릴 때 한 번에 흘린다.
+  freeze: 0,
+  freezeBank: 0,
+  // ── 처치 연쇄 ──
+  // 연속으로 쓸면 화면이 달아오른다. 끊기면 식는다.
+  // 전투의 1초차와 30초차가 똑같이 생긴 게 지루함의 뿌리였다 — 시간축에 변화를 준다.
+  chain: 0,
+  chainT: 0,
   fx: [],            // 데미지 숫자 등 연출
   farmClears: 0,     // 파밍으로 클리어한 횟수 (자동 재도전 판단용)
   banner: '',
@@ -91,6 +112,8 @@ export function enterStage(stage, mode = MODE.RUN) {
   R.Lhp = R.LhpMax;
   R.atkT = 0;
   R.stageTime = 0;
+  R.chain = 0; R.chainT = 0;
+  R.freeze = 0; R.freezeBank = 0; lastStop = -9;
   if (mode === MODE.RUN) R.farmClears = 0;
   R.heroName = heroAt(R.stage).name;
   // 보스 스테이지에 들어서는 순간은 10스테이지마다 오는 유일한 리듬이다. 경고를 띄운다.
@@ -148,6 +171,20 @@ export function gateSecondsLeft() {
   return frac / (bite * B.enemy.aspd);
 }
 
+/**
+ * 몇 초 멈출지 요청한다. 더 센 요청이 이긴다 (겹칠 때 합치면 끈적해진다).
+ *
+ * **최소 간격을 둔다.** 처치가 초당 2회씩 나는 구간에서 매번 멈추면 전체 프레임의
+ * 11% 가 정지해 타격감이 아니라 **끊김**으로 읽힌다(실측). 멈춤은 드물어야 무겁다.
+ */
+const HITSTOP_GAP = 0.30;
+let lastStop = -9;
+function hitstop(sec) {
+  if (R.stageTime - lastStop < HITSTOP_GAP) return;
+  lastStop = R.stageTime;
+  R.freeze = Math.max(R.freeze, sec);
+}
+
 function front() {
   for (const e of R.enemies) if (e.Lhp > L0) return e;
   return null;
@@ -177,6 +214,7 @@ function onImpact(b) {
   const e = R.enemies[b.idx];
   if (e) e.hitT = 0.12;
   R.shake = Math.max(R.shake, b.crit ? 0.16 : 0.07);
+  if (b.crit) hitstop(0.035);          // 2프레임 — 치명타는 5.6초마다 온다
   const n = B.combatFx.shards;
   for (let i = 0; i < n; i++) {
     fx('shard', '', b.idx, -6);
@@ -198,6 +236,12 @@ function gainGold() {
 function onKill(e, idx) {
   // 스킬 처치(fireSkill)도 이 함수를 거친다 — 여기 한 곳만 울려야 두 번 나지 않는다
   onEvent({ type: 'kill' });
+  // 연쇄가 길수록 멈춤도 길어진다 — 몰아칠 때 화면이 같이 무거워져야 "달아오른다" 가 읽힌다
+  R.chain++;
+  R.chainT = CHAIN_HOLD;
+  // 평범한 처치에는 멈추지 않는다. 보스와 **연쇄 분기점**(5·10·15…)만 — 그래야 사건이 된다.
+  if (R.boss) hitstop(0.10);
+  else if (R.chain % 5 === 0) hitstop(0.06);
   // dead 포즈 그림이 에셋에 있는데 안 쓰고 즉시 사라지고 있었다. 잠깐 쓰러뜨린다.
   // 전투 판정에는 영향이 없다 — front()/aliveCount() 는 Lhp 로만 판단한다.
   e.deadT = B.combatFx.deathSec;
@@ -299,6 +343,8 @@ export function fireSkill(sk, secs) {
 export function tick(dt) {
   if (R.bannerT > 0) R.bannerT -= dt;
   if (R.shake > 0) R.shake -= dt;
+  // 연쇄는 시간이 끊으면 식는다. 사망·스테이지 이동에서는 enterStage 가 0 으로 되돌린다.
+  if (R.chainT > 0) { R.chainT -= dt; if (R.chainT <= 0) R.chain = 0; }
   if (R.atkAnimT > 0) R.atkAnimT -= dt;
   if (R.pHitT > 0) R.pHitT -= dt;
   if (R.skillFxT > 0) R.skillFxT -= dt;
