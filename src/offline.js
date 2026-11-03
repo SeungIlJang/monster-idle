@@ -3,6 +3,7 @@ import { B, isBoss, LeHP, LeGOLD, perWave } from './balance.js';
 import { S } from './state.js';
 import { LDPS, ab, nval } from './stats.js';
 import { add, ratio, fromNum, fmt } from './logmath.js';
+import { goldMul } from './layer2.js';
 
 /** 파밍 기준 스테이지에서의 초당 골드 (log10) */
 export function LgoldPerSec(stage) {
