@@ -13,6 +13,7 @@
 // 사용: npm run deploy          (복사만 — 커밋·푸시는 games 레포에서 직접)
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 const HERE = path.resolve(import.meta.dirname, '..');
 const WWW = path.join(HERE, 'www');
@@ -42,4 +43,18 @@ let files = 0, bytes = 0;
   }
 })(DEST);
 console.log(`배포본 생성 · ${path.relative(path.join(HERE, '..'), DEST)} · 파일 ${files}개 · ${(bytes / 1048576).toFixed(1)}MB`);
-console.log('다음: games 레포에서 monsteridle/ 만 커밋·푸시');
+
+// 출처를 games/ota-sources.json 에 남긴다. games 의 신선도 검사(tools/check-ota-freshness.mjs)가
+// 이 커밋을 소스 저장소의 현재 HEAD 와 비교해서, 복사를 빠뜨리면 CI 가 빨간불을 낸다.
+// 소스만 고치고 여기로 옮기지 않으면 앱은 옛 사본을 계속 받는데 아무 신호가 없어서 넣었다.
+const git = (...a) => execFileSync('git', a, { cwd: HERE }).toString().trim();
+const sources = path.join(path.dirname(DEST), 'ota-sources.json');
+const all = fs.existsSync(sources) ? JSON.parse(fs.readFileSync(sources, 'utf8')) : {};
+const dirty = git('status', '--porcelain') !== '';
+all['monsteridle'] = { repo: 'monster-idle', commit: git('rev-parse', 'HEAD'), dirty, builtAt: new Date().toISOString() };
+// 키 순서를 고정해야 다른 앱을 배포할 때 쓸데없는 diff 가 생기지 않는다.
+const sorted = Object.fromEntries(Object.keys(all).sort().map(k => [k, all[k]]));
+fs.writeFileSync(sources, JSON.stringify(sorted, null, 2) + '\n');
+if (dirty) console.warn('⚠️ 커밋 안 된 변경이 있는 상태로 빌드했다 — 기록한 커밋이 이 배포본과 다르다');
+
+console.log('다음: games 레포에서 monsteridle/ 과 ota-sources.json 커밋·푸시');
