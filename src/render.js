@@ -5,7 +5,7 @@
 // 용사는 Idle/Attack/Hit/Dead 프레임이 멀쩡해서 프레임 애니를 그대로 쓴다.
 import { B, heroAt, zoneAt, sceneEvery, heroPool } from './balance.js';
 import { S } from './state.js';
-import { R, enrage, gateSecondsLeft, gateSoft, CHAIN_WARM } from './combat.js';
+import { R, enrage, gateSecondsLeft, gateSoft, CHAIN_WARM, DANGER_AT, WAVE_IN_SEC } from './combat.js';
 import { pick, preload, boxOf, frameCount } from './sprites.js';
 import { activeCompanions, compImage, monTier, skyCompanions } from './companions.js';
 import { L0, ratio, fmt } from './logmath.js';
@@ -765,7 +765,14 @@ export function render(dt) {
     ctx.restore();
   }
 
-  for (const { e, idx, d, x: ex } of shown) {
+  // 웨이브가 막 시작했으면 화면 밖에서 달려 들어온다.
+  // 적 4기를 쓸어도 다음 무리가 조용히 나타나서 "한 무리를 끝냈다" 가 없었다.
+  // 뒤쪽 레인일수록 조금 늦게 들어와 한 덩어리로 안 보인다.
+  const waveU = R.waveInT > 0 ? R.waveInT / WAVE_IN_SEC : 0;    // 1 → 0
+  for (const { e, idx, d, x: ex0 } of shown) {
+    const lag = Math.max(0, Math.min(1, waveU * (1.15 + (1 - d) * 0.35)));
+    const ease = lag * lag;                                     // 빨리 들어와 부드럽게 선다
+    const ex = ex0 + ease * W * 0.55;
     const ey = laneY(d);
     const h = eH * laneS(d);
     const eb = Math.sin(t * 2.4 + e.ph) * h * 0.015;
@@ -915,6 +922,22 @@ export function render(dt) {
     ctx.strokeText(R.chain + ' 연쇄', W * 0.30, cy);
     ctx.fillStyle = heat > 0.6 ? '#ffd34d' : '#ffb04a';
     ctx.fillText(R.chain + ' 연쇄', W * 0.30, cy);
+    ctx.restore();
+  }
+
+  // ── 낮은 체력 ── 가장자리가 붉게 맥박친다. 낮을수록 빠르고 짙다.
+  // 체력바 색만으로는 "곧 죽는다" 가 안 읽혔다 — 관문이 생겨 죽음이 실재하게 된 뒤로는 특히.
+  if (hpFrac > 0 && hpFrac < DANGER_AT) {
+    const deep = 1 - hpFrac / DANGER_AT;                 // 0(30%) → 1(0%)
+    const beat = 0.6 + 0.4 * Math.sin(t * (6 + deep * 9));
+    const a = (0.12 + deep * 0.3) * beat;
+    ctx.save();
+    const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * (0.40 - deep * 0.12),
+                                       W / 2, H / 2, Math.max(W, H) * 0.68);
+    g.addColorStop(0, 'rgba(200,0,16,0)');
+    g.addColorStop(1, `rgba(200,0,16,${a.toFixed(3)})`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
     ctx.restore();
   }
 

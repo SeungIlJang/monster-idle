@@ -46,6 +46,8 @@ setEventHandler(ev => {
     // 클리어마다 다음 장면 자원을 예열한다 (적·배경이 5스테이지마다 바뀐다)
     case 'stageClear': refresh(); preloadFor(ev.stage + 1); bgAdvance(1.1); break;   // 스테이지는 더 길게
     case 'death':      refresh(); break;
+    // 체력이 낮을수록 세게 — 위험이 소리로도 와야 한다
+    case 'danger':     sfx.heartbeat(1 - ev.frac / 0.30); break;
   }
 });
 

@@ -23,6 +23,10 @@ export const AUTO_RETRY_CLEARS = 3;
 const CHAIN_HOLD = 2.2;
 /** 화면이 달아오르기 시작하는 연쇄 수 */
 export const CHAIN_WARM = 3;
+/** 이 비율 아래로 떨어지면 화면이 위험을 알린다 */
+export const DANGER_AT = 0.30;
+/** 웨이브 등장 연출 길이(초) — 렌더가 진입 거리를 계산할 때 쓴다 */
+export const WAVE_IN_SEC = 0.45;
 
 export const R = {
   mode: MODE.RUN,
@@ -59,6 +63,14 @@ export const R = {
   // 전투의 1초차와 30초차가 똑같이 생긴 게 지루함의 뿌리였다 — 시간축에 변화를 준다.
   chain: 0,
   chainT: 0,
+  // ── 낮은 체력 ──
+  // 지금까지 체력바 색만 바뀌었다. 관문처럼 실제로 죽을 수 있는 자리에서도
+  // "위험하다" 가 전달되지 않았다 — 화면이 말하게 한다.
+  dangerT: 0,        // 다음 심장박동까지
+  // ── 웨이브 등장 ──
+  // 지금까지 다음 무리가 조용히 리스폰됐다. 적 4기를 쓸어도 아무 일이 없어서
+  // "한 무리를 끝냈다" 가 생기지 않았다. 화면 밖에서 달려 들어오게 한다.
+  waveInT: 0,
   fx: [],            // 데미지 숫자 등 연출
   farmClears: 0,     // 파밍으로 클리어한 횟수 (자동 재도전 판단용)
   banner: '',
@@ -75,7 +87,10 @@ export const setEventHandler = fn => { onEvent = fn; };
 
 function banner(text, sec = 1.6, big = false) { R.banner = text; R.bannerT = sec; R.bannerBig = big; }
 
+const WAVE_IN = 0.45;     // 몰려 들어오는 데 걸리는 시간(초)
+
 function spawnWave() {
+  R.waveInT = WAVE_IN;
   const n = R.boss ? 1 : perWave(R.stage);
   const Lhp = LeHP(R.stage, R.boss);
   // 보스는 그 구역의 용사 **본인** 이다 — 섞지 않는다. 잡몹만 지금까지 본 용사들로 채운다.
@@ -345,6 +360,16 @@ export function tick(dt) {
   if (R.shake > 0) R.shake -= dt;
   // 연쇄는 시간이 끊으면 식는다. 사망·스테이지 이동에서는 enterStage 가 0 으로 되돌린다.
   if (R.chainT > 0) { R.chainT -= dt; if (R.chainT <= 0) R.chain = 0; }
+  if (R.waveInT > 0) R.waveInT -= dt;
+  // 체력이 낮을수록 박동이 빨라진다. 30% 에서 1.0초, 5% 에서 0.42초 간격.
+  const hpFrac = R.LhpMax > L0 ? ratio(R.Lhp, R.LhpMax) : 1;
+  if (hpFrac > 0 && hpFrac < DANGER_AT) {
+    R.dangerT -= dt;
+    if (R.dangerT <= 0) {
+      R.dangerT = 0.42 + (hpFrac / DANGER_AT) * 0.58;
+      onEvent({ type: 'danger', frac: hpFrac });
+    }
+  } else R.dangerT = 0;
   if (R.atkAnimT > 0) R.atkAnimT -= dt;
   if (R.pHitT > 0) R.pHitT -= dt;
   if (R.skillFxT > 0) R.skillFxT -= dt;

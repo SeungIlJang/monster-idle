@@ -179,3 +179,31 @@ export const gachaOpen = () => reward('gacha_open');
 export const gachaResult = rarity => reward(rarity >= 1 ? 'gacha_rare' : 'gacha_common');
 
 export const isReady = () => ready;
+
+/**
+ * 심장박동 — **합성음이다.** 파일을 쓰지 않는다.
+ *
+ * 체력이 낮을 때 울린다. 낮은 체력은 지금까지 체력바 색만 바뀌어서,
+ * 관문처럼 실제로 죽을 수 있는 자리에서도 위험이 전달되지 않았다.
+ * 저음 한 방이라 사인파 + 빠른 감쇠면 충분하고, 에셋을 새로 만들 이유가 없다.
+ */
+export function heartbeat(strength = 1) {
+  if (!ctx || cfg.mute || voices >= MAX_VOICES) return false;
+  try {
+    const t0 = ctx.currentTime;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(78, t0);
+    o.frequency.exponentialRampToValueAtTime(42, t0 + 0.12);
+    const peak = 0.16 * Math.max(0.3, Math.min(1, strength));
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(peak, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.20);
+    o.connect(g); g.connect(master);
+    o.start(t0); o.stop(t0 + 0.22);
+    voices++;
+    o.onended = () => { voices--; };
+    return true;
+  } catch { return false; }
+}
