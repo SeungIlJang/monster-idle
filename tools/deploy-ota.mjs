@@ -50,7 +50,9 @@ console.log(`배포본 생성 · ${path.relative(path.join(HERE, '..'), DEST)} �
 const git = (...a) => execFileSync('git', a, { cwd: HERE }).toString().trim();
 const sources = path.join(path.dirname(DEST), 'ota-sources.json');
 const all = fs.existsSync(sources) ? JSON.parse(fs.readFileSync(sources, 'utf8')) : {};
-const dirty = git('status', '--porcelain') !== '';
+// -uno: 추적 중인 변경만 센다. .claude/ 같은 로컬 설정이 untracked 로 남아 있다고
+// '커밋 안 된 작업물로 빌드했다'는 경고가 뜨면 아무도 안 믿게 된다.
+const dirty = git('status', '--porcelain', '-uno') !== '';
 all['monsteridle'] = { repo: 'monster-idle', commit: git('rev-parse', 'HEAD'), dirty, builtAt: new Date().toISOString() };
 // 키 순서를 고정해야 다른 앱을 배포할 때 쓸데없는 diff 가 생기지 않는다.
 const sorted = Object.fromEntries(Object.keys(all).sort().map(k => [k, all[k]]));
