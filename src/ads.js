@@ -10,6 +10,11 @@ import * as sfx from './audio.js';
 const res = await fetch(new URL('./ads.json', import.meta.url));
 const CFG = await res.json();
 
+// 테스트 트랙(비공개 테스트) AAB 는 UA 에 MSAdsTest 가 붙어 있다(tools/set-ads-mode.mjs).
+// 그 빌드는 구글 테스트 광고만 쓰므로 테스터가 눌러도 계정에 영향이 없다.
+// 2026-11-02 에 무효 트래픽으로 계정이 29일 정지된 뒤 넣었다. ads.json 의 useTest 보다 우선한다.
+if (typeof navigator !== 'undefined' && navigator.userAgent.includes('MSAdsTest')) CFG.useTest = true;
+
 const $ = id => document.getElementById(id);
 let admob = null;          // Capacitor AdMob 플러그인 (폰에서만)
 let ready = false;

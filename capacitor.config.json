@@ -4,6 +4,8 @@
   "webDir": "www",
   "server": {
     "androidScheme": "https",
-    "allowNavigation": ["seungiljang.github.io"]
+    "allowNavigation": [
+      "seungiljang.github.io"
+    ]
   }
 }
