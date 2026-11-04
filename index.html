@@ -187,6 +187,12 @@
   .tcast .c1{width:128px;animation:tBob 2.4s ease-in-out infinite}
   .tcast .c2{width:62px;animation:tBob 2.4s ease-in-out .5s infinite}
   .tcast .c3{width:62px;animation:tBob 2.4s ease-in-out .9s infinite}
+  /* 출연진 줄 — ui-title.js 가 가진 몬스터·동료로 양옆을 채운다.
+     **세로 가운데 정렬**이 예전 느낌의 핵심이다: 작은 것(바깥·멀리)이 리드보다 살짝 위에 서서
+     거리감으로 읽힌다. 예전엔 아래쪽 .trow(광산 그리드) 규칙에 덮여 우연히 그렇게 됐는데,
+     그 모습이 좋다고 해서 #tRow 로 못 박는다. */
+  #tRow{display:flex;align-items:center;justify-content:center;gap:0;margin:0}
+  #tRow img{position:relative;animation:tBob 2.4s ease-in-out infinite}
   @keyframes tBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
   .tfoot{position:relative;padding:0 24px 30px;text-align:center}
   .tsave{font-size:12px;color:#cfdcf2;opacity:.85;margin-bottom:10px;min-height:16px}
@@ -425,7 +431,8 @@
       <h1 class="tname">무럭무럭<br><b>몬스터</b></h1>
     </div>
     <div class="tcast">
-      <div class="trow">
+      <div class="trow" id="tRow">
+        <!-- 스크립트가 못 돌 때의 기본 모습. ui-title.js 가 가진 것으로 다시 채운다 -->
         <img class="c2" src="assets/comp/spore.png" alt="">
         <img class="c1" src="assets/mon/slime/idle_1.png" alt="">
         <img class="c3" src="assets/comp/bats.png" alt="">
