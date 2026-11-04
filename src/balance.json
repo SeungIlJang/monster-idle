@@ -1122,9 +1122,11 @@
         }
       }
     ],
+    "_row": "진형 — 0 근접(전사·기사·도적) · 1 궁수 · 2 마법사 · 3 백마법사(맨 뒤). 웨이브는 이 순서로 앞에서 뒤로 선다. 플레이어는 앞에서부터 때리므로 백마법사가 마지막까지 남는다 — 시뮬(design-sim)의 \"힐러는 마지막에 쓰러진다\" 가정과 같다.",
     "heroes": [
       {
         "key": "warrior",
+        "row": 0,
         "dir": "Kael_Ironblade_Warrior",
         "name": "카엘",
         "atk": {
@@ -1134,6 +1136,7 @@
       },
       {
         "key": "knight",
+        "row": 0,
         "dir": "Aldric_Aegis_Knight",
         "name": "알드릭",
         "atk": {
@@ -1143,6 +1146,7 @@
       },
       {
         "key": "rogue",
+        "row": 0,
         "dir": "Sylas_Nightveil_Rogue",
         "name": "사일러스",
         "atk": {
@@ -1153,6 +1157,7 @@
       },
       {
         "key": "mage",
+        "row": 2,
         "dir": "Lyra_Arcanis_Mage",
         "name": "라이라",
         "atk": {
@@ -1163,6 +1168,7 @@
       },
       {
         "key": "cleric",
+        "row": 3,
         "dir": "Elira_Dawnlight_Cleric",
         "name": "엘리라",
         "atk": {
@@ -1175,6 +1181,7 @@
       },
       {
         "key": "archer",
+        "row": 1,
         "dir": "Rina_Windarrow_Archer",
         "name": "리나",
         "atk": {
@@ -1185,6 +1192,7 @@
       },
       {
         "key": "emage",
+        "row": 2,
         "dir": "Terra_Stoneheart_EarthMage",
         "name": "테라",
         "atk": {
@@ -1195,6 +1203,7 @@
       },
       {
         "key": "dmage",
+        "row": 2,
         "dir": "Nyx_Shadowveil_DarkMage",
         "name": "닉스",
         "atk": {

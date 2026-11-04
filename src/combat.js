@@ -99,6 +99,9 @@ function spawnWave() {
   let heroes = R.boss
     ? [bossHeroAt(R.stage)]
     : fixSupportOnly([...Array(n)].map((_, i) => foeAt(R.stage, R.waveIdx, i)), R.stage, R.waveIdx);
+  // 진형: 근접 < 궁수 < 마법사 < 백마법사(맨 뒤) — balance.json roster.heroes[].row.
+  // 순서가 곧 자리(render)이고 맞는 순서다(앞에서부터 때린다). 같은 줄끼리는 뽑힌 순서 그대로(안정 정렬).
+  if (!R.boss) heroes = heroes.slice().sort((a, b) => (a?.row || 0) - (b?.row || 0));
   const period = 1 / B.enemy.aspd;
   R.enemies = heroes.map((hero, i) => ({
     Lhp, Lmax: Lhp, hitT: 0, healT: 0, ph: Math.random() * 6.28, hero,

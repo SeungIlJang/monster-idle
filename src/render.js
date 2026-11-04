@@ -19,8 +19,10 @@ const GROUND = 0.70;
 const LANE_BACK = 0.60, LANE_FRONT = 0.82;
 const laneY = d => H * (LANE_BACK + d * (LANE_FRONT - LANE_BACK));
 const laneS = d => 0.80 + d * 0.38;
-// 적을 흩을 깊이값. 순서대로 쓰면 지그재그로 놓여 "줄"이 안 보인다.
-const FOE_LANES = [0.52, 0.16, 0.86, 0.34, 0.70, 0.04];
+// 적 깊이 줄(0 = 멀리 · 1 = 가까이). 진형 순서대로 앞에서 뒤로 서므로 중간 범위에서만 엇갈리게 하고,
+// **맨 뒤 적은 늘 가장 먼 줄**(REAR_LANE)에 세운다 — 가까운 줄에 서면 크게 그려져 앞에 있는 것처럼 읽혔다.
+const FOE_LANES = [0.60, 0.40, 0.70, 0.50];
+const REAR_LANE = 0.24;
 // 진영 색: 왼쪽(몬스터)이 나, 오른쪽(용사)이 적
 const ALLY = '#7fe0a0';
 const FOE = '#ff8a8a';
@@ -744,8 +746,11 @@ export function render(dt) {
   const shown = [];
   R.enemies.forEach((e, idx) => {
     if (!(e.Lhp > L0 || e.deadT > 0)) return;
-    const d = R.boss ? 0.5 : FOE_LANES[idx % FOE_LANES.length];
-    const x = R.boss ? W * 0.66 : W * (0.56 + (idx % 3) * 0.13 + (d - 0.5) * 0.06);
+    const nE = R.enemies.length;
+    const d = R.boss ? 0.5 : (nE > 1 && idx === nE - 1 ? REAR_LANE : FOE_LANES[idx % FOE_LANES.length]);
+    // 순번 = 진형 순서(spawnWave 가 근접 < 궁수 < 마법사 < 백마법사로 정렬). 앞에서 뒤로 한 칸씩 물러선다.
+    // 예전엔 idx % 3 이라 4번째가 맨 앞 칸으로 돌아와 백마법사가 앞에 서기도 했다.
+    const x = R.boss ? W * 0.66 : W * (0.56 + Math.min(idx, 3) * 0.095 + (d - 0.5) * 0.05);
     shown.push({ e, idx, d, x });
   });
   shown.sort((a, b) => a.d - b.d);        // 뒤에 있는 것부터 그린다
