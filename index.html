@@ -181,28 +181,13 @@
   /* 두 겹인 이유: 바깥이 남는 세로를 차지해 **가운데 정렬**하고,
      안쪽 .trow 가 셋의 **발밑을 같은 선**에 맞춘다. 한 겹으로는 둘 다 못 한다
      (flex-end 로 맞추면 캐릭터가 통째로 바닥으로 쏠린다). */
-  /* 출연진 — 전장과 같은 배치다. 몬스터는 땅(뒷줄·앞줄), 뽑기 동료는 하늘.
-     보유한 것만 나오므로 개수가 1~18 로 변한다 — 줄바꿈을 허용해 어떤 수에서도 안 깨진다. */
-  .tcast{position:relative;flex:1 1 auto;display:flex;flex-direction:column;
-    align-items:center;justify-content:flex-end;padding:0 10px 4px;gap:4px;min-height:0}
-  /* 하늘은 땅에서 떨어뜨려야 "떠 있다" 로 읽힌다. 붙여 뒀더니 한 덩어리로 보였다.
-     비었을 때는 margin 도 사라져야 신규 유저 화면에 빈 띠가 안 생긴다(:empty). */
-  .tsky{display:flex;align-items:flex-end;justify-content:center;gap:14px;flex-wrap:wrap;
-    opacity:.92;margin-bottom:26px}
-  .tsky:empty{margin:0}
-  .tland{display:flex;flex-direction:column;align-items:center;gap:2px}
-  .tback,.tfront{display:flex;align-items:flex-end;justify-content:center;gap:6px;flex-wrap:wrap}
+  .tcast{position:relative;flex:1 1 auto;display:flex;align-items:center;justify-content:center}
+  .trow{display:flex;align-items:flex-end;justify-content:center;gap:6px}
   .tcast img{image-rendering:auto;filter:drop-shadow(0 6px 10px rgba(0,0,0,.45))}
-  /* 리드는 크게 — 누가 선두인지가 한눈에 보여야 한다 */
-  .tcast .c1{width:116px}
-  .tcast .c2{width:58px}          /* 앞줄 */
-  .tcast .c3{width:46px;opacity:.9}   /* 뒷줄 — 작고 조금 흐리게 해서 거리감 */
-  .tcast .cs{width:36px}          /* 하늘 (뽑기 동료) */
-  .tcast img{animation:tBob 2.4s ease-in-out infinite}
-  /* 하늘 것은 더 크게·느리게 흔들린다 — 땅을 딛은 것과 뜬 것이 같이 움직이면 구분이 안 된다 */
-  .tcast .cs{animation:tFloat 3.6s ease-in-out infinite}
+  .tcast .c1{width:128px;animation:tBob 2.4s ease-in-out infinite}
+  .tcast .c2{width:62px;animation:tBob 2.4s ease-in-out .5s infinite}
+  .tcast .c3{width:62px;animation:tBob 2.4s ease-in-out .9s infinite}
   @keyframes tBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
-  @keyframes tFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-13px)}}
   .tfoot{position:relative;padding:0 24px 30px;text-align:center}
   .tsave{font-size:12px;color:#cfdcf2;opacity:.85;margin-bottom:10px;min-height:16px}
   #tStart{width:100%;max-width:300px;padding:15px;border:none;border-radius:14px;
@@ -439,13 +424,11 @@
       <div class="ttag">인간 용사들이 숲을 침략했다</div>
       <h1 class="tname">무럭무럭<br><b>몬스터</b></h1>
     </div>
-    <!-- 출연진은 ui-title.js 가 **보유한 것만** 으로 채운다.
-         전장과 같은 배치다 — 몬스터는 땅, 뽑기 동료는 하늘. -->
     <div class="tcast">
-      <div class="tsky" id="tSky"></div>
-      <div class="tland">
-        <div class="tback" id="tBack"></div>
-        <div class="tfront" id="tFront"></div>
+      <div class="trow">
+        <img class="c2" src="assets/comp/spore.png" alt="">
+        <img class="c1" src="assets/mon/slime/idle_1.png" alt="">
+        <img class="c3" src="assets/comp/bats.png" alt="">
       </div>
     </div>
     <div class="tfoot">
