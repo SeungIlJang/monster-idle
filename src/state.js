@@ -41,6 +41,7 @@ export function defaults() {
     // 관문별 실패 횟수 "스테이지번호" → 횟수. 실패할수록 그 관문이 약해진다.
     // **저장해야 한다** — 앱을 껐다 켜면 약화가 사라져 영구 벽이 될 수 있다.
     gateFail: {},
+    relic: { shards: 0, n: 0 },    // 유물 조각 · 열린 수 (순서 고정이라 수만 저장)
     // 2단계 레이어
     shard: 0, ore: 0,
     mine: { pick: 0, t: 0, day: '', bomb: 0, grid: null, top: 0, depth: 0 },
@@ -79,6 +80,7 @@ function migrate(d) {
   s.ev = { ...base.ev, ...(d.ev || {}) };
   s.ev.claimed = { ...(d.ev?.claimed || {}) };
   s.gateFail = { ...(d.gateFail || {}) };
+  s.relic = { shards: 0, n: 0, ...(d.relic || {}) };
   s.mine = { ...base.mine, ...(d.mine || {}) };
   s.monLv = { ...(d.monLv || {}) };
   s.mastery = { ...base.mastery, ...(d.mastery || {}) };

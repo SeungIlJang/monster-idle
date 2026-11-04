@@ -253,7 +253,66 @@ function eqSum(cnt, slots) {
 const L2 = B.layer2;
 const NOL2 = !!ARG.nolayer2;
 
-function layer2Day(S) {
+// ── 유물 (3단계 레이어) ──────────────────────────────────────
+// 마을 침공 던전(키 2개/일)에서 조각을 받아 정해진 순서로 유물을 연다.
+// 해금 사다리의 8~90일 공백을 메우는 것이 목적이라, 여기서 중요한 건 배수가 아니라
+// **n번째 유물이 며칠째 열리는가** 다 — 끝에서 그 표를 찍는다.
+const RL = B.relics || null;
+const RELIC_ON = !!RL && !ARG.relicOff;
+// 튜닝용: --relicRatio=1.35 → 비용 = 첫 비용 × ratio^n 으로 덮어쓴다
+if (RL && ARG.relicRatio) RL.list.forEach((r, i) => { r.cost = Math.round(RL.list[0].cost * Math.pow(+ARG.relicRatio, i)); });
+// 튜닝용 오버라이드 — --relicBase=10 --relicRatio=1.28 (비용 = base×ratio^n) · --shardBase= · --shardSlope=
+if (RL && (ARG.relicBase || ARG.relicRatio)) {
+  const b0 = +ARG.relicBase || RL.list[0].cost, r0 = +ARG.relicRatio || (RL.list[1].cost / RL.list[0].cost);
+  RL.list.forEach((r, i) => { r.cost = Math.round(b0 * Math.pow(r0, i)); });
+}
+if (RL && ARG.shardBase) RL.shardBase = +ARG.shardBase;
+if (RL && ARG.shardSlope) RL.shardSlope = +ARG.shardSlope;
+const shardsPerRun = diff => RL.shardBase + Math.log10(Math.max(1, diff)) * RL.shardSlope;
+const relicsOpen = S => RELIC_ON ? RL.list.slice(0, S.relicN || 0) : [];
+/** 열린 유물의 효과 — 배수는 곱, 시간/키는 합 */
+function relicEff(S) {
+  const e = { atk: 1, hp: 1, gold: 1, bossDmg: 1, shardMul: 1, offlineHours: 0, dungeonKeys: 0 };
+  for (const r of relicsOpen(S)) for (const [k, v] of Object.entries(r.eff)) {
+    if (!(k in e)) continue;                        // crit·pickaxes 등은 시뮬 밖 (곡선에 안 닿는다)
+    e[k] = (k === 'offlineHours' || k === 'dungeonKeys') ? e[k] + v : e[k] * v;
+  }
+  return e;
+}
+// 게임 dungeon.simulateRaid 와 같은 식: 8구역 × perWave 마리, 제한시간 안에, 구역당 최소 한 번은 휘두른다
+function raidFrac(S, diff) {
+  const st = diff * 10, waves = B.dungeon.raidWaves || 8, limit = B.dungeon.timeLimit;
+  const swing = 1 / Math.max(1e-9, nval(S, 'aspd'));
+  const raw = Math.pow(10, LeHP(st, false) - LDPS(S, false)) * D.stage.perWave(st);
+  const perZone = Math.max(isFinite(raw) ? raw : Infinity, swing);
+  if (!isFinite(perZone)) return 0;
+  const cleared = Math.min(waves, Math.floor(limit / perZone));
+  const part = cleared < waves ? Math.min(1, (limit - cleared * perZone) / perZone) : 0;
+  return Math.min(1, (cleared + part) / waves);
+}
+function relicDay(S, day) {
+  if (!RELIC_ON || S.life < 10) return;            // 던전은 10층부터 (게임의 unlocked() 와 같이 평생 기록)
+  S.relicShards ??= 0; S.relicN ??= 0; S.relicDays ??= [];
+  const e = relicEff(S);
+  const keys = (B.dungeon.keysPerDay || 2) + e.dungeonKeys;
+  // 게임 dungeon.simulateRaid 와 같은 판정으로 **실제로 얻는 양**을 쓴다. 최고 난이도(life/10)를
+  // 늘 완전 점령한다고 가정하면 환생 직후처럼 힘이 빠진 구간을 과대평가한다.
+  // 사람은 '조각 × 달성률' 이 가장 큰 난이도를 고른다 — 최고 난이도와 완전 점령 가능한 최고 난이도 중 큰 쪽.
+  const dMax = Math.max(1, Math.floor(S.life / 10));
+  const got = d => { const f = raidFrac(S, d); return f >= 1 / (B.dungeon.raidWaves || 8) ? Math.max(1, Math.round(shardsPerRun(d) * f)) : 0; };
+  let lo = 1, hi = dMax;                               // 완전 점령 가능한 최고 난이도 (이분 탐색)
+  if (raidFrac(S, 1) < 1) hi = 0;
+  else while (lo < hi) { const m = Math.ceil((lo + hi) / 2); if (raidFrac(S, m) >= 1) lo = m; else hi = m - 1; }
+  const per = Math.max(got(dMax), hi ? got(hi) : 0);
+  S.relicRuns = (S.relicRuns || 0) + 1; S.relicFull = (S.relicFull || 0) + per / Math.max(1, Math.round(shardsPerRun(dMax)));
+  S.relicShards += keys * per * e.shardMul;
+  while (S.relicN < RL.list.length && S.relicShards >= RL.list[S.relicN].cost) {
+    S.relicShards -= RL.list[S.relicN].cost; S.relicN++; S.relicDays.push(day);
+  }
+}
+
+function layer2Day(S, day = 0) {
+  relicDay(S, day);
   if (NOL2) return;
   const m = L2.mine;
   const mult = (1 + S.best / m.depthDiv) * (1 + m.adBonus);   // 깊이 갈수록 더 깊이 판다
@@ -284,17 +343,18 @@ const MNODE = k => L2.mastery.nodes.find(n => n.key === k) || {};
 function Llayer2Atk(S) {
   if (NOL2) return 0;
   return masteryPts(S) * fromNum(MNODE('atk').mul || 1)       // 마스터리 공격 노드
+       + fromNum(relicEff(S).atk)                               // 유물 atk 배수
        + S.rsLv * fromNum(L2.research.atkPerLevel)            // 연구 (승산)
        + fromNum(1 + S.milestones * L2.collect.milestoneAtkPct / 100);   // 수집 마일스톤 (가산)
 }
 /** 체력 노드 */
-const Llayer2Hp = S => (NOL2 ? 0 : masteryPts(S) * fromNum(MNODE('hp').mul || 1));
+const Llayer2Hp = S => (NOL2 ? 0 : masteryPts(S) * fromNum(MNODE('hp').mul || 1)) + fromNum(relicEff(S).hp);
 /**
  * 탐식 노드 — **골드**에 곱해진다. 피해가 아니다.
  * 예전엔 광폭(dps)이 공격 노드와 같은 배수를 LDPS 에 그대로 곱해서 둘이 같은 노드였다.
  * 보스 특화로 바꿔 봤다가 접었다 — 보스가 전투 시간의 8% 뿐이라 순손실이었다.
  */
-const Llayer2Gold = S => (NOL2 ? 0 : masteryPts(S) * fromNum(MNODE('gold').mul || 1));
+const Llayer2Gold = S => (NOL2 ? 0 : masteryPts(S) * fromNum(MNODE('gold').mul || 1)) + fromNum(relicEff(S).gold);
 
 /** 진행도에 따라 열린 슬롯 수 */
 const activeSlots = (b, best) => b.slotUnlock.filter(u => best >= u).length;
@@ -414,7 +474,7 @@ function LDPS(S, boss) {
   const critF = 1 + Math.min(1, nval(S, 'crit')) * (nval(S, 'cdmg') - 1);
   const shots = 1 + Math.min(1, nval(S, 'dbl')) + Math.min(1, nval(S, 'trp'));
   const nrmF = boss ? 1 : 1 + nval(S, 'nrm');
-  let L = LATK(S) + fromNum(critF * shots * nrmF * nval(S, 'aspd') * (1 + gC(S) / 100)
+  let L = LATK(S) + (boss ? fromNum(relicEff(S).bossDmg) : 0) + fromNum(critF * shots * nrmF * nval(S, 'aspd') * (1 + gC(S) / 100)
                                      * ab('dmg') * (boss ? ab('boss') : ab('nrm')));
   if (boss) L += Lburst(S);
   return L + Lsoul(S);
@@ -569,7 +629,7 @@ function run() {
 
   while (t < T) {
     const d2 = Math.floor(t / 86400);
-    if (d2 > day) { day = d2; addPulls(); layer2Day(S); daily.push({ day, ...snap() }); }
+    if (d2 > day) { day = d2; addPulls(); layer2Day(S, day); daily.push({ day, ...snap() }); }
 
     const t0 = t;
     const atGate = isGate(S.stage);
@@ -747,6 +807,14 @@ const deadsIn = sec => DL.filter(d => d.t <= sec).length;
 console.log('\n[사망 시점]  1시간 ' + deadsIn(3600) + '회  ·  6시간 ' + deadsIn(6 * 3600)
   + '  ·  1일 ' + deadsIn(86400) + '  ·  7일 ' + deadsIn(7 * 86400) + '  ·  전체 ' + R.deaths
   + '   (보스전 ' + DL.filter(d => d.boss).length + ')');
+if (RELIC_ON) {
+  const days = R.S.relicDays || [];
+  const buckets = { '1~7일': 0, '8~30일': 0, '31~90일': 0, '91~365일': 0 };
+  for (const d of days) { if (d < 7) buckets['1~7일']++; else if (d < 30) buckets['8~30일']++; else if (d < 90) buckets['31~90일']++; else buckets['91~365일']++; }
+  const RS = R.S; if (RS.relicRuns) console.log('[유물] 침공 실획득 = 최고난이도 완전점령 대비 평균 ' + (RS.relicFull / RS.relicRuns * 100).toFixed(0) + '%');
+  console.log('[유물] 열린 수 ' + days.length + '/' + RL.list.length + ' · 해금일: ' + days.map(d => d.toFixed(0)).join(' ')
+    + '\n       구간별 ' + Object.entries(buckets).map(([k, v]) => k + ' ' + v + '개').join(' · '));
+}
 if (DL.length) console.log('  첫 사망 ' + hm(DL[0].t) + ' @ st' + DL[0].stage + (DL[0].boss ? ' (보스)' : ''));
 else console.log('  첫 사망 없음');
 // **1일차 이후** 사망이 이 기능의 존재 이유다. 전체 사망률은 1일차 몰림을 가려 버린다 —

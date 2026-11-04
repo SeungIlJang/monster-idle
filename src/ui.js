@@ -7,6 +7,7 @@ import { Lcost, LcostN, Lval, nval, unlocked, maxed, affordable, buy, bestBuy, c
 import { preloadFor } from './render.js';
 import * as G from './gacha.js';
 import * as DUN from './dungeon.js';
+import * as RELIC from './relics.js';
 import * as DQ from './daily.js';
 import * as L2 from './layer2.js';
 import { playRewarded } from './ads.js';
@@ -115,6 +116,19 @@ function renderUpgrade() {
 const dSel = {};                 // 던전별 선택 난이도
 const dRes = {};                 // 던전별 마지막 결과
 
+// 조각은 등불 유물(×1.25) 때문에 소수가 생긴다 — 정수면 정수로, 아니면 한 자리
+const shardTxt = v => (Math.abs(v - Math.round(v)) < 0.05 ? String(Math.round(v)) : v.toFixed(1));
+/** 마을 침공 카드의 '다음 유물' 줄. 던전에 들어가기 전에 목표가 보여야 키를 쓸 이유가 생긴다 */
+function relicLine() {
+  const nx = RELIC.next();
+  if (!nx) return `<div class="d" style="opacity:.85">🏺 유물 ${RELIC.RELICS.length}종을 모두 깨웠습니다</div>`;
+  const pct = (RELIC.progress() * 100).toFixed(1);
+  return `<div class="d" style="opacity:.9;margin-top:-4px">🏺 다음 유물 <b>${nx.icon} ${nx.name}</b> — ${RELIC.describe(nx.eff)}
+      <div style="height:6px;background:#0b1028;border-radius:4px;margin:5px 0 3px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#c58a2e,#ffd27a)"></div></div>
+      유물 조각 ${shardTxt(RELIC.shards())} / ${nx.cost} · 열린 유물 ${RELIC.openCount()} / ${RELIC.RELICS.length} · 완전 점령 가능 난이도 <b>${DUN.recDiff('raid')}</b></div>`;
+}
+
 function renderDungeon() {
   if (!DUN.unlocked()) {
     $('dunList').innerHTML = '<div class="note">스테이지 10 에 도달하면 던전이 열립니다.</div>';
@@ -122,15 +136,17 @@ function renderDungeon() {
   }
   $('dunList').innerHTML = DUN.DUNGEONS.map(d => {
     const maxD = DUN.maxDiff(d.key);
-    const cur = Math.min(dSel[d.key] ?? maxD, maxD);
+    // 마을 침공은 '끝까지 점령되는 최고 난이도' 로 연다 — 조각이 난이도의 log 라 한두 칸 낮춰도 거의 손해가 없다
+    const cur = Math.min(dSel[d.key] ?? (d.key === 'raid' ? DUN.recDiff('raid') : maxD), maxD);
     dSel[d.key] = cur;
     const keys = DUN.keysLeft(d.key), ads = DUN.adLeft(d.key);
     const r = dRes[d.key];
     return `<div class="dcard">
       <h3>${d.icon} ${d.name}</h3>
       <div class="d">${d.desc}<br>보상: ${d.reward}</div>
+      ${d.key === 'raid' ? relicLine() : ''}
       <div class="drow">
-        <span class="k">🗝️ 키 ${keys} / ${B.dungeon.keysPerDay}</span>
+        <span class="k">🗝️ 키 ${keys} / ${DUN.keysMax(d.key)}</span>
         <span class="k">📺 광고 ${ads} / ${B.dungeon.adRunsPerDay}</span>
         <span style="opacity:.5">최고 난이도 ${DUN.clearedDiff(d.key)}</span>
       </div>
@@ -159,6 +175,12 @@ function renderDungeon() {
         + (res.died ? ' · <span style="color:#ff8a8a">쓰러짐</span>' : res.full ? ' · <span style="color:#7fd07f">완전 클리어!</span>' : ' · 시간 초과')
         + `<br>획득 💎 <b>${res.gem}</b>`
         + (res.full ? ' · 다음 난이도 해금' : '');
+    } else if (k === 'raid') {
+      dRes[k] = `마을 <b>${res.zones}/${res.total}</b>구역 점령 · ${res.seconds.toFixed(1)}초`
+        + (res.full ? ' · <span style="color:#7fd07f">완전 점령!</span>' : ' · 시간 초과')
+        + `<br>획득 🏺 유물 조각 <b>${shardTxt(res.gain)}</b>`
+        + (res.opened?.length ? ` · <span style="color:#ffd27a">${res.opened.map(r => r.icon + ' ' + r.name).join(', ')} 깨어남!</span>` : '');
+      for (const r of res.opened || []) toast(`${r.icon} 유물 「${r.name}」 깨어남 — ${RELIC.describe(r.eff)}`);
     } else {
       dRes[k] = `수레 <b>${(res.frac * 100).toFixed(0)}%</b> 파괴`
         + (res.full ? ' · <span style="color:#7fd07f">완파! 다음 난이도 해금</span>' : '')
@@ -342,14 +364,16 @@ export function refresh() {
  */
 function showDunResult(k, res) {
   const def = DUN.DUNGEONS.find(d => d.key === k);
-  const boss = k === 'boss';
+  const boss = k === 'boss', raid = k === 'raid';
   const frac = boss ? res.killed / res.total : res.frac;
 
   $('drTitle').textContent = `${def.icon} ${def.name}`;
   $('drSub').textContent = boss
     ? `난이도 ${dSel[k]} · ${res.seconds.toFixed(1)}초 · ` +
       (res.died ? '쓰러졌습니다' : res.full ? '완전 클리어!' : '시간 초과')
-    : `난이도 ${dSel[k]} · ${res.seconds}초`;
+    : raid
+      ? `난이도 ${dSel[k]} · ${res.seconds.toFixed(1)}초 · ${res.full ? '완전 점령!' : '시간 초과'}`
+      : `난이도 ${dSel[k]} · ${res.seconds}초`;
 
   const bar = $('drFill').parentElement;
   bar.classList.toggle('full', !!res.full);
@@ -359,9 +383,18 @@ function showDunResult(k, res) {
 
   $('drScore').textContent = boss
     ? `용사 ${res.killed} / ${res.total}명 격파`
+    : raid ? `마을 ${res.zones} / ${res.total}구역 점령`
     : `수레 ${(res.frac * 100).toFixed(0)}% 파괴`;
-  $('drGain').textContent = boss ? `💎 ${n0(res.gem)}` : `🪙 ${fmt(res.Lgold)}`;
-  $('drNext').textContent = res.full ? `난이도 ${dSel[k] + 1} 해금!` : '';
+  $('drGain').textContent = boss ? `💎 ${n0(res.gem)}` : raid ? `🏺 유물 조각 +${shardTxt(res.gain)}` : `🪙 ${fmt(res.Lgold)}`;
+  if (raid) {
+    // 유물이 깨어났으면 그게 이번 판의 주인공이다. 아니면 다음 목표까지 얼마 남았는지.
+    const nx = RELIC.next();
+    $('drNext').textContent = res.opened?.length
+      ? res.opened.map(r => `${r.icon} ${r.name} 깨어남! — ${RELIC.describe(r.eff)}`).join('  ·  ')
+      : nx ? `다음 유물 ${nx.icon} ${nx.name}까지 ${shardTxt(RELIC.shards())} / ${nx.cost}` : '모든 유물이 깨어났습니다';
+  } else {
+    $('drNext').textContent = res.full ? `난이도 ${dSel[k] + 1} 해금!` : '';
+  }
 
   $('dunRes').classList.add('on');
 }

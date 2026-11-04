@@ -11,6 +11,7 @@ import { recomputeGacha } from './gacha.js';
 import { crossed } from './unlocks.js';
 import { tickSkills, normalShare } from './skills.js';
 import { goldMul } from './layer2.js';
+import { eff as relicEff } from './relics.js';
 import { L0, add, sub, ratio, fromNum, fmt } from './logmath.js';
 
 export const MODE = { RUN: 'run', FARM: 'farm' };
@@ -103,7 +104,7 @@ function spawnWave() {
     Lhp, Lmax: Lhp, hitT: 0, healT: 0, ph: Math.random() * 6.28, hero,
     // 힐러가 이번 웨이브에 채울 수 있는 총량(아군 최대체력 대비). 바닥나면 더 못 채운다 —
     // 이게 없으면 회복이 DPS 를 넘는 순간 적이 영영 안 죽는다(실측: 2분간 100% 고정).
-    healLeft: hero?.healBudget || 0,
+    healLeft: (hero?.healBudget || 0) * relicEff('healerBudget'),   // 침묵의 종 유물이 줄인다
     // 적마다 자기 타이머를 쥔다. 예전엔 그룹 1타이머라 **여덟 종이 동시에 같은 포즈**로
     // 바뀌어 기계처럼 보였다. 주기는 같고 시작 위상만 흩는다 —
     // 같은 시간에 같은 횟수를 때리므로 **총 피해는 그대로**다(시뮬 수식 불변).
@@ -165,7 +166,8 @@ export function gateSoft(stage = R.stage) {
   const g = gateCfg();
   if (!g) return 1;
   const fails = S.gateFail?.[stage] || 0;
-  return Math.max(1 - (g.weakenMax || 0), 1 - fails * (g.weakenPerFail || 0));
+  // 부적 유물: 첫 시도부터 이만큼 약하게 시작한다. 실패 누적과는 더 큰 쪽(= 더 약한 쪽)을 쓴다
+  return Math.max(1 - (g.weakenMax || 0), Math.min(1 - fails * (g.weakenPerFail || 0), 1 - relicEff('gateSoft')));
 }
 
 /**
@@ -253,7 +255,7 @@ function onKill(e, idx) {
   onEvent({ type: 'kill' });
   // 연쇄가 길수록 멈춤도 길어진다 — 몰아칠 때 화면이 같이 무거워져야 "달아오른다" 가 읽힌다
   R.chain++;
-  R.chainT = CHAIN_HOLD;
+  R.chainT = CHAIN_HOLD + relicEff('chainHold');   // 전쟁 북 유물
   // 평범한 처치에는 멈추지 않는다. 보스와 **연쇄 분기점**(5·10·15…)만 — 그래야 사건이 된다.
   if (R.boss) hitstop(0.10);
   else if (R.chain % 5 === 0) hitstop(0.06);

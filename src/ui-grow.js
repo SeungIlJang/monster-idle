@@ -8,6 +8,8 @@ import { playRewarded } from './ads.js';
 import { enterStage, MODE } from './combat.js';
 import { evoPrefix, evoStage, evoNextTier } from './sprites.js';
 import { monTier } from './companions.js';
+import * as RELIC from './relics.js';
+import { unlocked as dungeonOpen } from './dungeon.js';
 
 const $ = id => document.getElementById(id);
 let ctx = { refresh: () => {}, toast: () => {}, onLeadChange: () => {} };
@@ -19,6 +21,8 @@ const GROW_TABS = [
   { k: 'mon', n: '몬스터', ic: '🐾' },
   { k: 'mast', n: '마스터리', ic: '🌟' },
   { k: 'res', n: '연구', ic: '🔬' },
+  // 유물은 마을 침공(던전)에서 나오므로 던전이 열릴 때 같이 보인다
+  { k: 'relic', n: '유물', ic: '🏺', when: () => RELIC.enabled() && dungeonOpen() },
   // 환생은 해금되기 전엔 탭 자체를 숨긴다 — 3,000층 전에는 눌러도 할 게 없다
   { k: 'pres', n: '환생', ic: '♻️', when: () => PR.unlocked() },
 ];
@@ -51,6 +55,7 @@ export function renderGrow() {
   else if (growTab === 'mon') renderMonsters();
   else if (growTab === 'mast') renderMastery();
   else if (growTab === 'pres') renderPrestige();
+  else if (growTab === 'relic') renderRelics();
   else renderResearch();
 }
 
@@ -240,6 +245,41 @@ function renderMastery() {
     if (S.gem < L2.masteryResetCost()) { ctx.toast(`젬이 부족합니다 (💎${L2.masteryResetCost()})`); return; }
     if (L2.resetMastery()) { after(); ctx.toast('포인트를 모두 되돌렸습니다'); }
   };
+}
+
+// ── 유물 ─────────────────────────────────────────────────────
+// 사다리 전체를 보여준다. 잠긴 것도 이름과 효과는 보인다 — '다음에 뭐가 열리지' 가
+// 3달 뒤까지 보여야 오늘 침공 키를 쓸 이유가 된다. 순서는 고정이라 고를 것은 없다.
+function renderRelics() {
+  const n = RELIC.openCount(), nx = RELIC.next(), sh = RELIC.shards();
+  const st = v => (Math.abs(v - Math.round(v)) < 0.05 ? String(Math.round(v)) : v.toFixed(1));
+  // 지금까지 열린 효과 합계 — 같은 종류(atk 두 번 등)는 eff() 가 이미 합/곱해 준다
+  const keys = [...new Set(RELIC.opened().flatMap(r => Object.keys(r.eff || {})))];
+  const total = Object.fromEntries(keys.map(k => [k, +RELIC.eff(k).toFixed(3)]));
+  const head = nx
+    ? `<div style="background:#1b1830;border:1px solid #5a4a2a;border-radius:11px;padding:10px 11px;margin-bottom:9px">
+         <div style="font-size:12px;font-weight:800">다음 유물 ${nx.icon} ${nx.name}</div>
+         <div style="font-size:11px;opacity:.75;margin:2px 0 6px">${RELIC.describe(nx.eff)}</div>
+         <div style="height:7px;background:#0b1028;border-radius:4px;overflow:hidden">
+           <div style="height:100%;width:${(RELIC.progress() * 100).toFixed(1)}%;background:linear-gradient(90deg,#c58a2e,#ffd27a)"></div></div>
+         <div style="font-size:11px;opacity:.7;margin-top:4px">🏺 유물 조각 ${st(sh)} / ${nx.cost} — 던전 탭의 <b>마을 침공</b>에서 모읍니다</div>
+       </div>`
+    : `<div class="d" style="margin-bottom:9px">🏺 유물 ${RELIC.RELICS.length}종을 모두 깨웠습니다</div>`;
+  const sum = keys.length
+    ? `<div style="font-size:11px;opacity:.7;line-height:1.6;margin-bottom:9px">지금 효과 합계: ${RELIC.describe(total)}</div>`
+    : '';
+  const rows = RELIC.RELICS.map((r, i) => {
+    const on = i < n, isNext = i === n;
+    const tag = on ? '<span style="color:#7fd07f;font-weight:800">보유</span>'
+      : isNext ? `<span style="color:#ffd27a;font-weight:800">${st(sh)}/${r.cost}</span>`
+      : `<span style="opacity:.6">🏺${r.cost}</span>`;
+    return `<div class="mrow ${on || isNext ? '' : 'lock'}" ${isNext ? 'style="border-color:#c58a2e"' : ''}>
+      <div class="ic">${r.icon}</div>
+      <div class="mid"><div class="t">${i + 1}. ${r.name}</div><div class="d">${RELIC.describe(r.eff)}</div></div>
+      <div style="font-size:11px;white-space:nowrap">${tag}</div>
+    </div>`;
+  }).join('');
+  $('growBody').innerHTML = head + sum + rows;
 }
 
 // ── 연구 ─────────────────────────────────────────────────────

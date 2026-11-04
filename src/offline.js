@@ -4,6 +4,7 @@ import { S } from './state.js';
 import { LDPS, ab, nval } from './stats.js';
 import { add, ratio, fromNum, fmt } from './logmath.js';
 import { goldMul } from './layer2.js';
+import { eff as relicEff } from './relics.js';
 
 /** 파밍 기준 스테이지에서의 초당 골드 (log10) */
 export function LgoldPerSec(stage) {
@@ -26,7 +27,8 @@ export function pendingOffline() {
   if (!S.t) return null;
   const seconds = Math.max(0, (Date.now() - S.t) / 1000);
   if (seconds < 60) return null;                           // 1분 미만은 건너뜀
-  const capped = Math.min(seconds, B.offline.capHours * 3600);
+  // 모래시계 유물이 상한을 늘린다 — 12시간 상한은 '하루 두 번 접속' 을 전제로 한 값이라 여기가 새 축이 된다
+  const capped = Math.min(seconds, (B.offline.capHours + relicEff('offlineHours')) * 3600);
   const base = Math.max(1, S.best - 1);                    // 안전하게 직전 스테이지 기준
   const Lps = LgoldPerSec(base);
   if (!isFinite(Lps)) return null;

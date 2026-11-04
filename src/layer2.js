@@ -6,6 +6,7 @@
 import { B } from './balance.js';
 import { S } from './state.js';
 import { ensureMineDaily as _mineDaily, picks as _picks } from './mine.js';
+import { eff as relicEff } from './relics.js';
 
 const L2 = B.layer2;
 const M = L2.mine;
@@ -128,13 +129,14 @@ export const researchMul = () => Math.pow(L2.research.atkPerLevel, researchLv())
 /** 수집 마일스톤은 가산 보너스 */
 export const milestoneMul = () => 1 + (milestoneCount() * L2.collect.milestoneAtkPct) / 100;
 /** 공격력 배수 = 마스터리 공격 노드 × 연구 × 마일스톤 */
-export const atkMul = () => masteryMul('atk') * researchMul() * milestoneMul();
-export const hpMul = () => masteryMul('hp');
+// 유물 배수가 맨 뒤에 곱해진다 — 시뮬의 Llayer2Atk/Hp/Gold 와 같은 자리
+export const atkMul = () => masteryMul('atk') * researchMul() * milestoneMul() * relicEff('atk');
+export const hpMul = () => masteryMul('hp') * relicEff('hp');
 /**
  * 탐식 — 획득 골드 배수. 전부 피해 배수로 수렴하는 이 게임에서
  * 갈라지는 몇 안 되는 축이라 여기가 **선택**이 된다: 지금의 화력이냐, 투자냐.
  */
-export const goldMul = () => masteryMul('gold');
+export const goldMul = () => masteryMul('gold') * relicEff('gold');
 
 export function ensureLayer2() {
   _mineDaily();

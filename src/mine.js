@@ -5,6 +5,7 @@
 // 않도록, 곡괭이 가중 평균으로 정규화한 뒤 쓴다(NORM). 시뮬이 검증한 하루 산출이 그대로 유지된다.
 import { B } from './balance.js';
 import { S } from './state.js';
+import { eff as relicEff } from './relics.js';
 
 const M = B.layer2.mine;
 export const WIDTH = 7;
@@ -194,17 +195,20 @@ export function picks() {
   const per = M.pickMinutes * 60000;
   const gained = Math.floor((now - g.t) / per);
   if (gained > 0) {
-    g.pick = Math.min(M.pickMax, (g.pick || 0) + gained);
+    g.pick = Math.min(pickCap(), (g.pick || 0) + gained);
     g.t += gained * per;
-    if (g.pick >= M.pickMax) g.t = now;
+    if (g.pick >= pickCap()) g.t = now;
   }
   return g.pick || 0;
 }
 export function nextPickIn() {
-  if (picks() >= M.pickMax) return 0;
+  if (picks() >= pickCap()) return 0;
   return Math.max(0, Math.ceil((S.mine.t + M.pickMinutes * 60000 - Date.now()) / 1000));
 }
-export const pickMax = () => M.pickMax;
+// 낡은 곡괭이 유물은 **쌓아 둘 수 있는 상한**만 늘린다. 1개당 산출(perPick)은 기본 상한으로
+// 나눈 값 그대로라 하루 산출 보정이 안 바뀐다 — 오래 비워도 덜 버려지는 것뿐이다.
+const pickCap = () => M.pickMax + relicEff('pickaxes');
+export const pickMax = pickCap;
 export function bombLeft() { ensureMineDaily(); return Math.max(0, M.bombPerDay - (S.mine.bomb || 0)); }
 export const depth = () => S.mine.depth || 0;
 export const depthMult = () => 1 + S.best / M.depthDiv;

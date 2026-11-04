@@ -84,6 +84,8 @@ function showPanel() {
       ${row('dvShard', '조각', num(S.shard))}
       ${row('dvOre', '광석', num(S.ore))}
       ${row('dvSoul', '소울', num(S.souls))}
+      ${row('dvRelicSh', '유물 조각', num(Math.floor(S.relic?.shards || 0)))}
+      ${row('dvRelicN', '열린 유물 수', num(S.relic?.n || 0), '0~' + (B.relics?.list.length || 0))}
       ${row('dvStat', '전 스탯 레벨', '', '비우면 유지')}
     </div>
     <label class="devRow devMon"><span>몬스터 레벨</span>
@@ -141,6 +143,7 @@ function apply() {
   const st = int('dvSt', 1), life = int('dvLife', 1);
   const gem = int('dvGem', 0), shard = int('dvShard', 0), ore = int('dvOre', 0), soul = int('dvSoul', 0);
   const statLv = int('dvStat', 0);
+  const relicSh = int('dvRelicSh', 0), relicN = int('dvRelicN', 0, B.relics?.list.length || 0);
   const monLv = int('dvMonLv', 0);
   const goldRaw = $('dvGold').value.trim();
   const Lg = goldRaw === '' ? null : bigIn(goldRaw);
@@ -156,6 +159,11 @@ function apply() {
   if (shard !== null) S.shard = shard;
   if (ore !== null) S.ore = ore;
   if (soul !== null) S.souls = soul;
+  if (relicSh !== null || relicN !== null) {
+    S.relic = { shards: 0, n: 0, ...(S.relic || {}) };
+    if (relicSh !== null) S.relic.shards = relicSh;
+    if (relicN !== null) S.relic.n = relicN;       // 효과 캐시는 열린 수가 바뀌면 relics.eff() 가 알아서 다시 모은다
+  }
   if (Lg !== null) S.Lg = Lg;
 
   // 최고 기록은 현재 스테이지보다 낮을 수 없다 — 낮으면 해금이 도로 잠겨 UI 가 어긋난다

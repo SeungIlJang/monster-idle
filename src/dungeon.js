@@ -9,6 +9,7 @@ import { S } from './state.js';
 import { LDPS, LHP, LDEF, nval } from './stats.js';
 import { LgoldPerSec } from './offline.js';
 import { L0, add, sub, ratio, fromNum } from './logmath.js';
+import * as RELIC from './relics.js';
 
 const D = B.dungeon;
 export const DUNGEONS = D.list;
@@ -24,11 +25,19 @@ export function ensureKeys() {
   if (S.dun.day !== t) {
     S.dun.day = t;
     for (const d of DUNGEONS) {
-      S.dun.keys[d.key] = D.keysPerDay;
+      S.dun.keys[d.key] = keysMax(d.key);
       S.dun.ad[d.key] = 0;
     }
   }
+  // 업데이트로 새로 생긴 던전은 그날 키가 비어 있다(하루가 바뀔 때만 채우므로) — 바로 채워 준다
+  for (const d of DUNGEONS) {
+    if (S.dun.keys[d.key] === undefined) S.dun.keys[d.key] = keysMax(d.key);
+    if (S.dun.ad[d.key] === undefined) S.dun.ad[d.key] = 0;
+  }
 }
+const RELIC_DUN = B.relics?.dungeon || 'raid';
+/** 하루 키 수. 열쇠 유물은 **마을 침공에만** 붙는다 — 용사 연전에 붙으면 젬 예산(§6)이 깨진다 */
+export const keysMax = k => D.keysPerDay + (k === RELIC_DUN ? RELIC.eff('dungeonKeys') : 0);
 export function keysLeft(k) { ensureKeys(); return S.dun.keys[k] ?? 0; }
 export function adLeft(k) { ensureKeys(); return Math.max(0, D.adRunsPerDay - (S.dun.ad[k] ?? 0)); }
 
@@ -101,11 +110,48 @@ export function simulateGoldRush(diff) {
   return { frac, full: frac >= 1, Lgold, seconds: limit };
 }
 
-export const simulate = (k, diff) => (k === 'boss' ? simulateBossRush(diff) : simulateGoldRush(diff));
+// ── 마을 침공 (유물 조각) ───────────────────────────────────
+/**
+ * 마을 8구역을 제한시간 안에 휩쓴다. 일반 용사 무리라 반격으로 죽지는 않고 시간만 본다.
+ * 한 구역에 **최소 한 번은 휘둘러야** 한다(공격 간격 바닥) — 전투력이 넘쳐도 0초가 안 된다.
+ * 조각은 난이도의 **로그**로 늘어난다(유물은 수가 정해진 사다리라 깊이를 따라 터지면 안 된다).
+ * 가장 높은 난이도에서 조금 모자라면 한 칸 낮추는 게 거의 손해가 없다 — log 라서.
+ */
+export function simulateRaid(diff) {
+  const stage = diffStage(diff);
+  const limit = D.timeLimit;
+  const waves = D.raidWaves || 8;
+  const swing = 1 / Math.max(1e-9, nval('aspd'));
+  const raw = ratio(LeHP(stage, false), LDPS(false)) * perWave(stage);
+  const perZone = Math.max(isFinite(raw) ? raw : Infinity, swing);
+  const cleared = isFinite(perZone) ? Math.min(waves, Math.floor(limit / perZone)) : 0;
+  // 못 끝낸 구역은 남은 시간만큼 부분 점수
+  const part = cleared < waves && isFinite(perZone) ? Math.min(1, (limit - cleared * perZone) / perZone) : 0;
+  const frac = Math.min(1, (cleared + part) / waves);
+  const full = cleared >= waves;
+  // 한 구역이라도 점령해야 조각이 나온다 — 판정상 0.0001% 짜리 헛입장에 최소 보상을 주지 않는다
+  const shards = cleared >= 1 ? Math.max(1, Math.round(RELIC.shardsPerRun(diff) * frac)) : 0;
+  return { frac, full, zones: cleared, total: waves, seconds: full ? Math.min(limit, waves * perZone) : limit, shards };
+}
+
+/**
+ * 완전 점령(클리어)이 되는 가장 높은 난이도. 없으면 1.
+ * 카드를 최고 난이도로 열면 환생 직후처럼 힘이 빠졌을 때 그대로 눌러 키를 버린다.
+ * 판정이 난이도에 단조라 이분 탐색이면 충분하다 (난이도 3,000 도 12번).
+ */
+export function recDiff(k) {
+  const max = maxDiff(k);
+  if (!simulate(k, 1).full) return 1;
+  let lo = 1, hi = max;
+  while (lo < hi) { const m = Math.ceil((lo + hi) / 2); if (simulate(k, m).full) lo = m; else hi = m - 1; }
+  return lo;
+}
+
+export const simulate = (k, diff) => (k === 'boss' ? simulateBossRush(diff) : k === 'raid' ? simulateRaid(diff) : simulateGoldRush(diff));
 
 // ── 입장 ─────────────────────────────────────────────────────
 /**
- * @param {'gold'|'boss'} k
+ * @param {'gold'|'boss'|'raid'} k
  * @param {number} diff
  * @param {boolean} useAd 광고로 추가 입장
  * @returns 결과 또는 null(입장 불가)
@@ -125,6 +171,9 @@ export function enter(k, diff, useAd = false) {
   const res = simulate(k, diff);
   if (k === 'boss') {
     S.gem += res.gem;
+  } else if (k === 'raid') {
+    res.gain = res.shards * RELIC.eff('shardMul');   // 등불 유물 반영된 실제 획득량(표시용)
+    res.opened = RELIC.addShards(res.shards);        // 새로 깨어난 유물(연출용)
   } else if (res.Lgold > L0) {
     S.Lg = add(S.Lg, res.Lgold);
   }

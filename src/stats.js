@@ -5,6 +5,7 @@ import { S } from './state.js';
 import { fromNum, geoSum, ratio, sub } from './logmath.js';
 import { atkMul, hpMul } from './layer2.js';
 import { Lsoul } from './prestige.js';
+import { eff as relicEff } from './relics.js';
 
 const SD = k => B.stats[k];
 
@@ -56,7 +57,7 @@ export const nval = k => {
   // (최대 +4000% 짜리 트랙이 통째로 날아가 30일차가 14,041 → 7,043 이 됐다).
   // 잡몹 배수는 LDPS 에서 boss 와 대칭으로 건다.
   if (k === 'aspd' || k === 'cdmg' || k === 'rec') v *= ab(k);
-  if (k === 'crit') v = Math.max(0, v + ab('critAdd', 0));
+  if (k === 'crit') v = Math.max(0, v + ab('critAdd', 0) + relicEff('crit'));   // 매의 눈 유물
   if (k === 'dbl') v = Math.max(0, v + ab('dblAdd', 0));   // 아라크네 맹독
   return v;
 };
@@ -90,7 +91,7 @@ export function LDPS(boss) {
   const Lp = Lsoul();                      // 환생 상점 보너스 (승산 → 로그에서는 덧셈)
   // dmg 는 전체, boss/잡몹 배수는 상대에 따라 갈린다 (nrm 쪽은 nval('nrm') 에서 이미 반영됐다)
   let L = LATK() + fromNum(critF() * shots() * nrmF * nval('aspd') * (1 + gC() / 100)
-                           * ab('dmg') * (boss ? ab('boss') : ab('nrm'))) + Lp;
+                           * ab('dmg') * (boss ? ab('boss') * relicEff('bossDmg') : ab('nrm'))) + Lp;   // 송곳니·왕관 유물
   if (boss) L += Lburst();
   return L;
 }

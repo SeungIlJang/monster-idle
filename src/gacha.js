@@ -8,6 +8,7 @@
 // 장착 효과를 얹으려면 시뮬에도 같이 넣고 판정을 다시 받아야 한다(§14).
 import { B } from './balance.js';
 import { S } from './state.js';
+import { eff as relicEff } from './relics.js';
 import { bump as bumpDaily } from './daily.js';
 
 export const BANNERS = B.gacha.banners;            // [{key,name,icon,slots,affects}]
@@ -184,7 +185,7 @@ export function ensureDaily() {
 }
 export function freeLeft(banner) {
   ensureDaily();
-  return Math.max(0, B.gacha.freeAdPullsPerBanner - (S.freeUsed[banner] || 0));
+  return Math.max(0, B.gacha.freeAdPullsPerBanner + relicEff('freePulls') - (S.freeUsed[banner] || 0));
 }
 export function freePull(banner) {
   if (freeLeft(banner) < 1) return null;
