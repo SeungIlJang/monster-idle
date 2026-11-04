@@ -39,6 +39,8 @@ const NOGACHA = !!ARG.nogacha;
 // 기본은 **꺼져 있다**(24시간 연속 전투). 기존 판정과 숫자를 비교할 수 있어야 해서다.
 //
 //   --active=2      하루 실제 플레이 시간(시간). 0 이면 모델 끔
+//   --prestige      환생 켬 (기본은 2판: balance.json prestige.tree). --pV1 은 1판 비교
+//                   실험용: --pDec=<층>(영혼 10배 간격) --pAt2=<추천 배수> --tOff=atk,gold --tScale=0.5 --echo=10(1판)
 //   --sessions=2    하루 접속 횟수. 상한이 무는지는 플레이 시간이 아니라 **간격**이 정한다 —
 //                   2시간을 2번에 나눠 하면 간격이 11시간이라 12시간 상한에 걸리지 않지만,
 //                   한 번에 몰아서 하면 간격이 22시간이라 10시간을 버린다.
@@ -178,14 +180,20 @@ const gateEnrageAt = tt => ARG.enrageOff ? 1
 // 구조가 기존 골드 강화와 똑같아서, 이미 5판정으로 검증된 모양을 그대로 쓴다.
 const PRESTIGE = {
   on: !!ARG.prestige,
-  unlockStage: NUM('pUnlock') || 100,      // 첫 환생 가능 스테이지
-  soulDiv: NUM('pDiv') || 10,              // 스테이지 N 당 영혼 1
-  c0: NUM('pC0') || 10,                    // 영혼 상점 1레벨 가격
-  g: NUM('pG') || 1.15,                    // 레벨당 가격 배수
-  r: NUM('pR') || 1.08,                    // 레벨당 피해 배수
+  // 기본값은 balance.json 의 prestige 블록 (게임과 같은 값). 인자는 실험용 덮어쓰기
+  unlockStage: NUM('pUnlock') || B.prestige.unlockStage,   // 첫 환생 가능 스테이지
+  soulDiv: NUM('pDiv') || B.prestige.soulDiv,              // 스테이지 N 당 영혼 1
+  c0: NUM('pC0') || B.prestige.shop.c0,                    // 영혼 상점 1레벨 가격
+  g: NUM('pG') || B.prestige.shop.g,                       // 레벨당 가격 배수
+  r: NUM('pR') || B.prestige.shop.r,                       // 레벨당 피해 배수
   at: NUM('pAt') || 2,                     // 지금 영혼의 몇 배를 더 받을 수 있으면 환생하는가
 };
-const soulsFor = stage => Math.floor(stage / PRESTIGE.soulDiv);
+// 영혼 공식. 기본은 선형(stage/soulDiv). --pD=<층> 이면 지수형: 해금층에서 pBase 개, pD 층마다 10배.
+// 선형+누적이면 '보유의 N배' 를 다시 모으기가 회차마다 기하급수로 어려워져 환생이 1년에 3번으로 끊긴다.
+const P_D = NUM('pD'), P_BASE = NUM('pBase') || 100;
+const soulsFor = stage => (P_D
+  ? (stage >= PRESTIGE.unlockStage ? Math.floor(P_BASE * Math.pow(10, (stage - PRESTIGE.unlockStage) / P_D)) : 0)
+  : Math.floor(stage / PRESTIGE.soulDiv));
 
 // ── 리드 몬스터 고유 능력 (src/stats.js 의 ab() 와 같은 규칙) ──
 // 전부 사이드그레이드여야 한다 — 하나가 지배적이면 선택이 사라지고 곡선도 밀린다.
@@ -198,6 +206,38 @@ const ab = (k, dflt = 1) => (typeof LEAD_AB[k] === 'number' ? LEAD_AB[k] : dflt)
 function soulLv(souls) {
   if (souls < PRESTIGE.c0) return 0;
   return Math.floor(Math.log(1 + souls * (PRESTIGE.g - 1) / PRESTIGE.c0) / Math.log(PRESTIGE.g));
+}
+
+// ── 환생 2판 (balance.json prestige.tree 가 있으면 켜진다. --pV1 로 1판 비교) ──
+// 영혼 = 평생 기록 갱신분만: F(life) − F(지난 환생 때 life). 전부 log10 으로 들고 다닌다(후반 10^25 이상).
+const PV2 = !!(B.prestige && B.prestige.tree) && !ARG.pV1;
+const PT = (B.prestige && B.prestige.tree) || [];
+const P_LBASE = Math.log10((B.prestige && B.prestige.soulBase) || 100);
+const P_DEC = NUM('pDec') || (B.prestige && B.prestige.soulDecade) || 1300;
+const P_AT = NUM('pAt2') || (B.prestige && B.prestige.recommendAt) || 1;
+const LF = life => (life < PRESTIGE.unlockStage ? -Infinity : P_LBASE + (life - PRESTIGE.unlockStage) / P_DEC);
+const Lpending = S => { const a = LF(S.life); if (!isFinite(a)) return -Infinity; return S.claim ? Lsub(a, LF(S.claim)) : a; };
+const tlv = (S, k) => (S.tree && S.tree[k]) || 0;
+// 실험: --tOff=gold,atk 처럼 노드 효과를 끈다 (원인 분리용)
+const T_OFF = new Set(String(ARG.tOff || '').split(',').filter(Boolean));
+const T_SCALE = NUM('tScale') ?? 1;
+const tMul = (S, eff) => (PV2 ? T_SCALE * PT.reduce((L, n) => L + (n.eff === eff && n.mul && !T_OFF.has(n.key) ? tlv(S, n.key) * Math.log10(n.mul) : 0), 0) : 0);
+const tAdd = (S, eff) => (PV2 ? PT.reduce((a, n) => a + (n.eff === eff && n.add ? tlv(S, n.key) * n.add : 0), 0) : 0);
+const LtCost = (n, lv) => Math.log10(n.c0) + lv * Math.log10(n.g);
+/** 가장 싼 노드부터 산다 — 사람이 '+1' 을 누르는 순서의 근사 */
+function buyTree(S) {
+  S.tree = S.tree || {};
+  for (let i = 0; i < 200000; i++) {
+    let best = null;
+    for (const n of PT) {
+      const lv = tlv(S, n.key);
+      if (n.max !== undefined && lv >= n.max) continue;
+      const c = LtCost(n, lv);
+      if (!best || c < best.c) best = { n, c };
+    }
+    if (!best || !(S.Lfree >= best.c)) return;
+    S.Lfree = Lsub(S.Lfree, best.c); S.tree[best.n.key] = tlv(S, best.n.key) + 1;
+  }
 }
 
 // ══════════════════════════════════════════════════ 가챠 레이어
@@ -305,7 +345,7 @@ function relicDay(S, day) {
   else while (lo < hi) { const m = Math.ceil((lo + hi) / 2); if (raidFrac(S, m) >= 1) lo = m; else hi = m - 1; }
   const per = Math.max(got(dMax), hi ? got(hi) : 0);
   S.relicRuns = (S.relicRuns || 0) + 1; S.relicFull = (S.relicFull || 0) + per / Math.max(1, Math.round(shardsPerRun(dMax)));
-  S.relicShards += keys * per * e.shardMul;
+  S.relicShards += keys * per * e.shardMul * (1 + tAdd(S, 'shardMul'));
   while (S.relicN < RL.list.length && S.relicShards >= RL.list[S.relicN].cost) {
     S.relicShards -= RL.list[S.relicN].cost; S.relicN++; S.relicDays.push(day);
   }
@@ -354,7 +394,10 @@ const Llayer2Hp = S => (NOL2 ? 0 : masteryPts(S) * fromNum(MNODE('hp').mul || 1)
  * 예전엔 광폭(dps)이 공격 노드와 같은 배수를 LDPS 에 그대로 곱해서 둘이 같은 노드였다.
  * 보스 특화로 바꿔 봤다가 접었다 — 보스가 전투 시간의 8% 뿐이라 순손실이었다.
  */
-const Llayer2Gold = S => (NOL2 ? 0 : masteryPts(S) * fromNum(MNODE('gold').mul || 1)) + fromNum(relicEff(S).gold);
+// 메아리(실험): 환생 직후 **이전 회차 최고 기록 아래에서만** 골드 ×echo. 최전선 경제는 그대로 두고 복귀 비용만 줄인다
+const ECHO_L = Math.log10(NUM('echo') || 1);
+const Lecho = S => (S.echoTo && S.best < S.echoTo ? (PV2 ? Math.log10(B.prestige.echo + tAdd(S, 'echo')) : ECHO_L) : 0);
+const Llayer2Gold = S => (NOL2 ? 0 : masteryPts(S) * fromNum(MNODE('gold').mul || 1)) + fromNum(relicEff(S).gold) + Lecho(S) + tMul(S, 'gold');
 
 /** 진행도에 따라 열린 슬롯 수 */
 const activeSlots = (b, best) => b.slotUnlock.filter(u => best >= u).length;
@@ -425,10 +468,35 @@ function newState() {
  * 가챠·마스터리·연구·수집은 **하루 수입에 묶여 있어서** 같이 지우면 하루를 통째로 날리는 꼴이 된다.
  */
 function doPrestige(S) {
+  S.echoTo = S.best;
   S.souls += soulsFor(S.best);
   S.Lgold = L0;
   for (const k of Object.keys(D.stats)) S.lv[k] = (D.stats[k].kind === 'mul' ? 1 : 0);
   S.stage = 1; S.best = 1;   // life 는 그대로 — 해금과 로드맵은 영구다
+}
+/** 관문 실패 기록을 건드리지 않고 이길 수 있는지만 본다 */
+function canWin(S, s) {
+  const gf = S.gateFail; S.gateFail = gf ? new Map(gf) : undefined;
+  const r = attempt(S, s); S.gateFail = gf; return r.win;
+}
+/** 환생 2판: 영혼 청구 → 트리 → 도약(최전선 골드로 즉시 강화, 이전 기록의 pct 지점에서 시작) */
+function doPrestige2(S) {
+  const Lp = Lpending(S);
+  S.Lfree = Ladd(S.Lfree === undefined ? L0 : S.Lfree, Lp);
+  S.claim = S.life; buyTree(S);
+  const Lps = LgoldPerSec(S, Math.max(1, S.best - 1));      // 리셋 **전** 최전선 수입
+  const pct = Math.min(0.99, B.prestige.warp.pct + tAdd(S, 'warpPct'));
+  const target = Math.max(1, Math.floor(S.best * pct));
+  S.echoTo = S.best;
+  S.Lgold = L0;
+  for (const k of Object.keys(D.stats)) S.lv[k] = (D.stats[k].kind === 'mul' ? 1 : 0);
+  S.stage = target; S.best = 1;
+  if (isFinite(Lps) && Lps > L0) S.Lgold = Lps + fromNum(B.prestige.warp.goldSeconds);
+  spend(S);
+  let st = target;
+  while (st > 1 && !canWin(S, st)) st = Math.max(1, Math.floor(st * 0.98));
+  S.stage = st; S.best = st;
+  return { target, st };
 }
 const SD = k => D.stats[k];
 function unlocked(S, k) {
@@ -468,13 +536,13 @@ const LHP  = S => Ltrack(S, HP_T) + fromNum((1 + gE(S) / 200) * ab('hp')) + Llay
 const LDEF = S => Lval(S, 'def') + fromNum(ab('dr'));
 // 환생 보너스(로그). 영혼으로 산 레벨 × 레벨당 배수 — 승산이라 로그에서는 덧셈이다.
 // soulLv 가 영혼의 로그라서 이 항 자체가 로그로 자란다 = 수렴한다.
-const Lsoul = S => soulLv(S.souls) * Math.log10(PRESTIGE.r);
+const Lsoul = S => (PV2 ? tMul(S, 'atk') : soulLv(S.souls) * Math.log10(PRESTIGE.r));
 
 function LDPS(S, boss) {
   const critF = 1 + Math.min(1, nval(S, 'crit')) * (nval(S, 'cdmg') - 1);
   const shots = 1 + Math.min(1, nval(S, 'dbl')) + Math.min(1, nval(S, 'trp'));
   const nrmF = boss ? 1 : 1 + nval(S, 'nrm');
-  let L = LATK(S) + (boss ? fromNum(relicEff(S).bossDmg) : 0) + fromNum(critF * shots * nrmF * nval(S, 'aspd') * (1 + gC(S) / 100)
+  let L = LATK(S) + (boss ? fromNum(relicEff(S).bossDmg) + tMul(S, 'bossDmg') : 0) + fromNum(critF * shots * nrmF * nval(S, 'aspd') * (1 + gC(S) / 100)
                                      * ab('dmg') * (boss ? ab('boss') : ab('nrm')));
   if (boss) L += Lburst(S);
   return L + Lsoul(S);
@@ -591,10 +659,12 @@ function attempt(S, s) {
     }
     if (Lrec > L0) Lhp = Math.min(Lhp0, Ladd(Lhp, Lhp0 + Lrec));
   }
-  return { win: true, elapsed: t, Lgold };
+  // 게임은 압도적이어도 한 층에 minSeconds 를 쓴다(웨이브 입장·공격 간격). 바닥이 없으면 재등반이 0초가 된다
+  return { win: true, elapsed: Math.max(t, D.stage.minSeconds || 0), Lgold };
 }
 
 // ══════════════════════════════════════════════════ 메인 루프
+const R_STALL = {};
 function run() {
   const S = newState();
   const log = [], daily = [];
@@ -641,6 +711,10 @@ function run() {
     if (r.win) {
       S.stage++;
       if (S.stage > S.best) { S.best = S.stage; if (S.best > S.life) S.life = S.best; refreshGacha(S); }
+      if (S.presTarget && S.best >= S.presTarget) {
+        S.presLog[S.presLog.length - 1].back = (t - S.presT - (S.presOff !== undefined ? (offlineS + lostS - S.presOff) : 0)) / 3600;
+        S.presTarget = 0;
+      }
       // 스테이지마다 스냅샷을 쌓으면 폭주 설정(스테이지 20만)에서 힙이 터진다(실측 4GB OOM).
       // 상한에 닿으면 절반으로 솎아내고 기록 간격을 2배로 늘려 메모리를 일정하게 유지한다.
       while (nextLog <= S.stage) {
@@ -669,8 +743,21 @@ function run() {
     // ── 환생 판단 ──
     // 사람은 "지금 가진 것의 몇 배는 돼야 리셋한다" 로 생각한다. 그 배수가 pAt 다.
     // 첫 환생만 unlockStage 로 따로 막는다(영혼 0 이면 어떤 배수든 0 이라 즉시 통과한다).
-    if (PRESTIGE.on && S.best >= PRESTIGE.unlockStage
-        && soulsFor(S.best) >= Math.max(1, S.souls * PRESTIGE.at)) {
+    const want2 = PV2 && PRESTIGE.on && S.life >= PRESTIGE.unlockStage && S.best >= S.life
+        && Lpending(S) >= (S.claim ? LF(S.claim) + Math.log10(P_AT) : -Infinity);
+    const want1 = !PV2 && PRESTIGE.on && S.best >= PRESTIGE.unlockStage
+        && soulsFor(S.best) >= Math.max(1, S.souls * PRESTIGE.at);
+    if (want2) {
+      const rec = { day: t / 86400, best: S.best, Lgot: Lpending(S), back: null };
+      S.presT = t; S.presTarget = S.best; S.presOff = offlineS + lostS;
+      const w = doPrestige2(S); rec.warp = w.st; rec.target = w.target;
+      (S.presLog = S.presLog || []).push(rec); prestiges++;
+      refreshGacha(S); lastUp = t;
+    }
+    if (want1) {
+      const lvB = soulLv(S.souls), got = soulsFor(S.best);
+      (S.presLog = S.presLog || []).push({ day: t / 86400, best: S.best, got, lvB, lvA: soulLv(S.souls + got), back: null });
+      S.presT = t; S.presTarget = S.best;
       doPrestige(S); prestiges++;
       refreshGacha(S);          // 해금은 life 기준이라 그대로지만 캐시는 다시 계산한다
       spend(S);
@@ -693,7 +780,7 @@ function run() {
       spend(S);                                // 돌아오면 모아둔 골드를 쓴다
     }
 
-    if (t - lastUp > stall) stall = t - lastUp;
+    if (t - lastUp > stall) { stall = t - lastUp; R_STALL.at = S.stage; R_STALL.day = t / 86400; R_STALL.rec = !!S.presTarget; R_STALL.gate = isGate(S.stage); R_STALL.boss = isBoss(S.stage); R_STALL.best = S.best; R_STALL.life = S.life; }
     if (t - lastUp > 24 * 3600) break;        // 24시간 무진행 = 벽으로 보고 중단
     if (S.stage > 200000) break;              // 수치가 아니라 연산량 상한
   }
@@ -749,6 +836,7 @@ if (ARG.quiet) {
 console.log('== 설계 검증' + (NOGACHA ? ' [무과금]' : D.gacha.pullMul !== 1 ? ' [뽑기 x' + D.gacha.pullMul + ']' : '') + ' · ' + DAYS + '일 ' + '='.repeat(14));
 console.log('  최고 스테이지 ' + R.S.life + '   (1일차 ' + dayStage(R, 1) + ' / 7일차 ' + dayStage(R, 7) + ' / 30일차 ' + dayStage(R, 30) + ')');
 console.log('  사망 ' + R.deaths + '회  ·  너무 느려 포기 ' + R.slows + '회  ·  하루 뽑기 ' + R.pullsPerDay + '회');
+if (R_STALL.at) console.log('  [최장 무진행 지점] ' + R_STALL.at + '층 · ' + R_STALL.day.toFixed(1) + '일차' + (R_STALL.rec ? ' · 환생 복귀 중' : ' · 최전선') + (R_STALL.gate ? ' · 관문' : R_STALL.boss ? ' · 보스' : '') + ' · 회차최고 ' + R_STALL.best + ' / 평생 ' + R_STALL.life);
 console.log('  최장 무진행 ' + hm(R.stall) + '  ·  파밍 ' + hm(R.farmT) + ' / 전체 ' + hm(R.t));
 if (ACTIVE_H) {
   console.log('  [오프라인] 하루 ' + ACTIVE_H + '시간 × ' + SESSIONS + '회 접속'
@@ -759,8 +847,24 @@ if (ACTIVE_H) {
 } else {
   console.log('  [오프라인] 모델 꺼짐 — 24시간 연속 전투 가정 (--active=2 로 켠다)');
 }
-if (PRESTIGE.on) {
+if (PRESTIGE.on && PV2) {
+  const PL = R.S.presLog || [];
+  const gaps = PL.slice(1).map((p, i) => p.day - PL[i].day);
+  const med = a => { const b = [...a].sort((x, y) => x - y); return b.length ? b[b.length >> 1] : 0; };
+  const inR = (a, b) => PL.filter(p => p.day >= a && p.day < b).length;
+  console.log('  [환생2] ' + PL.length + '회 · 구간별 1~7일 ' + inR(0, 7) + ' · 8~30일 ' + inR(7, 30) + ' · 31~90일 ' + inR(30, 90) + ' · 91~365일 ' + inR(90, 999)
+    + ' · 간격 중위 ' + med(gaps).toFixed(1) + '일 (91일 이후 ' + med(gaps.filter((g, i) => PL[i + 1].day >= 90)).toFixed(1) + '일)');
+  const backs = PL.map(p => p.back).filter(v => v != null);
+  console.log('  [환생2] 복귀(이전 기록까지, 실제 플레이 시간) 중위 ' + med(backs).toFixed(1) + 'h · 최대 ' + (backs.length ? Math.max(...backs).toFixed(1) : '-') + 'h'
+    + ' · 도약 지점/목표 중위 ' + (med(PL.map(p => p.warp / p.target)) * 100).toFixed(0) + '%');
+  console.log('  [환생2] 트리 ' + PT.map(n => n.icon + n.name + ' ' + tlv(R.S, n.key)).join(' · ')
+    + ' · 받은 영혼 10^' + (R.S.claim ? LF(R.S.claim) : 0).toFixed(1));
+  for (const p of PL.filter((p, i) => i < 4 || i % Math.ceil(PL.length / 10) === 0 || i === PL.length - 1))
+    console.log('    · ' + p.day.toFixed(1) + '일  최고 ' + p.best + '  영혼 +10^' + p.Lgot.toFixed(1) + '  도약 ' + p.warp + '/' + p.target + '  복귀 ' + (p.back == null ? '-' : p.back.toFixed(1) + 'h'));
+} else if (PRESTIGE.on) {
   const lv = soulLv(R.S.souls);
+  for (const p of R.S.presLog || []) console.log('    · ' + p.day.toFixed(1) + '일  최고 ' + p.best + '  영혼 +' + p.got
+    + '  Lv.' + p.lvB + '→' + p.lvA + '  복귀 ' + (p.back == null ? '못함' : p.back.toFixed(1) + 'h'));
   console.log('  [환생] ' + R.prestiges + '회  ·  영혼 ' + R.S.souls.toLocaleString()
     + '  ·  상점 Lv.' + lv + ' (보너스 10^' + (lv * Math.log10(PRESTIGE.r)).toFixed(1) + '배)'
     + '  ·  ' + PRESTIGE.soulDiv + '층당 영혼1 · 가격 ' + PRESTIGE.c0 + '×' + PRESTIGE.g + '^lv · 레벨당 ×' + PRESTIGE.r);

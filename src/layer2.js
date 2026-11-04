@@ -7,6 +7,7 @@ import { B } from './balance.js';
 import { S } from './state.js';
 import { ensureMineDaily as _mineDaily, picks as _picks } from './mine.js';
 import { eff as relicEff } from './relics.js';
+import { soulGoldMul } from './prestige.js';
 
 const L2 = B.layer2;
 const M = L2.mine;
@@ -136,7 +137,8 @@ export const hpMul = () => masteryMul('hp') * relicEff('hp');
  * 탐식 — 획득 골드 배수. 전부 피해 배수로 수렴하는 이 게임에서
  * 갈라지는 몇 안 되는 축이라 여기가 **선택**이 된다: 지금의 화력이냐, 투자냐.
  */
-export const goldMul = () => masteryMul('gold') * relicEff('gold');
+// 영혼 트리 유산 × 메아리(직전 회차 기록 아래에서만) — 오프라인·던전·전투 골드가 전부 여기를 거친다
+export const goldMul = () => masteryMul('gold') * relicEff('gold') * soulGoldMul();
 
 export function ensureLayer2() {
   _mineDaily();

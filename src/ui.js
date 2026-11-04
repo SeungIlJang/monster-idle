@@ -8,6 +8,7 @@ import { preloadFor } from './render.js';
 import * as G from './gacha.js';
 import * as DUN from './dungeon.js';
 import * as RELIC from './relics.js';
+import * as PR from './prestige.js';
 import * as DQ from './daily.js';
 import * as L2 from './layer2.js';
 import { playRewarded } from './ads.js';
@@ -351,7 +352,9 @@ export function refresh() {
   const dd = $('dDot');
   if (dd) dd.style.display = DUN.unlocked() && DUN.DUNGEONS.some(d => DUN.keysLeft(d.key) > 0) ? 'block' : 'none';
   const gr = $('grDot');
-  if (gr) gr.style.display = (L2.picks() >= L2.pickMax() || L2.masteryFree() > 0 || L2.researchReady()) ? 'block' : 'none';
+  // 환생 추천 · 영혼 트리에 올릴 수 있는 노드가 있으면 성장 탭에 점을 띄운다
+  if (gr) gr.style.display = (L2.picks() >= L2.pickMax() || L2.masteryFree() > 0 || L2.researchReady()
+    || PR.recommended() || (PR.unlocked() && PR.TREE.some(PR.canBuy))) ? 'block' : 'none';
 }
 
 /**

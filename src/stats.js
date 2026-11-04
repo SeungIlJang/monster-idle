@@ -4,7 +4,7 @@ import { B, STAT_KEYS, perWave, isBoss, LeATK, LeHP } from './balance.js';
 import { S } from './state.js';
 import { fromNum, geoSum, ratio, sub } from './logmath.js';
 import { atkMul, hpMul } from './layer2.js';
-import { Lsoul } from './prestige.js';
+import { Lsoul, LsoulBoss } from './prestige.js';
 import { eff as relicEff } from './relics.js';
 
 const SD = k => B.stats[k];
@@ -88,7 +88,7 @@ export const critF = () => 1 + Math.min(1, nval('crit')) * (nval('cdmg') - 1);
 
 export function LDPS(boss) {
   const nrmF = boss ? 1 : 1 + nval('nrm');
-  const Lp = Lsoul();                      // 환생 상점 보너스 (승산 → 로그에서는 덧셈)
+  const Lp = Lsoul() + (boss ? LsoulBoss() : 0);   // 영혼 트리 투지(+1판 보너스) · 보스면 패기 (승산 → 로그에서는 덧셈)
   // dmg 는 전체, boss/잡몹 배수는 상대에 따라 갈린다 (nrm 쪽은 nval('nrm') 에서 이미 반영됐다)
   let L = LATK() + fromNum(critF() * shots() * nrmF * nval('aspd') * (1 + gC() / 100)
                            * ab('dmg') * (boss ? ab('boss') * relicEff('bossDmg') : ab('nrm'))) + Lp;   // 송곳니·왕관 유물

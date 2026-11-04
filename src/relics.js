@@ -9,6 +9,7 @@
 // **다른 시스템을 건드리는** 것이 새 축이 된다. 각 시스템은 여기서 eff() 로 묻는다.
 import { B } from './balance.js';
 import { S } from './state.js';
+import { shardSoulMul } from './prestige.js';
 
 const RL = B.relics || { list: [], shardBase: 0, shardSlope: 0 };
 export const RELICS = RL.list;
@@ -44,10 +45,13 @@ export function eff(key) {
   return cache[key] ?? (MUL.has(key) ? 1 : 0);
 }
 
+/** 조각 배수 — 등불 유물 × 영혼 트리 공명. '환생하면 유물이 빨라진다' 가 여기서 닫힌다 */
+export const shardMul = () => eff('shardMul') * shardSoulMul();
+
 /** 조각을 넣고, 넘치는 만큼 유물을 연다. 새로 열린 유물 목록을 돌려준다(연출용). */
 export function addShards(n) {
   if (!S.relic) S.relic = { shards: 0, n: 0 };
-  S.relic.shards += n * eff('shardMul');
+  S.relic.shards += n * shardMul();
   const got = [];
   while (S.relic.n < RELICS.length && S.relic.shards >= RELICS[S.relic.n].cost) {
     S.relic.shards -= RELICS[S.relic.n].cost;

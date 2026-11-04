@@ -83,7 +83,7 @@ function showPanel() {
       ${row('dvGem', '젬', num(S.gem))}
       ${row('dvShard', '조각', num(S.shard))}
       ${row('dvOre', '광석', num(S.ore))}
-      ${row('dvSoul', '소울', num(S.souls))}
+      ${row('dvSoul', '영혼(남은)', bigOut(S.soul.Lfree), '1e30 표기 가능')}
       ${row('dvRelicSh', '유물 조각', num(Math.floor(S.relic?.shards || 0)))}
       ${row('dvRelicN', '열린 유물 수', num(S.relic?.n || 0), '0~' + (B.relics?.list.length || 0))}
       ${row('dvStat', '전 스탯 레벨', '', '비우면 유지')}
@@ -141,7 +141,10 @@ function apply() {
   };
 
   const st = int('dvSt', 1), life = int('dvLife', 1);
-  const gem = int('dvGem', 0), shard = int('dvShard', 0), ore = int('dvOre', 0), soul = int('dvSoul', 0);
+  const gem = int('dvGem', 0), shard = int('dvShard', 0), ore = int('dvOre', 0);
+  const soulRaw = $('dvSoul').value.trim();
+  const Lsoul = soulRaw === '' ? null : bigIn(soulRaw);
+  if (soulRaw !== '' && Lsoul === null) err.push('dvSoul');
   const statLv = int('dvStat', 0);
   const relicSh = int('dvRelicSh', 0), relicN = int('dvRelicN', 0, B.relics?.list.length || 0);
   const monLv = int('dvMonLv', 0);
@@ -158,7 +161,7 @@ function apply() {
   if (gem !== null) S.gem = gem;
   if (shard !== null) S.shard = shard;
   if (ore !== null) S.ore = ore;
-  if (soul !== null) S.souls = soul;
+  if (Lsoul !== null) S.soul.Lfree = Lsoul;
   if (relicSh !== null || relicN !== null) {
     S.relic = { shards: 0, n: 0, ...(S.relic || {}) };
     if (relicSh !== null) S.relic.shards = relicSh;

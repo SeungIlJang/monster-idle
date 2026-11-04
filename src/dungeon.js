@@ -172,7 +172,7 @@ export function enter(k, diff, useAd = false) {
   if (k === 'boss') {
     S.gem += res.gem;
   } else if (k === 'raid') {
-    res.gain = res.shards * RELIC.eff('shardMul');   // 등불 유물 반영된 실제 획득량(표시용)
+    res.gain = res.shards * RELIC.shardMul();         // 등불 유물 · 공명 반영된 실제 획득량(표시용)
     res.opened = RELIC.addShards(res.shards);        // 새로 깨어난 유물(연출용)
   } else if (res.Lgold > L0) {
     S.Lg = add(S.Lg, res.Lgold);

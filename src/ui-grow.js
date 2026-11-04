@@ -1,6 +1,6 @@
 // 성장 패널 — 광산 / 몬스터 / 마스터리 / 연구 (2단계 레이어)
 // ui.js 와 순환 참조를 만들지 않으려고, 필요한 콜백은 init 으로 받는다.
-import { B } from './balance.js';
+import { B, isBoss } from './balance.js';
 import { S, save } from './state.js';
 import * as L2 from './layer2.js';
 import * as PR from './prestige.js';
@@ -8,6 +8,9 @@ import { playRewarded } from './ads.js';
 import { enterStage, MODE } from './combat.js';
 import { evoPrefix, evoStage, evoNextTier } from './sprites.js';
 import { monTier } from './companions.js';
+import { fmt } from './logmath.js';
+import { LgoldPerSec } from './offline.js';
+import { autoBuyTick, canClear, bestFarmStage } from './stats.js';
 import * as RELIC from './relics.js';
 import { unlocked as dungeonOpen } from './dungeon.js';
 
@@ -322,48 +325,91 @@ function renderResearch() {
 let presConfirm = false;
 
 function renderPrestige() {
-  const got = PR.pendingSouls(), lvNow = PR.soulLv(), lvAfter = PR.soulLv(S.souls + got);
-  const can = PR.canPrestige();
-  const needNext = Math.ceil(PR.soulsForLv(lvNow + 1) - S.souls);
+  const can = PR.canPrestige(), rec = PR.recommended();
+  const Lgot = PR.Lpending(), Lcl = PR.Lclaimed();
+  // 미리보기는 평생 기록 기준 — 환생은 기록을 넘어야 가능하고, 그 순간 이번 회차 최고 = 평생 기록이다
+  const from = Math.max(S.best, S.life), target = Math.max(1, Math.floor(from * PR.warpPct()));
+  const toRec = PR.floorsToRecommend();
+  const big = L => (isFinite(L) ? fmt(L) : '0');
+  const legacy = S.soul.Llegacy > 0
+    ? `<div class="d" style="margin-top:4px;opacity:.7">옛 환생의 힘 ×${Math.pow(10, S.soul.Llegacy).toFixed(2)} 이 그대로 남아 있습니다</div>` : '';
+
+  const tree = PR.TREE.map(n => {
+    const lv = PR.tlv(n.key), mx = PR.maxed(n), ok = PR.canBuy(n);
+    const now = PR.nodeText(n, lv), nxt = mx ? '' : ` → <b>${PR.nodeText(n, lv + 1).replace(n.desc + ' ', '')}</b>`;
+    return `<div class="mrow">
+      <div class="ic">${n.icon}</div>
+      <div class="mid"><div class="t">${n.name} <span style="opacity:.55;font-weight:600">Lv.${lv}${n.max !== undefined ? ' / ' + n.max : ''}</span></div>
+        <div class="d">${now}${nxt}</div>
+        <div class="d" style="opacity:.6">${mx ? '최대' : '🌟 ' + big(PR.Lcost(n))}</div></div>
+      <button data-sb="${n.key}" ${ok ? '' : 'disabled'}>+1</button>
+      <button data-sbm="${n.key}" ${ok ? '' : 'disabled'}>MAX</button>
+    </div>`;
+  }).join('');
 
   $('growBody').innerHTML = `
     <div class="mdet">
       <div class="t">♻️ 환생 <span style="opacity:.55;font-weight:600">${S.lives || 0}회</span></div>
-      <div class="mabil"><b>영혼 ${n0(S.souls)}</b> · 상점 Lv.${lvNow} · 전 피해 <b style="color:#7fd07f">×${PR.soulMul().toFixed(2)}</b></div>
-      <div class="d" style="margin-top:8px">
-        다음 레벨까지 영혼 <b>${n0(Math.max(0, needNext))}</b> 더 필요합니다.
+      <div class="mabil">남은 영혼 <b>🌟 ${big(S.soul.Lfree)}</b> · 지금까지 받은 영혼 ${big(Lcl)}</div>
+      <div class="d" style="margin-top:6px">전 피해 <b style="color:#7fd07f">${PR.mulText(PR.soulMul())}</b>
+        · 보스 <b style="color:#7fd07f">${PR.mulText(Math.pow(10, PR.LsoulBoss()))}</b>
+        · 골드 <b style="color:#7fd07f">${PR.mulText(Math.pow(10, PR.LtMul('gold')))}</b></div>
+      ${legacy}
+    </div>
+
+    <div class="mdet" style="margin-top:10px;${rec ? 'border-color:#ffd34d' : ''}">
+      <div class="t">지금 환생하면 ${rec ? '<span style="color:#ffd34d;font-size:12px">· 추천!</span>' : ''}</div>
+      <div class="d">
+        <div>🌟 영혼 <b style="color:#ffd34d">+${big(Lgot)}</b></div>
+        <div style="opacity:.75">영혼은 <b>평생 기록(${n0(S.life)}층)을 넘어선 만큼만</b> 쌓입니다.
+          ${rec ? '받은 총량만큼 쌓였습니다 — 지금이 좋은 때입니다.' : `기록을 <b>${n0(toRec)}층</b> 더 넘기면 받은 총량만큼 쌓입니다(추천).`}</div>
+        <div style="margin-top:6px">🌀 <b>도약</b> — ${n0(target)}층(기록의 ${Math.round(PR.warpPct() * 100)}%)에서 다시 시작하고, 지금 수입 ${Math.round(B.prestige.warp.goldSeconds / 60)}분어치 골드를 받아 바로 강화합니다</div>
+        <div>🔁 <b>메아리</b> — ${n0(from)}층까지는 골드 ×${PR.echoMul()}</div>
+      </div>
+      <div class="d" style="margin-top:8px;color:#ff9a9a"><b>잃는 것</b> — 이번 회차 스테이지·골드·강화 레벨</div>
+      <div class="d" style="margin-top:4px;color:#9ae6b4"><b>남는 것</b> — 해금, 뽑기, 마스터리, 연구, 수집, 젬, 동료, 유물, 영혼 트리</div>
+      <div class="mbtn">
+        <button id="presBtn" ${can ? '' : 'disabled'} style="${presConfirm ? 'background:#8a2f3f' : ''}">
+          ${!PR.unlocked() ? `${n0(B.prestige.unlockStage)}층 필요`
+            : !can ? '기록을 넘어서야 영혼이 생깁니다'
+            : presConfirm ? '정말 환생합니다' : '환생하기'}
+        </button>
       </div>
     </div>
 
     <div class="mdet" style="margin-top:10px">
-      <div class="t">지금 환생하면</div>
-      <div class="d">
-        <div>🌟 영혼 <b style="color:#ffd34d">+${n0(got)}</b> (${B.prestige.soulDiv}층당 1개 · 현재 ${n0(S.best)}층)</div>
-        <div>📈 상점 Lv.${lvNow} → <b style="color:#7fd07f">Lv.${lvAfter}</b> · 피해 ×${PR.soulMul().toFixed(2)} → <b style="color:#7fd07f">×${Math.pow(B.prestige.shop.r, lvAfter).toFixed(2)}</b></div>
-      </div>
-      <div class="d" style="margin-top:8px;color:#ff9a9a">
-        <b>잃는 것</b> — 스테이지(1층으로), 골드, 강화 레벨 전부
-      </div>
-      <div class="d" style="margin-top:4px;color:#9ae6b4">
-        <b>남는 것</b> — 해금(최고 기록 ${n0(S.life)}층 기준), 뽑기, 마스터리, 연구, 수집, 젬, 동료
-      </div>
-      <div class="mbtn">
-        <button id="presBtn" ${can ? '' : 'disabled'} style="${presConfirm ? 'background:#8a2f3f' : ''}">
-          ${!PR.unlocked() ? `${n0(B.prestige.unlockStage)}층 필요`
-            : got <= 0 ? `${B.prestige.soulDiv}층 이상 필요`
-            : presConfirm ? '정말 환생합니다' : '환생하기'}
-        </button>
-      </div>
+      <div class="t" style="display:flex;align-items:center;justify-content:space-between">🌳 영혼 트리
+        <button id="soulAuto" style="font-size:11px;padding:4px 9px;border-radius:8px;border:1px solid #3d4a80;background:#1d2550;color:#cfe0ff;cursor:pointer">자동 분배</button></div>
+      <div class="d" style="opacity:.7;margin:4px 0 8px">위 셋은 상한이 없습니다 — 화력이냐, 벽이냐, 투자냐. 아래 셋은 환생을 편하게 하거나 유물과 잇습니다.</div>
+      ${tree}
     </div>`;
+
+  $('growBody').querySelectorAll('[data-sb]').forEach(el => {
+    el.onclick = () => { if (PR.buy(el.dataset.sb, 1)) after(); };
+  });
+  $('growBody').querySelectorAll('[data-sbm]').forEach(el => {
+    el.onclick = () => { if (PR.buy(el.dataset.sbm, 1e6)) after(); };
+  });
+  $('soulAuto').onclick = () => {
+    const k = PR.buyCheapest();
+    if (k) { after(); ctx.toast(`영혼 트리 +${k}레벨 (가장 싼 것부터)`); } else ctx.toast('올릴 수 있는 노드가 없습니다');
+  };
 
   const btn = $('presBtn');
   if (btn) btn.onclick = () => {
     if (!presConfirm) { presConfirm = true; renderPrestige(); ctx.toast('한 번 더 누르면 환생합니다'); return; }
     presConfirm = false;
-    const n = PR.doPrestige();
-    enterStage(1, MODE.RUN);
+    const Lps = LgoldPerSec(Math.max(1, S.best - 1));      // 리셋 **전** 최전선 수입 — 도약 골드의 기준
+    const r = PR.doPrestige(Lps);
+    if (!r) return;
+    // 도약: 받은 골드로 강화한 뒤, 그 힘으로 넘을 수 있는 층에서 시작한다(못 넘는 층에 갇히지 않게)
+    for (let i = 0; i < 4000; i++) if (!autoBuyTick(r.target, isBoss(r.target))) break;
+    const st = canClear(r.target, 1) ? r.target : bestFarmStage(r.target);
+    S.st = st; S.best = st;
+    save();
+    enterStage(st, MODE.RUN);
     ctx.onLeadChange();
     after();
-    ctx.toast('환생! 영혼 +' + n0(n));
+    ctx.toast(`환생! 영혼 +${fmt(r.Lgot)} · ${n0(st)}층에서 다시 시작 · ${n0(r.from)}층까지 골드 ×${PR.echoMul()}`);
   };
 }

@@ -4,7 +4,7 @@ import { B, STAT_KEYS } from './balance.js';
 import { L0 } from './logmath.js';
 
 const KEY = 'monsteridle';
-const SAVE_VERSION = 2;
+const SAVE_VERSION = 3;
 
 export function defaults() {
   const lv = {};
@@ -16,7 +16,9 @@ export function defaults() {
     st: 1,             // 현재 도전 스테이지
     best: 1,           // 이번 회차의 최고 도달 스테이지 (환생하면 1 로 돌아간다)
     life: 1,           // **영구** 최고 기록. 해금은 전부 이걸 본다 — 환생이 해금을 지우면 안 된다
-    souls: 0,          // 환생 재화
+    souls: 0,          // (1판) 환생 재화 — 3판 세이브부터 쓰지 않는다. 마이그레이션이 soul.Llegacy 로 옮긴다
+    soul: { Lfree: L0, claim: 0, tree: {}, Llegacy: 0 },  // 환생 2판: 남은 영혼(log10) · 마지막 청구 때 life · 트리 · 1판 보너스(log10)
+    echoTo: 0,         // 메아리: 이 층 아래에서는 골드 배수 (직전 회차 최고 기록)
     lives: 0,          // 환생 횟수
     farm: 0,           // 수동 파밍 스테이지 (0 = 자동)
     spd: 1,            // 전투 배속 (1 또는 2). 라이브 루프에만 걸린다
@@ -81,6 +83,17 @@ function migrate(d) {
   s.ev.claimed = { ...(d.ev?.claimed || {}) };
   s.gateFail = { ...(d.gateFail || {}) };
   s.relic = { shards: 0, n: 0, ...(d.relic || {}) };
+  s.soul = { ...base.soul, ...(d.soul || {}) };
+  s.soul.tree = { ...(d.soul?.tree || {}) };
+  if (!(typeof s.soul.Lfree === 'number')) s.soul.Lfree = L0;
+  s.echoTo = Number(s.echoTo) || 0;
+  // v3: 환생 2판. 1판 영혼(층수 비례 · 단일 상점)의 피해 보너스는 **그대로 넘긴다**(Llegacy) — 업데이트로
+  // 약해지면 안 된다. claim 은 0 이라 다음 환생 때 평생 기록 전체만큼 2판 영혼을 받는다.
+  if ((Number(d.v) || 1) < 3 && s.souls > 0 && !d.soul) {
+    const sh = B.prestige.shop;
+    const lv = s.souls < sh.c0 ? 0 : Math.floor(Math.log(1 + s.souls * (sh.g - 1) / sh.c0) / Math.log(sh.g));
+    s.soul.Llegacy = lv * Math.log10(sh.r);
+  }
   s.mine = { ...base.mine, ...(d.mine || {}) };
   s.monLv = { ...(d.monLv || {}) };
   s.mastery = { ...base.mastery, ...(d.mastery || {}) };
