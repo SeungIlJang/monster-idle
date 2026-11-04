@@ -182,3 +182,28 @@ export function bestBuy(s, boss) {
   }
   return best;
 }
+
+/**
+ * 자동 강화 한 틱. **시뮬의 spend() 와 같은 규칙**이다 — 전투력 증가율÷비용이 가장 큰
+ * 스탯을 골라 살 수 있는 양의 1/4 씩 산다(한 트랙에 전부 쏟지 않고 균형을 지킨다).
+ *
+ * 시뮬은 처음부터 이렇게 탐욕 구매한다고 가정했다. 실제 사람은 스탯 10개에 MAX 를
+ * 하나씩 누르니 시뮬보다 늘 뒤처져 있었다 — 이걸 켜면 현실이 시뮬에 가까워진다.
+ * 그래서 밸런스 변경이 아니라 **시뮬 가정의 실현**이다.
+ *
+ * 한 틱에 최대 12번만 돈다. 0.25초마다 불리므로 초당 48번 — 오프라인 골드를 몇 초면
+ * 다 쓰면서 프레임은 안 먹는다. 산 레벨 수를 돌려준다(0 이면 UI 갱신을 건너뛴다).
+ */
+export function autoBuyTick(stage, boss) {
+  let bought = 0;
+  for (let i = 0; i < 12; i++) {
+    const best = bestBuy(stage, boss);
+    if (!best) break;
+    const can = affordable(best.key);
+    if (can < 1) break;
+    const got = buy(best.key, Math.max(1, Math.floor(can / 4)));
+    if (!got) break;
+    bought += got;
+  }
+  return bought;
+}

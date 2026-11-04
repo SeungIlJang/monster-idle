@@ -6,6 +6,7 @@ import { initRender, render, preloadFor, resize, bgAdvance } from './render.js';
 import { initUI, refresh, toast } from './ui.js';
 import { pendingOffline, claimOffline, fmtDuration } from './offline.js';
 import { fmt } from './logmath.js';
+import { autoBuyTick } from './stats.js';
 import { initAds, playRewarded, isNative } from './ads.js';
 import { renderSkillBar } from './ui-skills.js';
 import { showTitle } from './ui-title.js';
@@ -107,7 +108,12 @@ function loop(now) {
   render(sdt);
   renderSkillBar();        // 쿨 채움은 매 프레임 — DOM 은 구성이 바뀔 때만 다시 만든다
   acc += dt;
-  if (acc > 0.25) { acc = 0; refresh(); }
+  if (acc > 0.25) {
+    acc = 0;
+    // 자동 강화 — 0.25초마다. 소리는 안 낸다(켜 두면 쉬지 않고 사서 끊임없이 울린다).
+    if (S.autoBuy !== false && autoBuyTick(R.stage, R.boss) > 0) save();
+    refresh();
+  }
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);

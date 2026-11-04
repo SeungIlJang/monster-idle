@@ -21,6 +21,10 @@ export function defaults() {
     farm: 0,           // 수동 파밍 스테이지 (0 = 자동)
     spd: 1,            // 전투 배속 (1 또는 2). 라이브 루프에만 걸린다
     autoSkill: true,   // 스킬 자동 발동. 끄면 쿨이 찬 채로 기다린다
+    // 자동 강화. 진척의 92% 가 오프라인이라 이 게임은 사실상 "돌아와서 뭘 하느냐" 인데,
+    // 돌아오면 스탯 10개에 MAX 를 하나씩 눌러야 했다 — 모든 복귀가 잡일로 시작했다.
+    // 시뮬(spend)은 처음부터 탐욕 구매를 가정하므로, 켜는 쪽이 시뮬과 현실을 맞춘다.
+    autoBuy: true,
     mon: 'slime',      // 선택한 리드 몬스터
     bp: { equip: 0, skill: 0, comp: 0 },   // 배너별 누적 뽑기 (= 배너 경험치)
     own: { equip: 0, skill: 0, comp: 0 },  // 배너별 보유 효과 합(%) — inv 에서 파생되는 캐시
@@ -108,6 +112,7 @@ function migrate(d) {
   if (!Number.isFinite(s.Lg)) s.Lg = L0;
   s.spd = s.spd === 2 ? 2 : 1;
   s.autoSkill = s.autoSkill !== false;
+  s.autoBuy = s.autoBuy !== false;
   s.st = Math.max(1, Math.floor(s.st) || 1);
   s.best = Math.max(s.st, Math.floor(s.best) || 1);
   return s;

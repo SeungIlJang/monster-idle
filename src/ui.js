@@ -58,8 +58,11 @@ function lockText(k) {
 function renderUpgrade() {
   const rec = bestBuy(R.stage, R.boss);
   // 구매 단위 선택을 목록 맨 위에 붙인다 (예전엔 강화 탭 안에 있었다)
+  // 자동 강화 토글을 구매 단위 옆에 붙인다 — 켜져 있으면 ×1/×10/MAX 는 사실상 안 쓰게 된다
+  const auto = S.autoBuy !== false;
   const bar = `<div class="bar">` + [1, 10, 'max'].map(m =>
-    `<div class="seg ${buyMode === m ? 'on' : ''}" data-bm="${m}">${m === 'max' ? 'MAX' : '×' + m}</div>`).join('') + `</div>`;
+    `<div class="seg ${buyMode === m ? 'on' : ''}" data-bm="${m}">${m === 'max' ? 'MAX' : '×' + m}</div>`).join('')
+    + `<div class="seg ${auto ? 'on' : ''}" data-auto="1" title="전투력 대비 가장 효율 좋은 스탯을 자동으로 삽니다">⚙ 자동 ${auto ? 'ON' : 'OFF'}</div></div>`;
   const rows = STAT_KEYS.map(k => {
     const d = B.stats[k];
     if (!unlocked(k)) {
@@ -101,6 +104,8 @@ function renderUpgrade() {
       else toast('골드 부족');
     };
   });
+  const autoEl = $('mainUpg').querySelector('[data-auto]');
+  if (autoEl) autoEl.onclick = () => { S.autoBuy = S.autoBuy === false; save(); renderUpgrade(); };
   $('mainUpg').querySelectorAll('[data-bm]').forEach(el => {
     el.onclick = () => { buyMode = el.dataset.bm === 'max' ? 'max' : +el.dataset.bm; renderUpgrade(); };
   });
