@@ -193,6 +193,14 @@
      그 모습이 좋다고 해서 #tRow 로 못 박는다. */
   #tRow{display:flex;align-items:center;justify-content:center;gap:0;margin:0}
   #tRow img{position:relative;animation:tBob 2.4s ease-in-out infinite}
+  /* 풀밭 무대 — ui-title.js 가 자리를 계산해 깐다. 글자(.tmain)·버튼(.tfoot)보다 뒤에 그려진다 */
+  #tField{position:absolute;inset:0;pointer-events:none}
+  #tField .tc{position:absolute;transform:translate(-50%,-100%)}
+  #tField .tb{animation:tBob 2.4s ease-in-out infinite}
+  #tField img{display:block;width:100%;image-rendering:auto}
+  /* 발밑 그림자 — 풀밭에 서 있는 것으로 읽힌다 */
+  #tField .tsh{position:absolute;left:18%;right:18%;bottom:-3px;height:12%;border-radius:50%;
+    background:radial-gradient(closest-side,rgba(0,0,0,.32),rgba(0,0,0,0))}
   @keyframes tBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
   .tfoot{position:relative;padding:0 24px 30px;text-align:center}
   .tsave{font-size:12px;color:#cfdcf2;opacity:.85;margin-bottom:10px;min-height:16px}
@@ -426,6 +434,7 @@
   <div id="title" class="on">
     <div class="tbg"></div>
     <div class="tveil"></div>
+    <div id="tField"></div>
     <div class="tmain">
       <div class="ttag">인간 용사들이 숲을 침략했다</div>
       <h1 class="tname">무럭무럭<br><b>몬스터</b></h1>

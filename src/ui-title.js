@@ -11,21 +11,44 @@ import { monTier } from './companions.js';
 const $ = id => document.getElementById(id);
 
 /**
- * 출연진 — 예전 구성(가운데 리드 · 왼쪽 포자 버섯 · 오른쪽 박쥐)에서 시작해
- * **가진 몬스터·동료가 늘수록 양옆 바깥으로 더 선다.**
+ * 출연진 — 풀밭 전체를 무대로 쓴다.
  *
- * 한 줄이다. 여러 줄로 쌓았더니(뒷줄·앞줄·하늘) 세로로 늘어선 목록처럼 보여 예전 느낌이 사라졌다.
- * 바깥으로 갈수록 작아지고 살짝 겹친다 — 세로 가운데 정렬이라 작은 것이 조금 위에 서서 멀리 있는 것으로 읽힌다.
- * 화면 폭을 넘는 만큼은 세우지 않는다(레벨 높은 몬스터가 리드 가까이 선다).
+ * 가운데 앞쪽에 리드가 크게 서고, 예전 화면의 두 동료(포자 버섯 · 박쥐)가 바로 옆에 선다.
+ * 가진 몬스터·동료가 늘수록 리드를 둘러싼 반원 자리(앞 · 옆 · 뒤)가 채워진다.
+ * 레벨 높은 몬스터가 리드 가까운 앞자리부터 선다.
+ *
+ * 원근: 뒤(지평선)일수록 작고 살짝 어둡게, 앞일수록 크고 앞에 그린다. 오른쪽 몬스터는
+ * 뒤집어서 리드 쪽을 보게 한다 — 무리가 주인공을 둘러싼 그림이 된다.
+ *
+ * 지면 위치: 배경(forest.png 1080×600)은 세로 화면에서 높이 기준 cover 라
+ * 풀밭이 어느 폰에서나 화면 높이의 ~52% 에서 시작한다. 그 아래부터 시작 버튼 위까지가 무대다.
  */
 const DECOR = ['spore', 'bats'];           // 예전 화면의 두 동료 — 신규 유저도 이 셋으로 시작한다
-const OV = 0.42;                           // 바깥 것이 안쪽 이웃과 겹치는 비율
-// 몬스터 그림은 투명 여백이 동료 그림보다 커서 같은 상자면 작고 흐릿하게 뭉친다 — 상자를 키워 눈에 보이는 크기를 맞춘다
+// 몬스터 그림은 투명 여백이 동료 그림보다 커서 같은 상자면 작아 보인다 — 상자를 키워 맞춘다
 const MON_BOX = 1.2;
+const FIELD_TOP = 0.545;                   // 화면 높이 대비 — 덤불 바로 아래 풀밭
+// 자리 (u: 가로 0~1, v: 깊이 0=지평선 ~ 1=맨 앞). 리드 가까운 순서이고 왼쪽·오른쪽을 번갈아 둔다
+const LEAD_SPOT = { u: 0.5, v: 0.6 };
+const DECOR_SPOTS = [{ u: 0.27, v: 0.56 }, { u: 0.74, v: 0.5 }];
+const SPOTS = [
+  { u: 0.13, v: 0.74 }, { u: 0.87, v: 0.72 },     // 앞 옆
+  { u: 0.24, v: 0.27 }, { u: 0.76, v: 0.25 },     // 뒤 옆
+  { u: 0.41, v: 0.13 }, { u: 0.59, v: 0.12 },     // 뒤 가운데
+  { u: 0.07, v: 0.47 }, { u: 0.93, v: 0.45 },     // 가장자리
+  { u: 0.31, v: 0.95 }, { u: 0.69, v: 0.96 },     // 맨 앞
+  { u: 0.09, v: 0.14 }, { u: 0.91, v: 0.12 },     // 뒤 구석
+  { u: 0.37, v: 0.38 }, { u: 0.63, v: 0.36 },     // 리드 뒤
+  { u: 0.08, v: 0.88 }, { u: 0.92, v: 0.87 },     // 앞 구석
+];
+// 개수가 홀수면 짝 없는 마지막 하나가 한쪽 구석에 몰려 그쪽만 붐빈다 — 맨 뒤 가운데에 세운다
+const BACK_CENTER = { u: 0.5, v: 0.04 };
+
+let castBuilt = false;
 function buildCast() {
-  const row = $('tRow');
-  if (!row) return;
-  const W = Math.min(row.parentElement?.clientWidth || window.innerWidth || 360, 540) - 12;
+  const title = $('title'), field = $('tField'), foot = title?.querySelector('.tfoot');
+  if (!title || !field || !foot) return;
+  const W = title.clientWidth, H = title.clientHeight;
+  if (!W || !H) return;
 
   const owned = B.roster.monsters.filter(m => S.life >= m.unlock);
   const lead = owned.find(m => m.key === S.mon) || owned[0] || B.roster.monsters[0];
@@ -37,55 +60,51 @@ function buildCast() {
     .filter(([, n]) => n > 0).map(([k]) => k.split('|')[0]))];
   const mons = owned.filter(m => m !== lead)
     .sort((a, b) => ((S.monLv[b.key] || 0) - (S.monLv[a.key] || 0)) || a.unlock - b.unlock)
-    .map(m => ({ src: monSrc(m), box: MON_BOX }));
+    .map(m => ({ src: monSrc(m), box: MON_BOX, mon: true }));
   const comps = compIds.filter(id => !DECOR.includes(id)).map(id => ({ src: compSrc(id), box: 1 }));
-
-  // 리드 바로 옆은 예전 그 둘(왼쪽 포자 · 오른쪽 박쥐). 그 바깥은 몬스터와 동료를 짝지어 양쪽에 섞는다.
-  // 그냥 번갈아 넣으면 좌우도 번갈아 채워져서 왼쪽은 몬스터만, 오른쪽은 동료만 섰다.
-  // 짝마다 먼저 갈 쪽을 바꾸고, 늘 덜 찬 쪽에 넣는다.
-  const Lq = [{ src: compSrc(DECOR[0]), box: 1 }], Rq = [{ src: compSrc(DECOR[1]), box: 1 }];
+  // 몬스터와 동료를 짝지어 좌우에 섞는다 — 짝마다 먼저 갈 쪽을 바꾼다
+  const queue = [];
   for (let i = 0; i < Math.max(mons.length, comps.length); i++) {
-    for (const it of (i % 2 ? [comps[i], mons[i]] : [mons[i], comps[i]])) {
-      if (it) (Lq.length <= Rq.length ? Lq : Rq).push(it);
-    }
+    for (const it of (i % 2 ? [comps[i], mons[i]] : [mons[i], comps[i]])) if (it) queue.push(it);
   }
 
-  // 크기 — 많아지면 리드도 조금 줄인다. 바깥 k 번째는 0.88^k 로 작아지고 안쪽 이웃과 절반 겹친다.
-  // 스프라이트에 투명 여백이 있어서 상자를 절반 겹쳐도 그림은 덜 가린다. 28% 로는 375px 폭에 양옆 2개씩뿐이었다.
-  const many = Lq.length + Rq.length > 4;
-  const leadW = many ? 112 : 128, base = many ? 56 : 62;
-  const sideW = (k, box = 1) => Math.round(Math.max(30, base * Math.pow(0.88, k)) * box);
-  const step = (k, box) => (k === 0 ? sideW(0, box) + 4 : Math.round(sideW(k, box) * (1 - OV)));   // 이 칸이 차지하는 가로
-  const room = (W - leadW) / 2;
-  // 안쪽부터 채우다 화면 밖으로 넘으면 거기서 멈춘다 (레벨 높은 몬스터가 안쪽에 있다)
-  const fit = q => {
-    const out = []; let used = 0;
-    for (const it of q) {
-      const need = step(out.length, it.box);
-      if (used + need > room) break;
-      out.push(it); used += need;
-    }
-    return out;
-  };
-  const L = fit(Lq), R = fit(Rq);
+  // 무대: 풀밭 시작 ~ 시작 버튼 위
+  const yB = foot.offsetTop - 6;
+  const yT = Math.min(H * FIELD_TOP, yB - 120);
+  // 크기는 화면 폭 비율 — 폰(375px)에서 맨 앞 71 · 리드 142, 넓은 화면(540px)에서 90 · 170
+  const front = Math.min(90, W * 0.19);                    // 맨 앞 동료 크기 — 리드보다 확실히 작게
+  const leadW = Math.min(170, W * 0.38);
+  const size = (v, box = 1) => front * (0.5 + 0.42 * v) * box;
+
+  const cast = [{ src: monSrc(lead), w: leadW, ...LEAD_SPOT, lead: true }];
+  DECOR.forEach((id, i) => cast.push({ src: compSrc(id), w: size(DECOR_SPOTS[i].v), ...DECOR_SPOTS[i] }));
+  const shown = queue.slice(0, SPOTS.length + 1);
+  const spots = SPOTS.slice(0, shown.length);
+  if (shown.length % 2) spots[shown.length - 1] = BACK_CENTER;
+  shown.forEach((it, i) => cast.push({ ...it, w: size(spots[i].v, it.box), ...spots[i] }));
 
   let n = 0;
-  const img = (src, w, k, toward) => {
-    const ov = k === 0 ? -4 : Math.round(w * OV);             // 안쪽(리드 쪽)으로 겹친다
-    const m = toward === 'R' ? `margin-right:${-ov}px` : `margin-left:${-ov}px`;
-    const depth = `brightness(${(1 - k * 0.05).toFixed(2)})`;
-    return `<img src="${src}" alt="" onerror="this.style.display='none'" style="width:${w}px;${m};`
-      + `z-index:${20 - k};filter:drop-shadow(0 6px 10px rgba(0,0,0,.45)) ${depth};`
-      + `animation-delay:${((n++ * 0.37) % 2.4).toFixed(2)}s">`;
-  };
-  // 왼쪽은 바깥부터 그려야 순서가 맞는다 (바깥 … 안쪽 · 리드 · 안쪽 … 바깥)
-  const left = L.map((it, k) => ({ it, k })).reverse().map(o => img(o.it.src, sideW(o.k, o.it.box), o.k, 'R')).join('');
-  const right = R.map((it, k) => img(it.src, sideW(k, it.box), k, 'L')).join('');
-  row.innerHTML = left
-    + `<img src="${monSrc(lead)}" alt="" onerror="this.src='assets/mon/slime/idle_1.png'" style="width:${leadW}px;z-index:30;`
-    + `filter:drop-shadow(0 6px 10px rgba(0,0,0,.45))">`
-    + right;
+  field.innerHTML = cast.map(c => {
+    const w = Math.round(c.w);
+    const x = Math.max(w / 2 + 2, Math.min(W - w / 2 - 2, c.u * W));
+    const y = yT + (yB - yT) * c.v;                       // 발밑
+    const flip = c.mon && c.u > 0.5;                       // 오른쪽 몬스터는 리드 쪽을 본다
+    const dim = c.lead ? 1 : (0.82 + 0.18 * c.v).toFixed(2);
+    return `<div class="tc" style="left:${x.toFixed(0)}px;top:${y.toFixed(0)}px;width:${w}px;z-index:${Math.round(c.v * 100) + (c.lead ? 50 : 0)}">`
+      + `<i class="tsh"></i><div class="tb" style="animation-delay:${((n++ * 0.37) % 2.4).toFixed(2)}s">`
+      + `<img src="${c.src}" alt="" style="${flip ? 'transform:scaleX(-1);' : ''}filter:drop-shadow(0 5px 8px rgba(0,0,0,.4)) brightness(${dim})"`
+      + (c.lead ? ` onerror="this.src='assets/mon/slime/idle_1.png'"` : ` onerror="this.closest('.tc').remove()"`) + `></div></div>`;
+  }).join('');
+  // 스크립트가 무대를 깔았으면 기본 3장은 숨긴다 (실패하면 그대로 남는다)
+  const row = $('tRow'); if (row) row.style.visibility = 'hidden';
+  castBuilt = true;
 }
+// 화면 크기가 바뀌면(회전 · 창 크기) 다시 깐다
+let castTimer = 0;
+window.addEventListener('resize', () => {
+  if (!castBuilt || !$('title')?.classList.contains('on')) return;
+  clearTimeout(castTimer); castTimer = setTimeout(() => { try { buildCast(); } catch {} }, 120);
+});
 
 /**
  * @param onStart 시작 버튼을 누른 뒤 실행할 것 (오프라인 보상 등)
