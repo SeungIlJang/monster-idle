@@ -728,9 +728,9 @@ export function render(dt) {
   const me = B.roster.monsters.find(m => m.key === S.mon);
   const nameY = feet - pH - 38, hpY = feet - pH - 26;
   ctx.font = '800 12px system-ui';
-  ctx.strokeText('나 · ' + (me ? me.name : '몬스터'), W * 0.30, nameY);
+  ctx.strokeText((me ? me.name : '몬스터'), W * 0.30, nameY);
   ctx.fillStyle = ALLY;
-  ctx.fillText('나 · ' + (me ? me.name : '몬스터'), W * 0.30, nameY);
+  ctx.fillText((me ? me.name : '몬스터'), W * 0.30, nameY);
   ctx.font = '600 10px system-ui';
   ctx.strokeText('HP ' + fmt(R.Lhp), W * 0.30, hpY);
   ctx.fillStyle = '#cfdcf2';
