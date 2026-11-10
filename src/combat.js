@@ -73,6 +73,11 @@ export const R = {
   // "한 무리를 끝냈다" 가 생기지 않았다. 화면 밖에서 달려 들어오게 한다.
   waveInT: 0,
   fx: [],            // 데미지 숫자 등 연출
+  // 강타 — 평타 4번째마다 돌진해 크게 친다. **피해는 평소와 같다**(연출 전용). 1초에 몇 번씩
+  // 같은 몸짓만 반복되던 게 지루함의 큰 몫이라, 박자에 강약을 준다.
+  combo: 0,          // 평타 횟수 (4번째마다 강타)
+  heavyT: 0,         // 강타 돌진 잔여 시간
+  rings: [],         // 강타 충격파 (연출 전용)
   farmClears: 0,     // 파밍으로 클리어한 횟수 (자동 재도전 판단용)
   banner: '',
   bannerT: 0,
@@ -132,7 +137,8 @@ export function enterStage(stage, mode = MODE.RUN) {
   R.atkT = 0;
   R.stageTime = 0;
   R.chain = 0; R.chainT = 0;
-  R.freeze = 0; R.freezeBank = 0; lastStop = -9;
+  R.heavyT = 0; R.rings = [];
+  R.freeze = 0; R.freezeBank = 0; lastStop = -9; lastHeavy = -9;
   if (mode === MODE.RUN) R.farmClears = 0;
   R.heroName = heroAt(R.stage).name;
   // 보스 스테이지에 들어서는 순간은 10스테이지마다 오는 유일한 리듬이다. 경고를 띄운다.
@@ -198,6 +204,10 @@ export function gateSecondsLeft() {
  * 11% 가 정지해 타격감이 아니라 **끊김**으로 읽힌다(실측). 멈춤은 드물어야 무겁다.
  */
 const HITSTOP_GAP = 0.30;
+export const HEAVY_EVERY = 4;     // 평타 몇 번째마다 강타인가
+export const HEAVY_SEC = 0.34;    // 강타 돌진 길이
+const HEAVY_GAP = 1.1;            // 강타 최소 간격(초)
+let lastHeavy = -9;
 let lastStop = -9;
 function hitstop(sec) {
   if (R.stageTime - lastStop < HITSTOP_GAP) return;
@@ -233,7 +243,12 @@ function fx(type, text, x, y, delay = 0) {
 function onImpact(b) {
   const e = R.enemies[b.idx];
   if (e) e.hitT = 0.12;
-  R.shake = Math.max(R.shake, b.crit ? 0.16 : 0.07);
+  R.shake = Math.max(R.shake, b.heavy ? 0.22 : b.crit ? 0.16 : 0.07);
+  if (b.heavy) {
+    if (e) e.kbT = 0.26;                                   // 뒤로 밀려났다 돌아온다
+    R.rings.push({ idx: b.idx, t: 0 });
+    hitstop(0.04);                                         // 멈춤은 시간을 저금했다 돌려주므로 총 시간은 같다
+  }
   if (b.crit) hitstop(0.035);          // 2프레임 — 치명타는 5.6초마다 온다
   const n = B.combatFx.shards;
   for (let i = 0; i < n; i++) {
@@ -244,7 +259,7 @@ function onImpact(b) {
     c.vjx = (Math.random() - 0.5) * 240;
     c.jx = 0;
   }
-  onEvent({ type: 'impact', crit: b.crit });
+  onEvent({ type: 'impact', crit: b.crit, heavy: b.heavy });
 }
 
 function gainGold() {
@@ -363,6 +378,9 @@ export function fireSkill(sk, secs) {
 export function tick(dt) {
   if (R.bannerT > 0) R.bannerT -= dt;
   if (R.shake > 0) R.shake -= dt;
+  if (R.heavyT > 0) R.heavyT -= dt;
+  for (const r of R.rings) r.t += dt;
+  if (R.rings.length) R.rings = R.rings.filter(r => r.t < 0.45);
   // 연쇄는 시간이 끊으면 식는다. 사망·스테이지 이동에서는 enterStage 가 0 으로 되돌린다.
   if (R.chainT > 0) { R.chainT -= dt; if (R.chainT <= 0) R.chain = 0; }
   if (R.waveInT > 0) R.waveInT -= dt;
@@ -390,6 +408,7 @@ export function tick(dt) {
   if (R.fx.length) R.fx = R.fx.filter(f => f.life > 0);
   for (const e of R.enemies) {
     if (e.hitT > 0) e.hitT -= dt;
+    if (e.kbT > 0) e.kbT -= dt;
     if (e.deadT > 0) e.deadT -= dt;        // 쓰러지는 연출이 끝나야 화면에서 지운다
   }
 
@@ -445,7 +464,11 @@ export function tick(dt) {
     const idx = R.enemies.indexOf(f);
     // 투사체 한 발. 도착하면 숫자·피격·소리가 한꺼번에 터진다.
     const FXC = B.combatFx;
-    R.bolts.push({ idx, t: 0, dur: FXC.boltSec, crit, ph: Math.random() * 6.28 });
+    // 4번째마다 강타. 공속이 아주 빠르면 1초에 여러 번 돌진해 정신없으므로 최소 간격을 둔다
+    R.combo++;
+    const heavy = R.combo % HEAVY_EVERY === 0 && R.stageTime - lastHeavy >= HEAVY_GAP;
+    if (heavy) { lastHeavy = R.stageTime; R.heavyT = HEAVY_SEC; }
+    R.bolts.push({ idx, t: 0, dur: FXC.boltSec, crit, heavy, ph: Math.random() * 6.28 });
     const T = FXC.boltSec;
     // 발수만큼 숫자를 나눠 띄운다. 연출이 아니라 사실이다 — 피해식에 shots() 가 이미 곱해져 있다.
     // shots() 는 더블샷·트리플샷이 확률 스탯이라 1~3 사이 실수다. 소수부를 확률로 처리하면

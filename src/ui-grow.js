@@ -8,6 +8,7 @@ import { playRewarded } from './ads.js';
 import { enterStage, MODE } from './combat.js';
 import { evoPrefix, evoStage, evoNextTier } from './sprites.js';
 import { monTier } from './companions.js';
+import { showEvolve } from './ui-evolve.js';
 import { fmt } from './logmath.js';
 import { LgoldPerSec } from './offline.js';
 import { autoBuyTick, canClear, bestFarmStage } from './stats.js';
@@ -201,11 +202,19 @@ function renderMonsters() {
       ctx.toast(L2.MONSTERS.find(x => x.key === S.mon).name + ' 선두로');
     };
   });
+  // 레벨업이 마일스톤(10·25·50·75·100)을 넘으면 진화 · 각성 연출을 띄운다 (ui-evolve.js)
+  const lvUp = (key, fn) => {
+    const t0 = monTier(key);
+    if (!fn()) { ctx.toast('조각 부족'); return; }
+    after();
+    const t1 = monTier(key);
+    if (t1 > t0) showEvolve(key, t0, t1);
+  };
   $('growBody').querySelectorAll('[data-lvup]').forEach(el => {
-    el.onclick = () => { if (L2.levelUpMonster(el.dataset.lvup, 1)) after(); else ctx.toast('조각 부족'); };
+    el.onclick = () => lvUp(el.dataset.lvup, () => L2.levelUpMonster(el.dataset.lvup, 1));
   });
   $('growBody').querySelectorAll('[data-lvmax]').forEach(el => {
-    el.onclick = () => { if (L2.levelUpMonsterMax(el.dataset.lvmax)) after(); else ctx.toast('조각 부족'); };
+    el.onclick = () => lvUp(el.dataset.lvmax, () => L2.levelUpMonsterMax(el.dataset.lvmax));
   });
 }
 

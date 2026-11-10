@@ -215,6 +215,58 @@
   .modal{position:absolute;inset:0;z-index:30;display:none;align-items:center;justify-content:center;
     background:rgba(5,6,14,.9);padding:20px}
   .modal.on{display:flex}
+  /* ── 진화 · 각성 연출 (ui-evolve.js) ──
+     0~0.9초 옛 모습이 하얗게 달아오름 → 0.9초 번쩍 → 새 모습이 튀어나오며 별가루 · 빛줄기 · 글자.
+     색(--ec)은 전장 성장 오라와 같은 단계 색이다. */
+  #evoOv{position:absolute;inset:0;z-index:90;display:none;flex-direction:column;align-items:center;justify-content:center;
+    overflow:hidden;cursor:pointer;--ec:#ffd34d;--ecA:rgba(255,211,77,.34);
+    background:radial-gradient(circle at 50% 40%,rgba(34,26,70,.86),rgba(4,6,16,.95) 70%)}
+  #evoOv.on{display:flex;animation:evIn .3s ease}
+  @keyframes evIn{from{opacity:0}to{opacity:1}}
+  #evoOv::after{content:'';position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+  #evoOv.evo::after{animation:evFlash .55s ease .9s}
+  #evoOv.awake::after{animation:evFlash .45s ease .55s}
+  @keyframes evFlash{0%{opacity:0}18%{opacity:.92}100%{opacity:0}}
+  .evRays{position:absolute;left:50%;top:40%;width:170vmax;height:170vmax;margin:-85vmax 0 0 -85vmax;opacity:0;
+    background:repeating-conic-gradient(from 0deg,var(--ecA) 0deg 6deg,transparent 6deg 20deg);
+    -webkit-mask:radial-gradient(circle,#000 0,#000 12%,transparent 46%);mask:radial-gradient(circle,#000 0,#000 12%,transparent 46%);
+    animation:evSpin 16s linear infinite,evShow .6s ease .9s forwards}
+  #evoOv.awake .evRays{animation:evSpin 16s linear infinite,evShow .6s ease .5s forwards}
+  #evoOv.rainbow .evRays{animation:evSpin 16s linear infinite,evShow .6s ease .9s forwards,evHue 3s linear infinite}
+  @keyframes evSpin{to{transform:rotate(360deg)}}
+  @keyframes evShow{to{opacity:1}}
+  @keyframes evHue{to{filter:hue-rotate(360deg)}}
+  .evStage{position:relative;width:200px;height:190px}
+  .evStage img{position:absolute;left:50%;bottom:8px;width:150px;margin-left:-75px;image-rendering:pixelated}
+  .evOld{animation:evOld 1s ease-in forwards}
+  @keyframes evOld{0%{filter:brightness(1);transform:rotate(0)}20%{transform:rotate(-3deg)}35%{transform:rotate(3deg)}
+    50%{transform:rotate(-3deg);filter:brightness(2) drop-shadow(0 0 10px #fff)}65%{transform:rotate(3deg) scale(1.04)}
+    100%{filter:brightness(7) drop-shadow(0 0 26px #fff);transform:scale(1.14);opacity:0}}
+  #evoOv.evo .evNew{opacity:0;animation:evNew .75s cubic-bezier(.2,1.7,.4,1) .95s forwards}
+  @keyframes evNew{0%{opacity:0;transform:scale(.35);filter:brightness(4) drop-shadow(0 0 20px #fff)}
+    100%{opacity:1;transform:scale(1);filter:brightness(1.05) drop-shadow(0 0 16px var(--ec))}}
+  #evoOv.awake .evNew{animation:evAwake 1.3s ease forwards}
+  @keyframes evAwake{0%{filter:brightness(1)}40%{filter:brightness(2.6) drop-shadow(0 0 22px var(--ec));transform:scale(1.06)}
+    100%{filter:brightness(1.05) drop-shadow(0 0 16px var(--ec));transform:scale(1)}}
+  .evBurst span{position:absolute;left:50%;top:58%;width:7px;height:7px;margin:-3px;border-radius:50%;
+    background:var(--ec);box-shadow:0 0 10px var(--ec);opacity:0;transform:rotate(var(--a))}
+  #evoOv.evo .evBurst span{animation:evBurst 1s ease-out .95s forwards}
+  #evoOv.awake .evBurst span{animation:evBurst 1s ease-out .55s forwards}
+  @keyframes evBurst{0%{opacity:1;transform:rotate(var(--a)) translateX(0) scale(1.2)}
+    100%{opacity:0;transform:rotate(var(--a)) translateX(var(--d)) scale(.3)}}
+  .evText{margin-top:10px;text-align:center;opacity:0;animation:evText .5s ease 1.15s forwards;position:relative}
+  #evoOv.awake .evText{animation-delay:.75s}
+  .evTitle{font-size:44px;font-weight:900;color:var(--ec);letter-spacing:.04em;
+    text-shadow:0 3px 0 rgba(0,0,0,.45),0 0 26px var(--ec)}
+  #evoOv.rainbow .evTitle{background:linear-gradient(90deg,#ff7a7a,#ffd34d,#7fe0a0,#7fb8ff,#c4a8ff,#ff8ad8);
+    -webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;
+    filter:drop-shadow(0 3px 0 rgba(0,0,0,.45))}
+  .evName{font-size:18px;font-weight:800;color:#fff;margin-top:4px}
+  .evSub{font-size:12px;color:#cfdcf2;margin-top:6px;opacity:.9}
+  .evGain{display:inline-block;margin-top:10px;padding:5px 12px;border-radius:999px;font-size:12px;font-weight:800;
+    color:#1a1400;background:var(--ec);box-shadow:0 0 14px var(--ecA)}
+  .evTap{position:absolute;bottom:42px;font-size:11px;color:#9fb0d0;opacity:0;animation:evText .4s ease 2.1s forwards}
+  @keyframes evText{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
   .modal .box{background:linear-gradient(#1a2350,#141a38);border:1px solid #4a6bd0;border-radius:18px;
     padding:22px;text-align:center;width:min(90vw,340px)}
   .modal h3{font-size:18px;margin-bottom:6px}

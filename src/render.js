@@ -5,7 +5,7 @@
 // 용사는 Idle/Attack/Hit/Dead 프레임이 멀쩡해서 프레임 애니를 그대로 쓴다.
 import { B, heroAt, zoneAt, sceneEvery, heroPool } from './balance.js';
 import { S } from './state.js';
-import { R, enrage, gateSecondsLeft, gateSoft, CHAIN_WARM, DANGER_AT, WAVE_IN_SEC } from './combat.js';
+import { R, enrage, gateSecondsLeft, gateSoft, CHAIN_WARM, DANGER_AT, WAVE_IN_SEC, HEAVY_SEC } from './combat.js';
 import { pick, preload, boxOf, frameCount } from './sprites.js';
 import { activeCompanions, compImage, monTier, skyCompanions } from './companions.js';
 import { L0, ratio, fmt } from './logmath.js';
@@ -415,7 +415,7 @@ function drawBG(dt) {
  * targetH 는 **캐릭터가 보이는 높이**다 — 캔버스 높이가 아니라 box(내용 경계) 기준이라
  * 캐릭터마다 캔버스 여백이 달라도 같은 크기로 보인다.
  */
-function drawSprite(img, cx, feetY, targetH, box, { flip = false, sx = 1, sy = 1, dx = 0, alpha = 1, ring = null } = {}) {
+function drawSprite(img, cx, feetY, targetH, box, { flip = false, sx = 1, sy = 1, dx = 0, alpha = 1, ring = null, rot = 0, shadow = true } = {}) {
   if (!img) return;
   const iw = img.naturalWidth, ih = img.naturalHeight;
   const bh = Math.max(0.01, box.h), bw = Math.max(0.01, box.w);
@@ -427,11 +427,13 @@ function drawSprite(img, cx, feetY, targetH, box, { flip = false, sx = 1, sy = 1
   const visW = bw * iw * scale;
 
   ctx.save();
-  ctx.globalAlpha = 0.25 * alpha;
-  ctx.fillStyle = '#1d3b24';
-  ctx.beginPath();
-  ctx.ellipse(cx + dx, feetY, visW * 0.45, targetH * 0.07, 0, 0, 7);
-  ctx.fill();
+  if (shadow) {                 // 날아가는 몸에는 발밑 그림자가 없다
+    ctx.globalAlpha = 0.25 * alpha;
+    ctx.fillStyle = '#1d3b24';
+    ctx.beginPath();
+    ctx.ellipse(cx + dx, feetY, visW * 0.45, targetH * 0.07, 0, 0, 7);
+    ctx.fill();
+  }
   // 진영 고리 — 역할 반전 게임이라 어느 쪽이 내 편인지 한눈에 보여야 한다
   if (ring) {
     ctx.globalAlpha = 0.9 * alpha;
@@ -445,6 +447,10 @@ function drawSprite(img, cx, feetY, targetH, box, { flip = false, sx = 1, sy = 1
   // 도트 그림이라 보간을 끈다. 켜 두면 가장자리가 투명 픽셀과 섞여 흐려지고,
   // 배경이 밝아진 뒤로는 그 흐려진 테두리가 그대로 눈에 띈다. (save/restore 안이라 배경에는 영향 없음)
   ctx.imageSmoothingEnabled = false;
+  if (rot) {                    // 몸 한가운데를 축으로 돈다
+    const pcx = cx + dx, pcy = feetY - targetH * sy * 0.5;
+    ctx.translate(pcx, pcy); ctx.rotate(rot); ctx.translate(-pcx, -pcy);
+  }
   ctx.translate(cx + dx - midOff, feetY - footOff);
   if (flip) { ctx.translate(midOff * 2, 0); ctx.scale(-1, 1); }
   ctx.drawImage(img, 0, 0, dw, dh);
@@ -464,38 +470,97 @@ function bar(x, y, w, h, frac, color) {
 // 레벨 1마다 바꾸면 변화가 안 읽히므로 **마일스톤 티어**(10·25·50·75·100)를 단위로 쓴다.
 // 그 지점은 이미 공격력 보너스를 주는 자리라, 보이는 변화와 보상이 같이 온다.
 // 진짜 진화 그림이 오기 전까지의 몫이다 — 그림 없이 캔버스로만 티를 낸다.
-const TIER_COL = [null, '#c98a5a', '#dfe6f2', '#ffd34d', '#b59bff', '#ff7ad5'];
+// 단계가 오를수록 **겹이 늘어난다** — 고리 하나로는 Lv.10 과 Lv.90 이 거의 같아 보였다.
+//   Lv10 발밑 빛 · Lv25 떠오르는 빛가루 · Lv50 몸 뒤 후광 · Lv75 도는 빛줄기 · Lv100 무지개 + 별
+// 색은 동 · 은 · 금 · 보라 · 무지개.
+const TIER_RGB = [null, [224, 163, 112], [214, 228, 255], [255, 211, 77], [196, 168, 255]];
 const tierScale = tier => 1 + tier * 0.03;        // 티어마다 3% 씩 커진다
+const tierRGBA = (tier, a, shift = 0) => (tier >= 5
+  ? `hsla(${Math.round(t * 70 + shift) % 360},95%,68%,${a})`
+  : `rgba(${TIER_RGB[tier].join(',')},${a})`);
 
-/** 발밑 고리 + 반짝임 + 배지. size 는 그 유닛의 그린 높이. */
-function drawTier(cx, cy, size, tier) {
+/**
+ * 성장 오라. layer 'back' 은 그림 **전에**(발밑 빛 · 후광 · 빛줄기), 'front' 는 **뒤에**(빛가루 · 별).
+ * strength 는 진하기 — 리드 1, 동료는 은은하게(전장이 빛 덩어리가 되면 누가 주인공인지 흐려진다).
+ */
+function drawTier(cx, cy, size, tier, strength = 1, layer = 'back') {
   if (!tier) return;
-  const col = TIER_COL[Math.min(tier, TIER_COL.length - 1)];
+  tier = Math.min(tier, 5);
+  const mid = cy - size * 0.5;
   ctx.save();
-  // 발밑 고리 — 티어가 오를수록 진해진다
-  ctx.globalAlpha = 0.25 + tier * 0.1;
-  ctx.strokeStyle = col;
-  ctx.lineWidth = 1.5 + tier * 0.4;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy, size * 0.42, size * 0.15, 0, 0, 7);
-  ctx.stroke();
-  // 티어 3 부터 주위에 반짝임이 돈다
-  if (tier >= 3) {
-    ctx.globalAlpha = 0.8;
-    ctx.fillStyle = col;
-    for (let i = 0; i < tier; i++) {
-      const a = t * 1.6 + i * (6.28 / tier);
-      ctx.beginPath();
-      ctx.arc(cx + Math.cos(a) * size * 0.45, cy - size * 0.5 + Math.sin(a) * size * 0.2, 1.6, 0, 7);
-      ctx.fill();
+  if (layer === 'back') {
+    // ① 발밑 빛 — 납작한 타원 그라데이션 + 고리
+    ctx.save();
+    ctx.translate(cx, cy); ctx.scale(1, 0.3);
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 0.85);
+    g.addColorStop(0, tierRGBA(tier, 0.7 * strength));
+    g.addColorStop(0.6, tierRGBA(tier, 0.3 * strength));
+    g.addColorStop(1, tierRGBA(tier, 0));
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(0, 0, size * 0.85, 0, 7); ctx.fill();
+    ctx.restore();
+    // 밝은 배경(설원)에서 빛이 묻히지 않게 고리 아래에 어두운 테를 한 번 깐다
+    ctx.strokeStyle = `rgba(10,14,30,${0.35 * strength})`;
+    ctx.lineWidth = 2.5 + tier * 0.4;
+    ctx.beginPath(); ctx.ellipse(cx, cy, size * 0.5, size * 0.16, 0, 0, 7); ctx.stroke();
+    ctx.strokeStyle = tierRGBA(tier, Math.min(1, (0.55 + tier * 0.09) * strength));
+    ctx.lineWidth = 1.2 + tier * 0.4;
+    ctx.beginPath(); ctx.ellipse(cx, cy, size * 0.5, size * 0.16, 0, 0, 7); ctx.stroke();
+    // ③ 몸 뒤 후광 — 천천히 숨쉰다
+    // 후광·빛줄기는 '겹쳐 밝히기'(lighter) — 색이 배경 위에 더해져 어두운 지역에서 빛나 보인다.
+    // 한 가지 색으로만 그렸더니 같은 색 배경(보랏빛 늪 + 보라 단계)에서 통째로 묻혔다.
+    ctx.globalCompositeOperation = 'lighter';
+    if (tier >= 3) {
+      const pulse = 0.82 + 0.18 * Math.sin(t * 2.2);
+      const r = size * 1.05 * pulse;
+      const h = ctx.createRadialGradient(cx, mid, 0, cx, mid, r);
+      h.addColorStop(0, tierRGBA(tier, 0.55 * strength));
+      h.addColorStop(0.5, tierRGBA(tier, 0.24 * strength));
+      h.addColorStop(1, tierRGBA(tier, 0));
+      ctx.fillStyle = h;
+      ctx.beginPath(); ctx.arc(cx, mid, r, 0, 7); ctx.fill();
     }
-  }
-  // 최고 티어는 머리 위에 표식
-  if (tier >= TIER_COL.length - 1) {
-    ctx.globalAlpha = 1;
-    ctx.font = Math.round(size * 0.3) + 'px system-ui';
-    ctx.textAlign = 'center';
-    ctx.fillText('✦', cx, cy - size * 1.02);
+    // ④ 빛줄기 — 몸 뒤에서 천천히 돈다
+    if (tier >= 4) {
+      ctx.translate(cx, mid);
+      ctx.rotate(t * 0.45);
+      const n = 12, len = size * 1.5;
+      for (let i = 0; i < n; i++) {
+        ctx.rotate(6.2832 / n);
+        const g2 = ctx.createLinearGradient(0, 0, len, 0);
+        const sh = i * (360 / n);                     // 무지개 단계: 줄마다 색이 다르다
+        g2.addColorStop(0, tierRGBA(tier, 0.2 * strength, sh));
+        g2.addColorStop(0.42, tierRGBA(tier, 0.55 * strength, sh));
+        g2.addColorStop(1, tierRGBA(tier, 0, sh));
+        ctx.fillStyle = g2;
+        const w = size * (i % 2 ? 0.07 : 0.11);
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(len, -w); ctx.lineTo(len, w); ctx.closePath(); ctx.fill();
+      }
+    }
+  } else {
+    // ② 떠오르는 빛가루 — 발밑에서 머리 위로 올라가며 사라진다
+    if (tier >= 2) {
+      const n = Math.round((4 + tier * 3) * (0.5 + strength * 0.5));
+      ctx.shadowColor = tierRGBA(tier, 1);
+      ctx.shadowBlur = 7;
+      for (let i = 0; i < n; i++) {
+        const u = (t * 0.42 + i * 0.618) % 1;
+        const x = cx + Math.sin(i * 2.3 + t * 1.3) * size * 0.5;
+        const y = cy - u * size * 1.35;
+        ctx.fillStyle = tierRGBA(tier, Math.min(1, Math.sin(u * Math.PI) * 1.1 * strength));
+        ctx.beginPath(); ctx.arc(x, y, 1.5 + (i % 3) * 0.7, 0, 7); ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+    }
+    // ⑤ 최고 단계 — 머리 위 별
+    if (tier >= 5) {
+      ctx.globalAlpha = strength;
+      ctx.font = Math.round(size * 0.3) + 'px system-ui';
+      ctx.textAlign = 'center';
+      ctx.shadowColor = tierRGBA(5, 1); ctx.shadowBlur = 8;
+      ctx.fillStyle = tierRGBA(5, 1);
+      ctx.fillText('✦', cx, cy - size * 1.05 + Math.sin(t * 2.4) * 2);
+    }
   }
   ctx.restore();
 }
@@ -545,6 +610,25 @@ function ambTick(dt, zone) {
 // 적 인덱스 → 화면 좌표. 매 프레임 적을 그리며 채우고, 투사체·파편이 그대로 쓴다.
 // 숫자 연출은 예전처럼 인덱스 근사 위치를 쓰지만 투사체는 실제로 맞아야 해서 좌표가 필요하다.
 const foePos = [];
+// 화면 전용 잔재 — 쓰러져 날아가는 몸 · 별가루. 전투 상태에 쓰지 않는다.
+let corpses = [], sparks = [];
+let leadDx = 0;                 // 이번 프레임 리드의 가로 이동(런지·강타 돌진). 강타 투사체의 출발점
+function launchCorpse(hero, x, y, h, idx) {
+  const img = pick('hero', hero.key, 'hit', idx) || pick('hero', hero.key, 'idle', idx);
+  corpses.push({
+    img, box: boxOf('hero', hero.key), x, y, h,
+    vx: W * (0.5 + Math.random() * 0.35), vy: -H * (0.42 + Math.random() * 0.22),
+    rot: 0, vr: 7 + Math.random() * 6, life: 0.7, max: 0.7,
+  });
+  if (corpses.length > 12) corpses.shift();
+  const cols = ['#ffe27a', '#ffffff', '#ffb36b'];
+  for (let i = 0; i < 9; i++) {
+    const a = Math.random() * 6.2832, v = 60 + Math.random() * 120;
+    sparks.push({ x, y: y - h * 0.5, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40,
+      r: 1.3 + Math.random() * 1.5, col: cols[i % 3], life: 0.35 + Math.random() * 0.25 });
+  }
+  if (sparks.length > 90) sparks.splice(0, sparks.length - 90);
+}
 
 /**
  * 적이 날리는 한 발. 용사마다 색·모양이 다르다(balance.json roster.heroes[].atk).
@@ -597,7 +681,7 @@ function drawBolt(x, y, u, b, size) {
   const mon = B.roster.monsters.find(m => m.key === S.mon);
   const col = mon?.bolt?.color || '#9ae6b4';
   const shape = mon?.bolt?.shape || 'orb';
-  const r = size * (b.crit ? 0.11 : 0.085);
+  const r = size * (b.heavy ? 0.15 : b.crit ? 0.11 : 0.085);
   // 꼬리 — 지나온 쪽으로 옅게 늘어뜨린다. 점 하나만 날면 너무 빈약하다.
   ctx.save();
   ctx.globalAlpha = 0.3;
@@ -613,7 +697,7 @@ function drawBolt(x, y, u, b, size) {
   ctx.save();
   ctx.fillStyle = col;
   ctx.shadowColor = col;
-  ctx.shadowBlur = b.crit ? 12 : 6;
+  ctx.shadowBlur = b.heavy ? 18 : b.crit ? 12 : 6;
   if (shape === 'wedge') {                 // 쐐기 — 날아가는 방향으로 뾰족하게
     ctx.translate(x, y);
     ctx.beginPath();
@@ -679,16 +763,18 @@ export function render(dt) {
     const h = base * 0.125 * c.s * laneS(c.d) * tierScale(c.tier || 0);
     const cx = W * (0.30 + c.dx);
     const cy = laneY(c.d) + Math.sin(t * 3 + c.phase) * h * 0.025;
-    drawTier(cx, cy, h, c.tier || 0);
-    // 고리는 리드에게만 준다 — 여섯 개가 겹치면 바닥이 고리밭이 되고
-    // 정작 "누가 주인공인지" 가 흐려진다.
-    const opt = { dx: lunge * W * 0.03, sx: 1 + lunge * 0.08, sy: 1 - lunge * 0.06, alpha: 0.92 };
+    // 오라는 은은하게(0.45) — 여섯이 다 진하면 바닥이 빛밭이 되고 누가 주인공인지 흐려진다
+    drawTier(cx, cy, h, c.tier || 0, 0.45, 'back');
+    // 숨쉬기 — 그림이 1장이라 가만히 있으면 멈춘 사진처럼 보였다. 저마다 박자를 어긋낸다
+    const br = Math.sin(t * 2.6 + c.phase) * 0.026;
+    const opt = { dx: lunge * W * 0.03, sx: (1 + lunge * 0.08) * (1 - br * 0.6), sy: (1 - lunge * 0.06) * (1 + br), alpha: 0.92 };
     // 지면 동료도 제 무기로 쏜다 — 살짝 내지르기만 해서 가만히 있는 것처럼 보였다
     allyUnits.push({ px: cx + h * 0.3, py: cy - h * 0.55, sz: h * 0.1, w: c.bolt });
     const own = compImage(c.id);
     if (own) drawSprite(own, cx, cy, h, boxOf('comp', c.id), opt);
     // 동료도 자기 레벨의 진화 모습으로 선다 — 수집한 몬스터를 키우는 보람이 전장에 보여야 한다
     else drawSprite(pick('mon', c.sprite, 'idle', 0, c.tier || 0), cx, cy, h, boxOf('mon', c.sprite), opt);
+    drawTier(cx, cy, h, c.tier || 0, 0.45, 'front');
   };
   const LEAD_D = 0.45;
   for (const c of comps) if (c.d <= LEAD_D) drawComp(c);      // 리드보다 뒤
@@ -709,13 +795,28 @@ export function render(dt) {
   // 티어마다 3% 씩 커지고 표식이 붙는다 — **크기 변화는 여기가 전담한다**.
   // 진화 그림은 캔버스 안에서 같은 크기로 모습만 바꾼다(sprites.js EVO_OF_TIER 주석).
   const pHt = pH * tierScale(leadTier);
-  drawTier(W * 0.30, feet, pHt, leadTier);
-  drawSprite(pImg, W * 0.30, feet + bob, pHt, boxOf('mon', S.mon), {
-    dx: lungePhase * W * 0.05 * k,
-    sx: 1 + lungePhase * 0.1 * k,
-    sy: 1 - lungePhase * 0.08 * k,
+  // 강타 — 적 쪽으로 돌진했다 돌아온다. 잔상 셋이 뒤따른다(combat.js HEAVY_EVERY)
+  const hv = R.heavyT > 0 ? 1 - R.heavyT / HEAVY_SEC : -1;          // 0 → 1
+  const dash = hv >= 0 ? Math.sin(Math.min(1, hv) * Math.PI) : 0;    // 0 → 1 → 0
+  leadDx = dash > 0 ? dash * W * 0.15 : lungePhase * W * 0.05 * k;
+  // 숨쉬기 — 가만히 있을 때만. 공격 중에는 런지 변형이 몸짓을 맡는다
+  const br = pose === 'idle' && dash === 0 ? Math.sin(t * 2.6) * 0.028 : 0;
+  const leadBox = boxOf('mon', S.mon);
+  if (dash > 0.08) {
+    for (let g = 3; g >= 1; g--) {
+      drawSprite(pImg, W * 0.30, feet + bob, pHt, leadBox, {
+        dx: leadDx - g * W * 0.04 * dash, alpha: (0.34 / g) * dash, shadow: false,
+      });
+    }
+  }
+  drawTier(W * 0.30 + leadDx, feet, pHt, leadTier, 1, 'back');
+  drawSprite(pImg, W * 0.30, feet + bob, pHt, leadBox, {
+    dx: leadDx,
+    sx: (1 + lungePhase * 0.1 * k + dash * 0.12) * (1 - br * 0.6),
+    sy: (1 - lungePhase * 0.08 * k - dash * 0.07) * (1 + br),
     ring: ALLY,
   });
+  drawTier(W * 0.30 + leadDx, feet, pHt, leadTier, 1, 'front');
   for (const c of comps) if (c.d > LEAD_D) drawComp(c);      // 리드보다 앞 — 카메라에 가깝다
 
   const pbw = W * 0.22;
@@ -789,9 +890,16 @@ export function render(dt) {
     // 공격 포즈도 **적마다** 다르다 — 예전엔 그룹 타이머라 전원이 동시에 휘둘렀다
     const fPose = dying > 0 ? 'dead' : hit > 0 ? 'hit' : e.aPose > 0 ? 'attack' : 'idle';
     const hero = e.hero || lead;
+    // 잡몹은 쓰러지는 순간 **날아간다** — 그 자리에서 옅어지기만 하면 처치가 안 시원하다.
+    // 몸은 화면 전용 목록(corpses)이 넘겨받아 그리므로 전투 상태·웨이브 진행과 무관하다.
+    if (dying > 0 && !R.boss) {
+      if (!e._flown) { e._flown = true; launchCorpse(hero, ex, ey + eb, h, idx); }
+      continue;
+    }
+    const kb = e.kbT > 0 ? Math.sin((e.kbT / 0.26) * Math.PI) : 0;   // 강타에 밀렸다 돌아온다
     if (dying > 0) ctx.globalAlpha = Math.max(0, dying);   // 쓰러지며 옅어진다
     drawSprite(pick('hero', hero.key, fPose, frame + idx), ex, ey + eb, h, boxOf('hero', hero.key), {
-      dx: hit * 7 + (1 - dying) * (dying > 0 ? 14 : 0),    // 맞은 쪽으로 밀리며 쓰러진다
+      dx: hit * 7 + kb * W * 0.05 + (1 - dying) * (dying > 0 ? 14 : 0),    // 맞은 쪽으로 밀리며 쓰러진다
       sx: 1 + hit * 0.06,
       ring: dying > 0 ? null : FOE,
     });
@@ -813,6 +921,42 @@ export function render(dt) {
     }
   }
 
+  // ── 처치 · 강타 잔재 ── 화면 전용. 전투 상태를 읽기만 한다.
+  for (const c of corpses) {
+    c.life -= dt; c.x += c.vx * dt; c.y += c.vy * dt; c.vy += H * 2.6 * dt; c.rot += c.vr * dt;
+  }
+  corpses = corpses.filter(c => c.life > 0 && c.x < W + 120 && c.y < H + 120);
+  for (const c of corpses) {
+    drawSprite(c.img, c.x, c.y, c.h, c.box, { rot: c.rot, alpha: Math.min(1, (c.life / c.max) * 1.8), shadow: false });
+  }
+  for (const p of sparks) { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 240 * dt; }
+  sparks = sparks.filter(p => p.life > 0);
+  ctx.save();
+  for (const p of sparks) {
+    ctx.globalAlpha = Math.min(1, p.life / 0.25);
+    ctx.fillStyle = p.col;
+    ctx.shadowColor = p.col; ctx.shadowBlur = 6;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+  // 강타 충격파 — 맞은 자리에서 고리가 퍼진다
+  for (const r of R.rings) {
+    const p = foePos[r.idx];
+    if (!p) continue;
+    const u = r.t / 0.45;
+    ctx.save();
+    ctx.globalAlpha = (1 - u) * 0.85;
+    ctx.strokeStyle = '#fff3c4';
+    ctx.lineWidth = 1 + (1 - u) * 4;
+    ctx.beginPath(); ctx.ellipse(p.x, p.y + eH * 0.35, eH * (0.25 + u * 1.2), eH * (0.09 + u * 0.4), 0, 0, 7); ctx.stroke();
+    if (u < 0.25) {
+      ctx.globalAlpha = (1 - u / 0.25) * 0.7;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(p.x, p.y, eH * 0.35 * (1 - u), 0, 7); ctx.fill();
+    }
+    ctx.restore();
+  }
+
   // ── 투사체 ── 리드에서 적까지 날아가고 꼬리를 남긴다.
   // 피해는 이미 끝나 있고 이건 눈에 보이는 몫만 담당한다(combat.js 참조).
   const boltFrom = { x: W * 0.30, y: feet - pH * 0.55 };
@@ -820,7 +964,8 @@ export function render(dt) {
     const to = foePos[b.idx];
     if (!to || b.t > b.dur) continue;
     const u = Math.min(1, b.t / b.dur);
-    const bx = boltFrom.x + (to.x - boltFrom.x) * u;
+    const fx0 = b.heavy ? boltFrom.x + leadDx : boltFrom.x;      // 강타는 돌진한 자리에서 나간다
+    const bx = fx0 + (to.x - fx0) * u;
     // 살짝 포물선을 그려야 '날아간다' 로 읽힌다
     const by = boltFrom.y + (to.y - boltFrom.y) * u - Math.sin(u * Math.PI) * pH * 0.30;
     drawBolt(bx, by, u, b, pH);
