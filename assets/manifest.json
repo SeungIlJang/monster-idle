@@ -1,8 +1,8 @@
 {
   "mon": {
     "slime": {
-      "idle": 1,
-      "attack": 1,
+      "idle": 2,
+      "attack": 3,
       "hit": 1,
       "dead": 1,
       "box": {
@@ -17,8 +17,8 @@
       ]
     },
     "goblin": {
-      "idle": 1,
-      "attack": 1,
+      "idle": 2,
+      "attack": 3,
       "hit": 1,
       "dead": 1,
       "box": {
@@ -33,8 +33,8 @@
       ]
     },
     "bat": {
-      "idle": 1,
-      "attack": 1,
+      "idle": 2,
+      "attack": 3,
       "hit": 1,
       "dead": 1,
       "box": {
@@ -49,8 +49,8 @@
       ]
     },
     "mushroom": {
-      "idle": 1,
-      "attack": 1,
+      "idle": 2,
+      "attack": 3,
       "hit": 1,
       "dead": 1,
       "box": {
@@ -65,8 +65,8 @@
       ]
     },
     "skeleton": {
-      "idle": 1,
-      "attack": 1,
+      "idle": 2,
+      "attack": 3,
       "hit": 1,
       "dead": 1,
       "box": {
@@ -81,8 +81,8 @@
       ]
     },
     "wolf": {
-      "idle": 1,
-      "attack": 1,
+      "idle": 2,
+      "attack": 3,
       "hit": 1,
       "dead": 1,
       "box": {
@@ -97,8 +97,8 @@
       ]
     },
     "ghost": {
-      "idle": 1,
-      "attack": 1,
+      "idle": 2,
+      "attack": 3,
       "hit": 1,
       "dead": 1,
       "box": {
@@ -113,8 +113,8 @@
       ]
     },
     "orc": {
-      "idle": 1,
-      "attack": 1,
+      "idle": 2,
+      "attack": 3,
       "hit": 1,
       "dead": 1,
       "box": {
@@ -129,8 +129,8 @@
       ]
     },
     "golem": {
-      "idle": 1,
-      "attack": 1,
+      "idle": 2,
+      "attack": 3,
       "hit": 1,
       "dead": 1,
       "box": {
@@ -145,8 +145,8 @@
       ]
     },
     "dragon": {
-      "idle": 1,
-      "attack": 1,
+      "idle": 2,
+      "attack": 3,
       "hit": 1,
       "dead": 1,
       "box": {
@@ -161,8 +161,8 @@
       ]
     },
     "spider": {
-      "idle": 1,
-      "attack": 1,
+      "idle": 2,
+      "attack": 3,
       "hit": 1,
       "dead": 1,
       "box": {
@@ -173,8 +173,8 @@
       }
     },
     "wyrm": {
-      "idle": 1,
-      "attack": 1,
+      "idle": 2,
+      "attack": 3,
       "hit": 1,
       "dead": 1,
       "box": {
@@ -187,8 +187,8 @@
   },
   "hero": {
     "warrior": {
-      "idle": 1,
-      "attack": 1,
+      "idle": 2,
+      "attack": 3,
       "hit": 1,
       "dead": 1,
       "box": {
@@ -199,8 +199,8 @@
       }
     },
     "knight": {
-      "idle": 1,
-      "attack": 1,
+      "idle": 2,
+      "attack": 3,
       "hit": 1,
       "dead": 1,
       "box": {
@@ -211,8 +211,8 @@
       }
     },
     "rogue": {
-      "idle": 1,
-      "attack": 1,
+      "idle": 2,
+      "attack": 3,
       "hit": 1,
       "dead": 1,
       "box": {
@@ -223,8 +223,8 @@
       }
     },
     "mage": {
-      "idle": 1,
-      "attack": 1,
+      "idle": 2,
+      "attack": 3,
       "hit": 1,
       "dead": 1,
       "box": {
@@ -235,8 +235,8 @@
       }
     },
     "cleric": {
-      "idle": 1,
-      "attack": 1,
+      "idle": 2,
+      "attack": 3,
       "hit": 1,
       "dead": 1,
       "box": {
@@ -247,8 +247,8 @@
       }
     },
     "archer": {
-      "idle": 1,
-      "attack": 1,
+      "idle": 2,
+      "attack": 3,
       "hit": 1,
       "dead": 1,
       "box": {
@@ -259,8 +259,8 @@
       }
     },
     "emage": {
-      "idle": 1,
-      "attack": 1,
+      "idle": 2,
+      "attack": 3,
       "hit": 1,
       "dead": 1,
       "box": {
@@ -271,8 +271,8 @@
       }
     },
     "dmage": {
-      "idle": 1,
-      "attack": 1,
+      "idle": 2,
+      "attack": 3,
       "hit": 1,
       "dead": 1,
       "box": {
@@ -290,7 +290,8 @@
         "y": 0.3583,
         "w": 0.9,
         "h": 0.6083
-      }
+      },
+      "idle": 2
     },
     "shade": {
       "box": {
@@ -298,7 +299,8 @@
         "y": 0.3625,
         "w": 0.9,
         "h": 0.6042
-      }
+      },
+      "idle": 2
     },
     "shard": {
       "box": {
@@ -306,7 +308,8 @@
         "y": 0.1375,
         "w": 0.9,
         "h": 0.8292
-      }
+      },
+      "idle": 2
     },
     "slimelet": {
       "box": {
@@ -314,7 +317,8 @@
         "y": 0.3667,
         "w": 0.9,
         "h": 0.6
-      }
+      },
+      "idle": 2
     },
     "spore": {
       "box": {
@@ -322,7 +326,8 @@
         "y": 0.1458,
         "w": 0.9,
         "h": 0.8208
-      }
+      },
+      "idle": 2
     },
     "wisp": {
       "box": {
@@ -330,7 +335,8 @@
         "y": 0.0667,
         "w": 0.6333,
         "h": 0.9
-      }
+      },
+      "idle": 2
     }
   }
 }

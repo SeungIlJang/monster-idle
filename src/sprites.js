@@ -13,8 +13,18 @@ const base = new URL('../assets/', import.meta.url);
  */
 export const boxOf = (group, key) => MANIFEST[group]?.[key]?.box ?? { x: 0, y: 0, w: 1, h: 1 };
 
-export function frameCount(group, key, anim) {
-  return MANIFEST[group]?.[key]?.[anim] ?? 0;
+/**
+ * 프레임 수. 진화 단계(pre = 't2_' 등)는 stageFrames 에 따로 적는다 — 없으면 그 단계는 포즈마다 1장.
+ * 애니 1차는 기본 단계만 여러 장이라, 단계 구분 없이 세면 진화한 몬스터가 없는 t2_attack_2 를
+ * 찾다가 엉뚱한 그림으로 떨어진다(make-anim.mjs).
+ */
+export function frameCount(group, key, anim, pre = '') {
+  const e = MANIFEST[group]?.[key];
+  if (!e) return 0;
+  if (!pre) return e[anim] ?? 0;
+  const s = e.stageFrames?.[pre];
+  if (s && typeof s[anim] === 'number') return s[anim];
+  return e[anim] ? 1 : 0;
 }
 
 // ── 진화 단계 ────────────────────────────────────────────────
@@ -57,10 +67,11 @@ export function evoNextTier(group, key, tier = 0) {
 
 /** 로드된 이미지 또는 null(아직 로딩 중/없음) */
 export function frame(group, key, anim, i, tier = 0) {
-  const n = frameCount(group, key, anim);
+  const pre = evoPrefix(group, key, tier);
+  const n = frameCount(group, key, anim, pre);
   if (!n) return null;
   const idx = ((i % n) + n) % n;
-  const name = `${evoPrefix(group, key, tier)}${anim}_${idx + 1}`;
+  const name = `${pre}${anim}_${idx + 1}`;
   const id = `${group}/${key}/${name}`;
   let img = cache.get(id);
   if (img === undefined) {
@@ -79,9 +90,11 @@ export function frame(group, key, anim, i, tier = 0) {
 export function preload(group, key, tier = 0) {
   const a = MANIFEST[group]?.[key];
   if (!a) return;
+  const pre = evoPrefix(group, key, tier);
   for (const anim of Object.keys(a)) {
     if (typeof a[anim] !== 'number') continue;        // box·evo 같은 건 프레임 수가 아니다
-    for (let i = 0; i < a[anim]; i++) frame(group, key, anim, i, tier);
+    const n = frameCount(group, key, anim, pre);
+    for (let i = 0; i < n; i++) frame(group, key, anim, i, tier);
   }
 }
 

@@ -204,6 +204,7 @@ export function gateSecondsLeft() {
  * 11% 가 정지해 타격감이 아니라 **끊김**으로 읽힌다(실측). 멈춤은 드물어야 무겁다.
  */
 const HITSTOP_GAP = 0.30;
+export const FOE_POSE = 0.22;     // 적 공격 포즈 길이 — 공격 프레임 진행도의 분모
 export const HEAVY_EVERY = 4;     // 평타 몇 번째마다 강타인가
 export const HEAVY_SEC = 0.34;    // 강타 돌진 길이
 const HEAVY_GAP = 1.1;            // 강타 최소 간격(초)
@@ -444,6 +445,7 @@ export function tick(dt) {
   if (R.atkT <= 0) {
     R.atkT = interval;
     R.atkAnimT = Math.min(0.25, interval * 0.6);
+    R.atkAnimMax = R.atkAnimT;          // 공격 프레임(준비·타격·마무리) 진행도의 분모
     const crit = Math.random() < Math.min(1, nval('crit'));
     // 실제 피해를 **LDPS 에서 끌어온다.** 식을 두 벌 쓰면 반드시 어긋난다 —
     // 실제로 어긋나 있었다: gC(동료 배너)와 마스터리 노드가 표시 DPS 와
@@ -504,7 +506,7 @@ export function tick(dt) {
     e.atkT -= dt;
     if (e.atkT > 0) continue;
     e.atkT += period;
-    e.aPose = 0.22;
+    e.aPose = FOE_POSE;
     // 힐러는 **때리지 않는다.** 아군 체력만 채운다 — 그래서 혼자 나올 수도 없다.
     if (e.hero?.support) { foeHeal(e); continue; }
     if (foeStrike(e)) return;                    // 죽었으면 더 처리하지 않는다

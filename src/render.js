@@ -5,8 +5,8 @@
 // 용사는 Idle/Attack/Hit/Dead 프레임이 멀쩡해서 프레임 애니를 그대로 쓴다.
 import { B, heroAt, zoneAt, sceneEvery, heroPool } from './balance.js';
 import { S } from './state.js';
-import { R, enrage, gateSecondsLeft, gateSoft, CHAIN_WARM, DANGER_AT, WAVE_IN_SEC, HEAVY_SEC } from './combat.js';
-import { pick, preload, boxOf, frameCount } from './sprites.js';
+import { R, enrage, gateSecondsLeft, gateSoft, CHAIN_WARM, DANGER_AT, WAVE_IN_SEC, HEAVY_SEC, FOE_POSE } from './combat.js';
+import { pick, preload, boxOf, frameCount, evoPrefix } from './sprites.js';
 import { activeCompanions, compImage, monTier, skyCompanions } from './companions.js';
 import { L0, ratio, fmt } from './logmath.js';
 
@@ -298,7 +298,7 @@ function drawSky(base) {
   // 멀리 있는 것이 더 크면 거리감이 깨진다. 지면 동료보다 작게 잡는다.
   const h = base * 0.062;
   for (const c of list) {
-    const img = compImage(c.id);
+    const img = compImage(c.id, blinkFrame(c.phase));     // 가끔 대기 둘째 장(날갯짓·눈 감기)
     if (!img) continue;
     const cx = W * c.x;
     const cy = H * c.y + Math.sin(t * 1.6 + c.phase) * h * 0.14;   // 느리게 오르내린다
@@ -610,6 +610,15 @@ function ambTick(dt, zone) {
 // 적 인덱스 → 화면 좌표. 매 프레임 적을 그리며 채우고, 투사체·파편이 그대로 쓴다.
 // 숫자 연출은 예전처럼 인덱스 근사 위치를 쓰지만 투사체는 실제로 맞아야 해서 좌표가 필요하다.
 const foePos = [];
+// ── 프레임 고르기 (애니 1차: 대기 2장 · 공격 3장) ──
+// 대기 둘째 장은 눈 감기·숨 들이쉼이라 **가끔** 보여 준다. 0.5초씩 번갈았더니 계속 깜빡이는
+// 것처럼 보였다. 캐릭터마다 주기(2.4~3.4초)와 박자를 어긋내 무리가 한꺼번에 눈을 감지 않게 한다.
+const blinkFrame = ph => {
+  const P = 2.4 + (Math.abs(Math.sin(ph * 12.9898)) % 1);
+  return ((t + ph * 7.3) % P) < 0.32 ? 1 : 0;
+};
+// 공격 3장 = 준비 · 타격 · 마무리. u 는 공격 동작 진행도 0 → 1. 1장뿐이면 늘 타격(0번)
+const atkFrame = (n, u) => (n >= 3 ? (u < 0.28 ? 0 : u < 0.66 ? 1 : 2) : 0);
 // 화면 전용 잔재 — 쓰러져 날아가는 몸 · 별가루. 전투 상태에 쓰지 않는다.
 let corpses = [], sparks = [];
 let leadDx = 0;                 // 이번 프레임 리드의 가로 이동(런지·강타 돌진). 강타 투사체의 출발점
@@ -724,7 +733,6 @@ function drawBolt(x, y, u, b, size) {
 export function render(dt) {
   if (!ctx || !W || !H) return;
   t += dt;
-  const frame = Math.floor(t * 7);
 
   ctx.save();
   if (R.shake > 0) {
@@ -773,7 +781,15 @@ export function render(dt) {
     const own = compImage(c.id);
     if (own) drawSprite(own, cx, cy, h, boxOf('comp', c.id), opt);
     // 동료도 자기 레벨의 진화 모습으로 선다 — 수집한 몬스터를 키우는 보람이 전장에 보여야 한다
-    else drawSprite(pick('mon', c.sprite, 'idle', 0, c.tier || 0), cx, cy, h, boxOf('mon', c.sprite), opt);
+    else {
+      // 내지를 때는 공격 3장, 평소에는 대기(가끔 눈 감기). 진화 단계에 공격 프레임이 1장뿐이면 대기로 둔다
+      const pre = evoPrefix('mon', c.sprite, c.tier || 0);
+      const nA = frameCount('mon', c.sprite, 'attack', pre), nI = frameCount('mon', c.sprite, 'idle', pre);
+      const img = lunge > 0 && nA >= 3
+        ? pick('mon', c.sprite, 'attack', atkFrame(nA, e), c.tier || 0)
+        : pick('mon', c.sprite, 'idle', nI > 1 ? blinkFrame(c.phase) : 0, c.tier || 0);
+      drawSprite(img, cx, cy, h, boxOf('mon', c.sprite), opt);
+    }
     drawTier(cx, cy, h, c.tier || 0, 0.45, 'front');
   };
   const LEAD_D = 0.45;
@@ -785,8 +801,13 @@ export function render(dt) {
   const pose = R.atkAnimT > 0 ? 'attack' : R.pHitT > 0 ? 'hit' : 'idle';
   // 리드도 레벨(마일스톤 티어)에 따라 겉모습이 바뀐다. 그림이 없으면 pick() 이 기본으로 내려준다
   const leadTier = monTier(S.mon);
-  const pImg = pick('mon', S.mon, pose, 0, leadTier);
-  const hasPose = frameCount('mon', S.mon, pose) > 0;
+  const leadPre = evoPrefix('mon', S.mon, leadTier);
+  const nPose = frameCount('mon', S.mon, pose, leadPre);
+  // 공격은 준비 → 타격 → 마무리, 대기는 가끔 눈 감기
+  const fi = pose === 'attack' ? atkFrame(nPose, 1 - Math.max(0, R.atkAnimT) / (R.atkAnimMax || 0.25))
+    : pose === 'idle' && nPose > 1 ? blinkFrame(0.13) : 0;
+  const pImg = pick('mon', S.mon, pose, fi, leadTier);
+  const hasPose = nPose > 0;
   const atk = Math.max(0, R.atkAnimT) / 0.25;               // 1 → 0
   const lungePhase = Math.sin((1 - atk) * Math.PI);          // 0 → 1 → 0
   // 포즈 그림이 이미 런지를 그리고 있으면 변형을 약하게 준다 — 둘 다 세게 주면 과장된다
@@ -898,7 +919,12 @@ export function render(dt) {
     }
     const kb = e.kbT > 0 ? Math.sin((e.kbT / 0.26) * Math.PI) : 0;   // 강타에 밀렸다 돌아온다
     if (dying > 0) ctx.globalAlpha = Math.max(0, dying);   // 쓰러지며 옅어진다
-    drawSprite(pick('hero', hero.key, fPose, frame + idx), ex, ey + eb, h, boxOf('hero', hero.key), {
+    // 프레임: 공격은 포즈 진행도로 준비 → 타격 → 마무리, 대기는 가끔 눈 감기. 예전엔 초당 7장으로
+    // 돌렸는데 대기 2장을 그렇게 돌리면 깜빡거린다
+    const nH = frameCount('hero', hero.key, fPose);
+    const fiH = fPose === 'attack' ? atkFrame(nH, 1 - Math.max(0, e.aPose) / FOE_POSE)
+      : fPose === 'idle' && nH > 1 ? blinkFrame(e.ph) : 0;
+    drawSprite(pick('hero', hero.key, fPose, fiH), ex, ey + eb, h, boxOf('hero', hero.key), {
       dx: hit * 7 + kb * W * 0.05 + (1 - dying) * (dying > 0 ? 14 : 0),    // 맞은 쪽으로 밀리며 쓰러진다
       sx: 1 + hit * 0.06,
       ring: dying > 0 ? null : FOE,

@@ -11,6 +11,7 @@ import { activeSlots, equippedList, RARITIES, gachaRev, CATALOG } from './gacha.
 import { B } from './balance.js';
 import { S } from './state.js';
 import { monLevel } from './layer2.js';
+import { frameCount } from './sprites.js';
 
 // 리드 기준 상대 배치. x 는 캔버스 폭 비율, y 는 리드 키 비율(음수 = 위 = 멀리).
 // 일부러 줄을 맞추지 않았다 — 줄을 세우면 "부대"가 아니라 "목록"으로 보인다.
@@ -35,16 +36,24 @@ const SLOTS = [
 ];
 
 const IMG = new Map();
-/** assets/comp/<id>.png 가 있으면 그것, 없으면 null (대역 스프라이트로 폴백) */
-export function compImage(id) {
-  if (!IMG.has(id)) {
+/**
+ * assets/comp/<id>.png 가 있으면 그것, 없으면 null (대역 스프라이트로 폴백).
+ * f 는 프레임 번호 — 대기 둘째 장(<id>_2.png)이 매니페스트에 있으면 쓴다. 아직 안 받아졌으면 1번.
+ */
+function loadComp(name) {
+  if (!IMG.has(name)) {
     const im = new Image();
-    im.src = new URL('../assets/comp/' + id + '.png', import.meta.url).href;
-    im.onerror = () => IMG.set(id, null);
-    IMG.set(id, im);
+    im.src = new URL('../assets/comp/' + name + '.png', import.meta.url).href;
+    im.onerror = () => IMG.set(name, null);
+    IMG.set(name, im);
   }
-  const im = IMG.get(id);
+  const im = IMG.get(name);
   return im && im.complete && im.naturalWidth > 0 ? im : null;
+}
+export function compImage(id, f = 0) {
+  const n = frameCount('comp', id, 'idle') || 1;
+  const k = n > 1 ? ((f % n) + n) % n : 0;
+  return (k && loadComp(`${id}_${k + 1}`)) || loadComp(id);
 }
 
 /**
