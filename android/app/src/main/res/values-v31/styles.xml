@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 안드로이드 12(API 31)부터 Theme.SplashScreen 은 android:background 를 무시하고
+     시스템이 런처 아이콘을 그린다. 그래서 values/styles.xml 의 @drawable/splash 는
+     12 이상에서 효과가 없었고, 아이콘 뒤는 기본값이었다.
+     (테마 전환은 건드리지 않는다 — MainActivity 가 installSplashScreen() 을
+      호출하지 않으므로 postSplashScreenTheme 은 어차피 무시된다.) -->
+<resources>
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
+    </style>
+</resources>

@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- #FFFFFF 였다. 전경이 Capacitor 기본 플레이스홀더(거의 흰색)였던 탓에
+         흰 바탕에 흰 그림이 되어 안드로이드 8 이상에선 아이콘이 없는 것처럼 보였다.
+         지금은 전경이 108dp 전체를 불투명하게 덮으므로 이 색은 시차 이동 때만
+         살짝 보인다. 아이콘 가장자리와 같은 파랑이라 티가 나지 않는다. -->
+    <color name="ic_launcher_background">#40ABE5</color>
+    <!-- 안드로이드 12+ 스플래시 배경(values-v31/styles.xml). -->
+    <color name="splash_background">#40ABE5</color>
 </resources>
