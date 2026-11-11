@@ -19,6 +19,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { decodePNG } from './png.mjs';
+import { quantize, encodeIndexed } from './png-quant.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const ASSETS = path.join(ROOT, 'assets');
@@ -69,7 +70,7 @@ const stampPath = path.join(ASSETS, '.normalized.json');
 const stamp = fs.existsSync(stampPath) ? JSON.parse(fs.readFileSync(stampPath, 'utf8')) : {};
 
 const reject = [];
-let taken = 0, bytes = 0;
+let taken = 0, bytes = 0, outBytes = 0;
 
 for (const key of Object.keys(manifest.mon || {})) {
   const entry = manifest.mon[key];
@@ -135,14 +136,21 @@ for (const key of Object.keys(manifest.mon || {})) {
     }
     if (bad) continue;
 
-    // 원본 바이트를 그대로 쓴다. png.mjs 로 다시 인코딩하면 오히려 커진다(make-mon.mjs 주석).
+    // 256색 팔레트로 압축해 쓴다(png-quant — 애니 프레임과 같은 처리, 장당 약 1/3).
+    // png.mjs 의 RGBA 재인코딩은 오히려 커지지만 팔레트는 작아진다. 혹시 커지면 원본 그대로.
     for (const b of batch) {
       if (!CHECK) {
-        const dest = path.join(dir, `t${st}_${b.pose}_1.png`);
+        // 애니 프레임이 이미 들어간 단계(stageFrames 공격 3장)는 타격이 attack_2 자리다 —
+        // attack_1 은 준비 장면이라 여기 쓰면 덮어쓴다(make-anim.mjs)
+        const slot = b.pose === 'attack' && (entry.stageFrames?.[`t${st}_`]?.attack ?? 1) >= 3 ? 2 : 1;
+        const dest = path.join(dir, `t${st}_${b.pose}_${slot}.png`);
         fs.mkdirSync(dir, { recursive: true });
-        fs.writeFileSync(dest, b.raw);
+        const q = encodeIndexed(quantize(decodePNG(b.raw)));
+        const out = q.length < b.raw.length ? q : b.raw;
+        fs.writeFileSync(dest, out);
+        outBytes += out.length;
         // defringe 를 건너뛰게 등록한다 — 투명 픽셀이 (0,0,0) 인 생성 PNG 라 돌리면 가장자리가 망가진다
-        stamp[path.relative(ASSETS, dest).replaceAll('\\', '/')] = hash(b.raw);
+        stamp[path.relative(ASSETS, dest).replaceAll('\\', '/')] = hash(out);
       }
       taken++; bytes += b.raw.length;
     }
@@ -173,5 +181,5 @@ if (CHECK) {
 
 fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 fs.writeFileSync(stampPath, JSON.stringify(stamp, null, 0));
-console.log(`\n진화 그림 ${taken}장 들임 (${(bytes / 1048576).toFixed(2)}MB)`);
+console.log(`\n진화 그림 ${taken}장 들임 (원본 ${(bytes / 1048576).toFixed(2)}MB → 압축 ${(outBytes / 1048576).toFixed(2)}MB)`);
 console.log('다음: node tools/build-www.mjs');
