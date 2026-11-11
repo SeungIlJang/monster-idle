@@ -5,7 +5,9 @@
 //
 // 하는 일:
 //   1) tools/check-anim.mjs 로 검사 — 하나라도 실패하면 아무것도 쓰지 않는다
-//   2) 테두리 정리(defringe, normalize-sprites 와 같은 처리) → 256색 팔레트 압축(png-quant.mjs)
+//   2) 256색 팔레트 압축(png-quant.mjs). **테두리 정리(defringe)는 하지 않는다** — 생성 PNG 는 투명 픽셀이
+//      (0,0,0) 이라 defringe 가 그걸 배경색으로 보고 반투명 가장자리를 알파로 나눠 밝은 테를 만든다
+//      (make-mon-evo 주석과 같은 이유). 1차 들이기 때 실제로 장당 가장자리 1,100~1,700픽셀이 평균 60~75 밝아졌다.
 //   3) 이름을 바꿔 assets 로:
 //        <key>_idle_2           → <group>/<key>/<단계>idle_2.png
 //        <key>_attack_windup    → <group>/<key>/<단계>attack_1.png   (준비)
@@ -23,7 +25,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { decodePNG, defringe } from './png.mjs';
+import { decodePNG } from './png.mjs';
 import { quantize, encodeIndexed, errorOf } from './png-quant.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -61,10 +63,10 @@ for (const f of fs.readdirSync(dir).sort()) {
 
 let inKB = 0, outKB = 0, written = 0, worst = 0;
 const log = [];
-/** 원본 → 테두리 정리 → 팔레트 압축 → 쓰기 */
+/** 원본 → 팔레트 압축 → 쓰기 (테두리 정리 없음 — 위 주석) */
 function put(src, dest) {
   const buf = fs.readFileSync(src);
-  const img = defringe(decodePNG(buf));
+  const img = decodePNG(buf);
   const q = quantize(img);
   let out = encodeIndexed(q);
   const err = errorOf(img, q);

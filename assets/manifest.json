@@ -14,7 +14,21 @@
       "evo": [
         2,
         3
-      ]
+      ],
+      "stageFrames": {
+        "t2_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        },
+        "t3_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        }
+      }
     },
     "goblin": {
       "idle": 2,
@@ -30,7 +44,21 @@
       "evo": [
         2,
         3
-      ]
+      ],
+      "stageFrames": {
+        "t2_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        },
+        "t3_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        }
+      }
     },
     "bat": {
       "idle": 2,
@@ -46,7 +74,21 @@
       "evo": [
         2,
         3
-      ]
+      ],
+      "stageFrames": {
+        "t2_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        },
+        "t3_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        }
+      }
     },
     "mushroom": {
       "idle": 2,
@@ -62,7 +104,21 @@
       "evo": [
         2,
         3
-      ]
+      ],
+      "stageFrames": {
+        "t2_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        },
+        "t3_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        }
+      }
     },
     "skeleton": {
       "idle": 2,
@@ -78,7 +134,21 @@
       "evo": [
         2,
         3
-      ]
+      ],
+      "stageFrames": {
+        "t2_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        },
+        "t3_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        }
+      }
     },
     "wolf": {
       "idle": 2,
@@ -94,7 +164,21 @@
       "evo": [
         2,
         3
-      ]
+      ],
+      "stageFrames": {
+        "t2_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        },
+        "t3_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        }
+      }
     },
     "ghost": {
       "idle": 2,
@@ -110,7 +194,21 @@
       "evo": [
         2,
         3
-      ]
+      ],
+      "stageFrames": {
+        "t2_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        },
+        "t3_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        }
+      }
     },
     "orc": {
       "idle": 2,
@@ -126,7 +224,21 @@
       "evo": [
         2,
         3
-      ]
+      ],
+      "stageFrames": {
+        "t2_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        },
+        "t3_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        }
+      }
     },
     "golem": {
       "idle": 2,
@@ -142,7 +254,21 @@
       "evo": [
         2,
         3
-      ]
+      ],
+      "stageFrames": {
+        "t2_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        },
+        "t3_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        }
+      }
     },
     "dragon": {
       "idle": 2,
@@ -158,7 +284,21 @@
       "evo": [
         2,
         3
-      ]
+      ],
+      "stageFrames": {
+        "t2_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        },
+        "t3_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        }
+      }
     },
     "spider": {
       "idle": 2,

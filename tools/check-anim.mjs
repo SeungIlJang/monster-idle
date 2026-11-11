@@ -21,6 +21,12 @@ import { decodePNG } from './png.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const ASSETS = path.join(ROOT, 'assets');
+const MANIFEST = JSON.parse(fs.readFileSync(path.join(ASSETS, 'manifest.json'), 'utf8'));
+/** 그 단계의 공격 장수 — 이미 들어가 3장이면 타격 그림은 attack_2 로 옮겨져 있다(make-anim.mjs) */
+function atkCount(group, key, pre) {
+  const e = MANIFEST[group]?.[key]; if (!e) return 1;
+  return pre ? (e.stageFrames?.[pre]?.attack ?? 1) : (e.attack ?? 1);
+}
 const ALPHA = 24;          // 내용으로 치는 알파
 const CX_TOL = 0.6;        // 가로 중심 허용 오차(px)
 const IDLE_TOL = 6;        // idle_2 내용 크기가 idle_1 과 달라도 되는 폭(px) — 숨쉬기 정도
@@ -78,7 +84,10 @@ for (const f of files) {
   const pre = stage ? stage + '_' : '';
   // 기준 그림
   const refIdle = group === 'comp' ? path.join(ASSETS, 'comp', `${key}.png`) : path.join(ASSETS, group, key, `${pre}idle_1.png`);
-  const refAtk = group === 'comp' ? null : path.join(ASSETS, group, key, `${pre}attack_1.png`);
+  // 공격 프레임의 비교 기준은 **타격** 그림이다. 이미 들인 적이 있으면(다시 들이기) attack_1 은 준비 장면 자신이라
+  // '거의 같음' 으로 걸린다 — 그때는 attack_2 가 타격이다.
+  const strike = atkCount(group, key, pre) >= 3 ? 'attack_2' : 'attack_1';
+  const refAtk = group === 'comp' ? null : path.join(ASSETS, group, key, `${pre}${strike}.png`);
   if (!fs.existsSync(refIdle)) { bad.push(`${f} — 게임에 기준 그림이 없음 (${path.relative(ROOT, refIdle)}) · 키 이름 확인`); continue; }
   const id = measure(refIdle);
   const ref = fr.startsWith('attack') && refAtk && fs.existsSync(refAtk) ? measure(refAtk) : id;
@@ -100,7 +109,7 @@ for (const f of files) {
       if (r < H_RATIO[0] || r > H_RATIO[1]) why.push(`높이 ${a.ch} = idle 의 ${r.toFixed(2)}배 — ${H_RATIO[0]}~${H_RATIO[1]} 이어야 함`);
     }
     const d = diffRatio(a, ref);
-    if (d < MIN_DIFF) why.push(`기준 그림(${fr === 'idle_2' ? 'idle_1' : 'attack_1'})과 거의 같음 — ${(d * 100).toFixed(1)}% 만 다름. 화면에서 안 보입니다`);
+    if (d < MIN_DIFF) why.push(`기준 그림(${fr === 'idle_2' ? 'idle_1' : strike})과 거의 같음 — ${(d * 100).toFixed(1)}% 만 다름. 화면에서 안 보입니다`);
   }
   const tag = `${group}/${key}${stage ? '/' + stage : ''}`;
   if (!seen.has(tag)) seen.set(tag, new Set());
