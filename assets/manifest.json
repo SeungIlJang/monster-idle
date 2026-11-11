@@ -314,7 +314,21 @@
       "evo": [
         2,
         3
-      ]
+      ],
+      "stageFrames": {
+        "t2_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        },
+        "t3_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        }
+      }
     },
     "wyrm": {
       "idle": 2,
@@ -330,7 +344,21 @@
       "evo": [
         2,
         3
-      ]
+      ],
+      "stageFrames": {
+        "t2_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        },
+        "t3_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        }
+      }
     }
   },
   "hero": {
