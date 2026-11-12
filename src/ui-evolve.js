@@ -12,10 +12,11 @@
 import { B } from './balance.js';
 import { evoPrefix, evoStage } from './sprites.js';
 import * as sfx from './audio.js';
+import { t as tr } from './i18n.js';
 
 const RGB = [null, [224, 163, 112], [214, 228, 255], [255, 211, 77], [196, 168, 255], [255, 138, 216]];
 // 그 단계에서 전장에 새로 붙는 오라 (render.js drawTier 와 같은 순서)
-const AURA = ['', '발밑에 빛이 깃든다', '빛가루가 피어오른다', '몸 뒤에 후광이 선다', '빛줄기가 돌기 시작한다', '무지개빛 — 최고 단계'];
+const AURA = ['', 1, 2, 3, 4, 5].map(i => (i ? tr('evo.aura.' + i) : ''));
 
 let closeTimer = 0;
 
@@ -49,12 +50,12 @@ export function showEvolve(key, fromTier, toTier) {
       <div class="evBurst">${burst}</div>
     </div>
     <div class="evText">
-      <div class="evTitle">${evolved ? '진화!' : '각성!'}</div>
+      <div class="evTitle">${evolved ? tr('evo.evolve') : tr('evo.awake')}</div>
       <div class="evName">${m.name} · Lv.${lv}</div>
-      <div class="evSub">${evolved ? `${evoStage('mon', key, toTier)}단계 모습 · ` : ''}${AURA[tier]}</div>
-      <div class="evGain">전체 공격력 +${atk}%</div>
+      <div class="evSub">${evolved ? tr('evo.stage', { n: evoStage('mon', key, toTier) }) : ''}${AURA[tier]}</div>
+      <div class="evGain">${tr('evo.gain', { p: atk })}</div>
     </div>
-    <div class="evTap">눌러서 닫기</div>`;
+    <div class="evTap">${tr('evo.tap')}</div>`;
   // 클래스를 다시 붙여야 애니메이션이 처음부터 돈다
   ov.className = '';
   void ov.offsetWidth;

@@ -6,6 +6,7 @@
 import { S, save } from './state.js';
 import { R, fireSkill } from './combat.js';
 import { skillBar, fireNow } from './skills.js';
+import { t } from './i18n.js';
 
 const $ = id => document.getElementById(id);
 let built = '';        // 지금 그려진 슬롯 구성 (id 를 이어붙인 것)
@@ -22,7 +23,7 @@ export function renderSkillBar() {
     built = sig;
     bar.innerHTML =
       `<div class="skAuto" id="skAuto"><div>AUTO</div><div id="skAutoV">ON</div></div>` +
-      list.map(s => `<div class="skSlot" data-sk="${s.id}" title="${s.name} · ${s.cd}초">
+      list.map(s => `<div class="skSlot" data-sk="${s.id}" title="${t('skill.tip', { name: s.name, s: s.cd })}">
           <i></i><b>${s.icon}</b></div>`).join('');
     $('skAuto').onclick = () => { S.autoSkill = !S.autoSkill; save(); renderSkillBar(); };
     for (const el of bar.querySelectorAll('[data-sk]')) {

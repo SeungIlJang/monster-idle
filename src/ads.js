@@ -6,6 +6,7 @@
 // 구버전에서 배운 것: 광고 단위 ID 를 플레이스홀더로 두면 출시까지 그대로 간다.
 // 그래서 실ID 가 비어 있는데 테스트 모드가 꺼져 있으면 보상을 주지 않고 경고를 찍는다.
 import * as sfx from './audio.js';
+import { t } from './i18n.js';
 
 const res = await fetch(new URL('./ads.json', import.meta.url));
 const CFG = await res.json();
@@ -72,10 +73,10 @@ function hideOverlay() {
 function simulate() {
   return new Promise(resolve => {
     let n = CFG.simSeconds;
-    overlay('📺 광고 시청 중… ' + n, '개발용 시뮬레이션');
+    overlay(t('ad.watching', { n }), t('ad.sim'));
     const iv = setInterval(() => {
       n--;
-      if (n > 0) overlay('📺 광고 시청 중… ' + n, '개발용 시뮬레이션');
+      if (n > 0) overlay(t('ad.watching', { n }), t('ad.sim'));
       else { clearInterval(iv); hideOverlay(); resolve(true); }
     }, 1000);
   });
@@ -89,7 +90,7 @@ async function playNative() {
   let rewarded = false;
   let subReward = null, subDismiss = null, subFail = null;
   try {
-    overlay('광고 준비 중…', '');
+    overlay(t('ad.preparing'), '');
     subReward = await admob.addListener('onRewardedVideoAdReward', () => { rewarded = true; });
     await admob.prepareRewardVideoAd({ adId: id, isTesting: CFG.useTest });
     hideOverlay();

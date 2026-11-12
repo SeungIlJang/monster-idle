@@ -10,6 +10,7 @@ import { B } from './balance.js';
 import { S } from './state.js';
 import { eff as relicEff } from './relics.js';
 import { bump as bumpDaily } from './daily.js';
+import { t } from './i18n.js';
 
 export const BANNERS = B.gacha.banners;            // [{key,name,icon,slots,affects}]
 export const RARITIES = B.gacha.rarities;          // [{name,color,owned,equipped}]
@@ -20,32 +21,35 @@ const ENHANCE_N = B.gacha.fuse.dupToEnhance;        // 2개 → 강화 +1
 // 배너별 아이템 종류. "같은 아이템 2개 = 강화" 규칙이 성립하려면 종류가 있어야 한다.
 export const CATALOG = {
   equip: [
-    { id: 'club', name: '가시 몽둥이', icon: '🏏' },
-    { id: 'axe', name: '녹슨 도끼', icon: '🪓' },
-    { id: 'shield', name: '뼈 방패', icon: '🛡️' },
-    { id: 'armor', name: '이끼 갑옷', icon: '🥋' },
-    { id: 'fang', name: '독니 목걸이', icon: '📿' },
-    { id: 'ring', name: '마석 반지', icon: '💍' },
+    { id: 'club', icon: '🏏' },
+    { id: 'axe', icon: '🪓' },
+    { id: 'shield', icon: '🛡️' },
+    { id: 'armor', icon: '🥋' },
+    { id: 'fang', icon: '📿' },
+    { id: 'ring', icon: '💍' },
   ],
   skill: [
-    { id: 'acid', name: '산성 침', icon: '🧪' },
-    { id: 'gust', name: '돌풍', icon: '🌪️' },
-    { id: 'grasp', name: '어둠의 손아귀', icon: '🖐️' },
-    { id: 'breath', name: '화염 숨결', icon: '🔥' },
-    { id: 'quake', name: '대지 가르기', icon: '🪨' },
-    { id: 'shriek', name: '비명', icon: '💢' },
+    { id: 'acid', icon: '🧪' },
+    { id: 'gust', icon: '🌪️' },
+    { id: 'grasp', icon: '🖐️' },
+    { id: 'breath', icon: '🔥' },
+    { id: 'quake', icon: '🪨' },
+    { id: 'shriek', icon: '💢' },
   ],
   // atk 는 **연출 전용** 이다. 6종이 균등 확률이고 성능도 같아서 수치에는 아무 영향이 없다 —
   // 하늘에 떠서 가만히 있으면 "장식" 으로 보이므로 각자 제 무기로 싸우는 모습만 준다.
   comp: [
-    { id: 'slimelet', name: '작은 슬라임', icon: '🟢', atk: { color: '#7fd96a', shape: 'orb' } },
-    { id: 'bats', name: '박쥐 떼', icon: '🦇', atk: { color: '#b78adf', shape: 'wing' } },
-    { id: 'spore', name: '버섯 포자', icon: '🍄', atk: { color: '#ff9ad5', shape: 'puff' } },
-    { id: 'wisp', name: '도깨비불', icon: '🔮', atk: { color: '#9fe8ff', shape: 'flame' } },
-    { id: 'shard', name: '돌조각', icon: '🪨', atk: { color: '#d9b06a', shape: 'rock' } },
-    { id: 'shade', name: '그림자', icon: '👤', atk: { color: '#9a7ad6', shape: 'wedge' } },
+    { id: 'slimelet', icon: '🟢', atk: { color: '#7fd96a', shape: 'orb' } },
+    { id: 'bats', icon: '🦇', atk: { color: '#b78adf', shape: 'wing' } },
+    { id: 'spore', icon: '🍄', atk: { color: '#ff9ad5', shape: 'puff' } },
+    { id: 'wisp', icon: '🔮', atk: { color: '#9fe8ff', shape: 'flame' } },
+    { id: 'shard', icon: '🪨', atk: { color: '#d9b06a', shape: 'rock' } },
+    { id: 'shade', icon: '👤', atk: { color: '#9a7ad6', shape: 'wedge' } },
   ],
 };
+
+// 아이템 이름은 언어팩(d.item.<id>)에서 — 한국어 원문도 src/lang/ko.json 에 있다
+for (const list of Object.values(CATALOG)) for (const it of list) it.name = t('d.item.' + it.id);
 
 const itemDef = (banner, id) => CATALOG[banner].find(i => i.id === id);
 const keyOf = (id, rarity, enh) => id + '|' + rarity + '|' + enh;

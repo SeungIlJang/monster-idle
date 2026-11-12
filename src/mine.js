@@ -6,6 +6,7 @@
 import { B } from './balance.js';
 import { S } from './state.js';
 import { eff as relicEff } from './relics.js';
+import { t as tr } from './i18n.js';
 
 const M = B.layer2.mine;
 export const WIDTH = 7;
@@ -13,10 +14,11 @@ const KEEP_ROWS = 24;              // 저장할 창(window) 높이 — 세이브
 
 // 타일: 1 흙(1타), 2 돌(2타), 3 광맥(2타). 저장은 정수 하나로 — type*10 + 남은타수
 export const TILE = {
-  1: { name: '흙', icon: '🟫', hits: 1, weight: 0.50, s: 1.4, o: 0.6 },
-  2: { name: '돌', icon: '🪨', hits: 2, weight: 0.35, s: 0.8, o: 1.2 },
-  3: { name: '광맥', icon: '💠', hits: 2, weight: 0.15, s: 0.2, o: 1.8 },
+  1: { icon: '🟫', hits: 1, weight: 0.50, s: 1.4, o: 0.6 },
+  2: { icon: '🪨', hits: 2, weight: 0.35, s: 0.8, o: 1.2 },
+  3: { icon: '💠', hits: 2, weight: 0.15, s: 0.2, o: 1.8 },
 };
+for (const k of Object.keys(TILE)) TILE[k].name = tr('mine.tile.' + k);   // 이름은 언어팩 mine.tile.<n>
 const TYPES = [1, 2, 3];
 
 // 곡괭이 가중 정규화 — 이게 "산출 총량 유지"의 핵심이다

@@ -9,6 +9,7 @@ import { enterStage, MODE } from './combat.js';
 import { evoPrefix, evoStage, evoNextTier } from './sprites.js';
 import { monTier } from './companions.js';
 import { showEvolve } from './ui-evolve.js';
+import { t, n0, dur } from './i18n.js';
 import { fmt } from './logmath.js';
 import { LgoldPerSec } from './offline.js';
 import { autoBuyTick, canClear, bestFarmStage } from './stats.js';
@@ -21,31 +22,24 @@ export function initGrow(c) { ctx = { ...ctx, ...c }; }
 
 let growTab = 'mine';
 const GROW_TABS = [
-  { k: 'mine', n: '광산', ic: '⛏️' },
-  { k: 'mon', n: '몬스터', ic: '🐾' },
-  { k: 'mast', n: '마스터리', ic: '🌟' },
-  { k: 'res', n: '연구', ic: '🔬' },
+  { k: 'mine', n: t('grow.tab.mine'), ic: '⛏️' },
+  { k: 'mon', n: t('grow.tab.mon'), ic: '🐾' },
+  { k: 'mast', n: t('grow.tab.mast'), ic: '🌟' },
+  { k: 'res', n: t('grow.tab.res'), ic: '🔬' },
   // 유물은 마을 침공(던전)에서 나오므로 던전이 열릴 때 같이 보인다
-  { k: 'relic', n: '유물', ic: '🏺', when: () => RELIC.enabled() && dungeonOpen() },
+  { k: 'relic', n: t('grow.tab.relic'), ic: '🏺', when: () => RELIC.enabled() && dungeonOpen() },
   // 환생은 해금되기 전엔 탭 자체를 숨긴다 — 3,000층 전에는 눌러도 할 게 없다
-  { k: 'pres', n: '환생', ic: '♻️', when: () => PR.unlocked() },
+  { k: 'pres', n: t('grow.tab.pres'), ic: '♻️', when: () => PR.unlocked() },
 ];
 
-const n0 = n => Math.floor(n).toLocaleString('ko-KR');
-function secs(n) {
-  n = Math.max(0, Math.ceil(n));
-  const h = Math.floor(n / 3600), m = Math.floor((n % 3600) / 60);
-  if (h) return h + '시간 ' + m + '분';
-  if (m) return m + '분 ' + (n % 60) + '초';
-  return n + '초';
-}
+const secs = n => dur(Math.ceil(n), true);      // 3시간 5분 / 4분 12초 (i18n.dur)
 const after = () => { save(); renderGrow(); ctx.refresh(); };
 
 export function renderGrow() {
   $('growRes').innerHTML =
-    `<div>🔹 조각<b>${n0(S.shard)}</b></div>
-     <div>🪨 광석<b>${n0(S.ore)}</b></div>
-     <div>🌟 포인트<b>${L2.masteryFree()} / ${L2.masteryPoints()}</b></div>`;
+    `<div>🔹 ${t('res.shard')}<b>${n0(S.shard)}</b></div>
+     <div>🪨 ${t('res.ore')}<b>${n0(S.ore)}</b></div>
+     <div>🌟 ${t('res.point')}<b>${L2.masteryFree()} / ${L2.masteryPoints()}</b></div>`;
 
   const tabs = GROW_TABS.filter(t => !t.when || t.when());
   if (!tabs.some(t => t.k === growTab)) growTab = 'mine';
@@ -85,16 +79,14 @@ function renderMine() {
 
   $('growBody').innerHTML =
     `<div class="gsec">
-       <h3>⛏️ 광산 <span style="opacity:.55;font-size:12px;font-weight:600">깊이 ${L2.depth()}m</span></h3>
-       <div class="d">파인 칸에 붙은 타일만 캘 수 있습니다. 돌·광맥은 두 번 쳐야 합니다.<br>
-         타일마다 <b>조각/광석 비율만</b> 다르고 곡괭이 1개당 총량은 같습니다 —
-         깊이 배수 <span style="color:#8ad8ff">×${L2.depthMult().toFixed(1)}</span>.</div>
-       <div class="d" style="opacity:.85">곡괭이 <span style="color:#fff">${p} / ${max}</span>${p < max ? ' · 다음 ' + secs(L2.nextPickIn()) : ' · 가득 참'}
-         ${bombMode ? '<br><b style="color:#ffcf3a">폭탄 모드 — 터뜨릴 칸을 고르세요 (3×3)</b>' : ''}</div>
+       <h3>⛏️ ${t('mine.title')} <span style="opacity:.55;font-size:12px;font-weight:600">${t('mine.depth', { d: L2.depth() })}</span></h3>
+       <div class="d">${t('mine.help', { m: L2.depthMult().toFixed(1) })}</div>
+       <div class="d" style="opacity:.85">${t('mine.picks')} <span style="color:#fff">${p} / ${max}</span>${p < max ? t('mine.next', { t: secs(L2.nextPickIn()) }) : t('mine.full')}
+         ${bombMode ? `<br><b style="color:#ffcf3a">${t('mine.bombMode')}</b>` : ''}</div>
        <div class="mgrid">${grid}</div>
        <div class="gbtns" style="margin-top:9px">
-         <button id="digAll" ${p < 1 ? 'disabled' : ''}>자동 채굴<span class="c">곡괭이 ${p}</span></button>
-         <button id="digBomb" class="ad" ${bombs < 1 ? 'disabled' : ''}>${bombMode ? '취소' : '📺 폭탄'}<span class="c">${bombs}회 남음</span></button>
+         <button id="digAll" ${p < 1 ? 'disabled' : ''}>${t('mine.auto')}<span class="c">${t('mine.picksN', { n: p })}</span></button>
+         <button id="digBomb" class="ad" ${bombs < 1 ? 'disabled' : ''}>${bombMode ? t('mine.cancel') : t('mine.bomb')}<span class="c">${t('mine.left', { n: bombs })}</span></button>
        </div>
        <div class="d" id="digRes" style="margin:9px 0 0"></div>
      </div>`;
@@ -103,7 +95,7 @@ function renderMine() {
     if (!r) return;
     after();
     const el = $('digRes');
-    if (el) el.innerHTML = `${r.digs ?? 1}회 채굴 · 🔹 +${n0(r.shard)} · 🪨 +${n0(r.ore)}`;
+    if (el) el.innerHTML = `${t('mine.result', { n: r.digs ?? 1 })} · 🔹 +${n0(r.shard)} · 🪨 +${n0(r.ore)}`;
   };
 
   $('growBody').querySelectorAll('[data-r]').forEach(el => {
@@ -111,12 +103,12 @@ function renderMine() {
       const r = +el.dataset.r, c = +el.dataset.c;
       if (bombMode) {
         bombMode = false;
-        if (!await playRewarded()) { renderGrow(); ctx.toast('광고를 끝까지 봐야 보상을 받습니다'); return; }
+        if (!await playRewarded()) { renderGrow(); ctx.toast(t('ad.notFinished')); return; }
         const res = L2.bombAt(r, c);
-        if (res) show(res); else { after(); ctx.toast('폭탄을 쓸 수 없습니다'); }
+        if (res) show(res); else { after(); ctx.toast(t('mine.bombFail')); }
         return;
       }
-      if (L2.picks() < 1) { ctx.toast('곡괭이가 없습니다'); return; }
+      if (L2.picks() < 1) { ctx.toast(t('mine.noPick')); return; }
       const res = L2.digTile(r, c);
       if (res) show(res);
     };
@@ -124,7 +116,7 @@ function renderMine() {
   $('digAll').onclick = () => show(L2.digAuto());
   $('digBomb').onclick = () => {
     if (bombMode) { bombMode = false; renderGrow(); return; }
-    if (L2.bombLeft() < 1) { ctx.toast('오늘 폭탄을 다 썼어요'); return; }
+    if (L2.bombLeft() < 1) { ctx.toast(t('mine.noBomb')); return; }
     bombMode = true;
     renderGrow();
   };
@@ -149,7 +141,7 @@ function renderMonsters() {
       <!-- 그림이 아직 없는 몬스터(신규 추가분)는 404 로 깨진 아이콘이 뜬다. 숨기고 ? 를 띄운다 -->
       <img src="assets/mon/${m.key}/${evo}idle_1.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
       <div class="noart" style="display:none">?</div>
-      ${lead ? '<span class="lead">선두</span>' : ''}
+      ${lead ? `<span class="lead">${t('mon.lead')}</span>` : ''}
       <div class="nm">${o ? m.name : '???'}</div>
       <div class="sub">${o ? 'Lv.' + lv : m.unlock}</div>
     </div>`;
@@ -167,8 +159,8 @@ function renderMonsters() {
   const tier = monTier(m.key);
   const stage = evoStage('mon', m.key, tier), nextT = evoNextTier('mon', m.key, tier);
   const evoLine = o && (stage > 1 || nextT)
-    ? `<div class="mevo">겉모습 <b>${stage}단계</b>${nextT
-        ? ` · Lv.${L2.MILESTONES[nextT - 1]} 에서 또 변합니다` : ' · 최종 모습'}</div>`
+    ? `<div class="mevo">${t('mon.evo', { n: stage })}${nextT
+        ? t('mon.evoNext', { lv: L2.MILESTONES[nextT - 1] }) : t('mon.evoFinal')}</div>`
     : '';
 
   $('growBody').innerHTML = `
@@ -177,18 +169,17 @@ function renderMonsters() {
       <div class="t">${o ? m.name : '???'} <span style="opacity:.55;font-weight:600">Lv.${lv}</span></div>
       ${abil ? `<div class="mabil"><b>${abil.name}</b> ${abil.desc}</div>` : ''}
       <div class="d">${o
-        ? '마일스톤 ' + miles + ' · 다음 레벨 🔹' + n0(cost)
-        : '<b>스테이지 ' + m.unlock + '</b> 도달 시 해금'}</div>
+        ? t('mon.miles', { m: miles, c: n0(cost) })
+        : t('mon.unlockAt', { n: m.unlock })}</div>
       ${evoLine}
       ${o ? `<div class="mbtn">
-          <button data-lead="${m.key}" class="${lead ? 'sel' : ''}" ${lead ? 'disabled' : ''}>${lead ? '선두' : '선두로'}</button>
+          <button data-lead="${m.key}" class="${lead ? 'sel' : ''}" ${lead ? 'disabled' : ''}>${lead ? t('mon.lead') : t('mon.toLead')}</button>
           <button data-lvup="${m.key}" ${can ? '' : 'disabled'}>+1 <span class="c">🔹${n0(cost)}</span></button>
           <button data-lvmax="${m.key}" ${can ? '' : 'disabled'}>MAX</button>
         </div>` : ''}
     </div>
     <div class="d" style="font-size:11px;opacity:.65;line-height:1.6;margin-top:10px">
-      몬스터 레벨 1당 마스터리 포인트 1. <b>포인트는 전 몬스터 공용</b>이라 여러 마리를 키우는 게 이득입니다.<br>
-      마일스톤(${L2.MILESTONES.join('·')})마다 전체 공격력 +${B.layer2.collect.milestoneAtkPct}%.
+      ${t('mon.help', { m: L2.MILESTONES.join('·'), p: B.layer2.collect.milestoneAtkPct })}
     </div>`;
 
   $('growBody').querySelectorAll('[data-pick]').forEach(el => {
@@ -199,13 +190,13 @@ function renderMonsters() {
       S.mon = el.dataset.lead;
       ctx.onLeadChange();
       after();
-      ctx.toast(L2.MONSTERS.find(x => x.key === S.mon).name + ' 선두로');
+      ctx.toast(t('mon.leadToast', { name: L2.MONSTERS.find(x => x.key === S.mon).name }));
     };
   });
   // 레벨업이 마일스톤(10·25·50·75·100)을 넘으면 진화 · 각성 연출을 띄운다 (ui-evolve.js)
   const lvUp = (key, fn) => {
     const t0 = monTier(key);
-    if (!fn()) { ctx.toast('조각 부족'); return; }
+    if (!fn()) { ctx.toast(t('mon.noShard')); return; }
     after();
     const t1 = monTier(key);
     if (t1 > t0) showEvolve(key, t0, t1);
@@ -239,13 +230,11 @@ function renderMastery() {
   }).join('');
   $('growBody').innerHTML =
     `<div class="d" style="font-size:11px;opacity:.65;line-height:1.6;margin-bottom:9px">
-       남은 포인트 <b style="color:#8ad8ff">${free}</b> / 총 ${L2.masteryPoints()}.
-       노드는 <b>승산</b>이라 레벨이 쌓일수록 복리로 붙습니다.<br>
-       <b>셋이 서로 다른 것</b>을 올립니다 — 화력이냐, 생존이냐, 투자냐.
+       ${t('mast.help', { free, total: L2.masteryPoints() })}
      </div>` + nodes +
     `<button id="mReset" style="width:100%;margin-top:8px;background:#3a2030;color:#ffb4b4;
        border:1px solid #6a3545;border-radius:10px;padding:9px;font-size:12px;font-weight:700;cursor:pointer">
-       포인트 되돌리기 <span style="opacity:.8">💎${L2.masteryResetCost()}</span></button>`;
+       ${t('mast.reset')} <span style="opacity:.8">💎${L2.masteryResetCost()}</span></button>`;
   $('growBody').querySelectorAll('[data-mp]').forEach(el => {
     el.onclick = () => { if (L2.spendMastery(el.dataset.mp, 1)) after(); };
   });
@@ -253,9 +242,9 @@ function renderMastery() {
     el.onclick = () => { if (L2.spendMastery(el.dataset.mp10, 10)) after(); };
   });
   $('mReset').onclick = () => {
-    if (L2.masterySpent() < 1) { ctx.toast('되돌릴 포인트가 없습니다'); return; }
-    if (S.gem < L2.masteryResetCost()) { ctx.toast(`젬이 부족합니다 (💎${L2.masteryResetCost()})`); return; }
-    if (L2.resetMastery()) { after(); ctx.toast('포인트를 모두 되돌렸습니다'); }
+    if (L2.masterySpent() < 1) { ctx.toast(t('mast.noSpent')); return; }
+    if (S.gem < L2.masteryResetCost()) { ctx.toast(t('mast.noGem', { n: L2.masteryResetCost() })); return; }
+    if (L2.resetMastery()) { after(); ctx.toast(t('mast.resetDone')); }
   };
 }
 
@@ -270,19 +259,19 @@ function renderRelics() {
   const total = Object.fromEntries(keys.map(k => [k, +RELIC.eff(k).toFixed(3)]));
   const head = nx
     ? `<div style="background:#1b1830;border:1px solid #5a4a2a;border-radius:11px;padding:10px 11px;margin-bottom:9px">
-         <div style="font-size:12px;font-weight:800">다음 유물 ${nx.icon} ${nx.name}</div>
+         <div style="font-size:12px;font-weight:800">${t('relic.next')} ${nx.icon} ${nx.name}</div>
          <div style="font-size:11px;opacity:.75;margin:2px 0 6px">${RELIC.describe(nx.eff)}</div>
          <div style="height:7px;background:#0b1028;border-radius:4px;overflow:hidden">
            <div style="height:100%;width:${(RELIC.progress() * 100).toFixed(1)}%;background:linear-gradient(90deg,#c58a2e,#ffd27a)"></div></div>
-         <div style="font-size:11px;opacity:.7;margin-top:4px">🏺 유물 조각 ${st(sh)} / ${nx.cost} — 던전 탭의 <b>마을 침공</b>에서 모읍니다</div>
+         <div style="font-size:11px;opacity:.7;margin-top:4px">${t('relic.where', { sh: st(sh), cost: nx.cost })}</div>
        </div>`
-    : `<div class="d" style="margin-bottom:9px">🏺 유물 ${RELIC.RELICS.length}종을 모두 깨웠습니다</div>`;
+    : `<div class="d" style="margin-bottom:9px">🏺 ${t('relic.allOpen', { n: RELIC.RELICS.length })}</div>`;
   const sum = keys.length
-    ? `<div style="font-size:11px;opacity:.7;line-height:1.6;margin-bottom:9px">지금 효과 합계: ${RELIC.describe(total)}</div>`
+    ? `<div style="font-size:11px;opacity:.7;line-height:1.6;margin-bottom:9px">${t('relic.sum', { fx: RELIC.describe(total) })}</div>`
     : '';
   const rows = RELIC.RELICS.map((r, i) => {
     const on = i < n, isNext = i === n;
-    const tag = on ? '<span style="color:#7fd07f;font-weight:800">보유</span>'
+    const tag = on ? `<span style="color:#7fd07f;font-weight:800">${t('relic.owned')}</span>`
       : isNext ? `<span style="color:#ffd27a;font-weight:800">${st(sh)}/${r.cost}</span>`
       : `<span style="opacity:.6">🏺${r.cost}</span>`;
     return `<div class="mrow ${on || isNext ? '' : 'lock'}" ${isNext ? 'style="border-color:#c58a2e"' : ''}>
@@ -300,30 +289,29 @@ function renderResearch() {
   const running = L2.researchRunning(), ready = L2.researchReady();
   $('growBody').innerHTML =
     `<div class="gsec">
-       <h3>🔬 연구 <span style="opacity:.55;font-size:12px;font-weight:600">Lv.${lv}</span></h3>
-       <div class="d">광석을 쓰고 시간을 기다립니다. 공격력 ×${L2.researchMul().toFixed(2)} (레벨당 ×${B.layer2.research.atkPerLevel}).<br>
-         광석과 시간 <b>둘 다</b>가 게이트라 돈으로 건너뛸 수 없습니다.</div>
+       <h3>🔬 ${t('rsch.title')} <span style="opacity:.55;font-size:12px;font-weight:600">Lv.${lv}</span></h3>
+       <div class="d">${t('rsch.help', { m: L2.researchMul().toFixed(2), per: B.layer2.research.atkPerLevel })}</div>
        <div class="d" style="opacity:.85">
          ${running
-           ? (ready ? '<b style="color:#7fd07f">연구 완료 — 수령하세요</b>'
-                    : '진행 중 · 남은 시간 <span style="color:#fff">' + secs(L2.researchLeft()) + '</span>')
-           : '다음 연구 🪨 ' + n0(cost) + ' · 소요 ' + secs(L2.researchSeconds())}
+           ? (ready ? `<b style="color:#7fd07f">${t('rsch.ready')}</b>`
+                    : t('rsch.running', { t: secs(L2.researchLeft()) }))
+           : t('rsch.next', { c: n0(cost), t: secs(L2.researchSeconds()) })}
        </div>
        <div class="gbtns">
          ${ready
-           ? '<button id="rsGet" class="ok">수령<span class="c">Lv.' + (lv + 1) + '</span></button>'
+           ? `<button id="rsGet" class="ok">${t('rsch.get')}<span class="c">Lv.${lv + 1}</span></button>`
            : running
-             ? '<button id="rsRush" class="ad">📺 30분 단축<span class="c">광고</span></button>'
-             : '<button id="rsStart" ' + (S.ore >= cost ? '' : 'disabled') + '>연구 시작<span class="c">🪨 ' + n0(cost) + '</span></button>'}
+             ? `<button id="rsRush" class="ad">${t('rsch.rush')}<span class="c">${t('rsch.ad')}</span></button>`
+             : `<button id="rsStart" ${S.ore >= cost ? '' : 'disabled'}>${t('rsch.start')}<span class="c">🪨 ${n0(cost)}</span></button>`}
        </div>
      </div>`;
   const b1 = $('rsStart');
-  if (b1) b1.onclick = () => { if (L2.startResearch()) after(); else ctx.toast('광석 부족'); };
+  if (b1) b1.onclick = () => { if (L2.startResearch()) after(); else ctx.toast(t('rsch.noOre')); };
   const b2 = $('rsGet');
-  if (b2) b2.onclick = () => { if (L2.collectResearch()) { after(); ctx.toast('🔬 연구 Lv.' + L2.researchLv()); } };
+  if (b2) b2.onclick = () => { if (L2.collectResearch()) { after(); ctx.toast(t('rsch.done', { n: L2.researchLv() })); } };
   const b3 = $('rsRush');
   if (b3) b3.onclick = async () => {
-    if (!await playRewarded()) { ctx.toast('광고를 끝까지 봐야 보상을 받습니다'); return; }
+    if (!await playRewarded()) { ctx.toast(t('ad.notFinished')); return; }
     if (L2.rushResearch()) after();
   };
 }
@@ -341,7 +329,7 @@ function renderPrestige() {
   const toRec = PR.floorsToRecommend();
   const big = L => (isFinite(L) ? fmt(L) : '0');
   const legacy = S.soul.Llegacy > 0
-    ? `<div class="d" style="margin-top:4px;opacity:.7">옛 환생의 힘 ×${Math.pow(10, S.soul.Llegacy).toFixed(2)} 이 그대로 남아 있습니다</div>` : '';
+    ? `<div class="d" style="margin-top:4px;opacity:.7">${t('pres.legacy', { m: Math.pow(10, S.soul.Llegacy).toFixed(2) })}</div>` : '';
 
   const tree = PR.TREE.map(n => {
     const lv = PR.tlv(n.key), mx = PR.maxed(n), ok = PR.canBuy(n);
@@ -350,7 +338,7 @@ function renderPrestige() {
       <div class="ic">${n.icon}</div>
       <div class="mid"><div class="t">${n.name} <span style="opacity:.55;font-weight:600">Lv.${lv}${n.max !== undefined ? ' / ' + n.max : ''}</span></div>
         <div class="d">${now}${nxt}</div>
-        <div class="d" style="opacity:.6">${mx ? '최대' : '🌟 ' + big(PR.Lcost(n))}</div></div>
+        <div class="d" style="opacity:.6">${mx ? t('pres.max') : '🌟 ' + big(PR.Lcost(n))}</div></div>
       <button data-sb="${n.key}" ${ok ? '' : 'disabled'}>+1</button>
       <button data-sbm="${n.key}" ${ok ? '' : 'disabled'}>MAX</button>
     </div>`;
@@ -358,38 +346,36 @@ function renderPrestige() {
 
   $('growBody').innerHTML = `
     <div class="mdet">
-      <div class="t">♻️ 환생 <span style="opacity:.55;font-weight:600">${S.lives || 0}회</span></div>
-      <div class="mabil">남은 영혼 <b>🌟 ${big(S.soul.Lfree)}</b> · 지금까지 받은 영혼 ${big(Lcl)}</div>
-      <div class="d" style="margin-top:6px">전 피해 <b style="color:#7fd07f">${PR.mulText(PR.soulMul())}</b>
-        · 보스 <b style="color:#7fd07f">${PR.mulText(Math.pow(10, PR.LsoulBoss()))}</b>
-        · 골드 <b style="color:#7fd07f">${PR.mulText(Math.pow(10, PR.LtMul('gold')))}</b></div>
+      <div class="t">♻️ ${t('pres.title')} <span style="opacity:.55;font-weight:600">${t('pres.count', { n: S.lives || 0 })}</span></div>
+      <div class="mabil">${t('pres.souls', { free: big(S.soul.Lfree), got: big(Lcl) })}</div>
+      <div class="d" style="margin-top:6px">${t('pres.bonus', { a: PR.mulText(PR.soulMul()), b: PR.mulText(Math.pow(10, PR.LsoulBoss())), g: PR.mulText(Math.pow(10, PR.LtMul('gold'))) })}</div>
       ${legacy}
     </div>
 
     <div class="mdet" style="margin-top:10px;${rec ? 'border-color:#ffd34d' : ''}">
-      <div class="t">지금 환생하면 ${rec ? '<span style="color:#ffd34d;font-size:12px">· 추천!</span>' : ''}</div>
+      <div class="t">${t('pres.now')} ${rec ? `<span style="color:#ffd34d;font-size:12px">${t('pres.rec')}</span>` : ''}</div>
       <div class="d">
-        <div>🌟 영혼 <b style="color:#ffd34d">+${big(Lgot)}</b></div>
-        <div style="opacity:.75">영혼은 <b>평생 기록(${n0(S.life)}층)을 넘어선 만큼만</b> 쌓입니다.
-          ${rec ? '받은 총량만큼 쌓였습니다 — 지금이 좋은 때입니다.' : `기록을 <b>${n0(toRec)}층</b> 더 넘기면 받은 총량만큼 쌓입니다(추천).`}</div>
-        <div style="margin-top:6px">🌀 <b>도약</b> — ${n0(target)}층(기록의 ${Math.round(PR.warpPct() * 100)}%)에서 다시 시작하고, 지금 수입 ${Math.round(B.prestige.warp.goldSeconds / 60)}분어치 골드를 받아 바로 강화합니다</div>
-        <div>🔁 <b>메아리</b> — ${n0(from)}층까지는 골드 ×${PR.echoMul()}</div>
+        <div>${t('pres.gain', { n: big(Lgot) })}</div>
+        <div style="opacity:.75">${t('pres.rule', { n: n0(S.life) })}
+          ${rec ? t('pres.good') : t('pres.toRec', { n: n0(toRec) })}</div>
+        <div style="margin-top:6px">${t('pres.warp', { st: n0(target), p: Math.round(PR.warpPct() * 100), min: Math.round(B.prestige.warp.goldSeconds / 60) })}</div>
+        <div>${t('pres.echo', { st: n0(from), m: PR.echoMul() })}</div>
       </div>
-      <div class="d" style="margin-top:8px;color:#ff9a9a"><b>잃는 것</b> — 이번 회차 스테이지·골드·강화 레벨</div>
-      <div class="d" style="margin-top:4px;color:#9ae6b4"><b>남는 것</b> — 해금, 뽑기, 마스터리, 연구, 수집, 젬, 동료, 유물, 영혼 트리</div>
+      <div class="d" style="margin-top:8px;color:#ff9a9a">${t('pres.lose')}</div>
+      <div class="d" style="margin-top:4px;color:#9ae6b4">${t('pres.keep')}</div>
       <div class="mbtn">
         <button id="presBtn" ${can ? '' : 'disabled'} style="${presConfirm ? 'background:#8a2f3f' : ''}">
-          ${!PR.unlocked() ? `${n0(B.prestige.unlockStage)}층 필요`
-            : !can ? '기록을 넘어서야 영혼이 생깁니다'
-            : presConfirm ? '정말 환생합니다' : '환생하기'}
+          ${!PR.unlocked() ? t('pres.need', { n: n0(B.prestige.unlockStage) })
+            : !can ? t('pres.noSoul')
+            : presConfirm ? t('pres.confirm') : t('pres.go')}
         </button>
       </div>
     </div>
 
     <div class="mdet" style="margin-top:10px">
-      <div class="t" style="display:flex;align-items:center;justify-content:space-between">🌳 영혼 트리
-        <button id="soulAuto" style="font-size:11px;padding:4px 9px;border-radius:8px;border:1px solid #3d4a80;background:#1d2550;color:#cfe0ff;cursor:pointer">자동 분배</button></div>
-      <div class="d" style="opacity:.7;margin:4px 0 8px">위 셋은 상한이 없습니다 — 화력이냐, 벽이냐, 투자냐. 아래 셋은 환생을 편하게 하거나 유물과 잇습니다.</div>
+      <div class="t" style="display:flex;align-items:center;justify-content:space-between">${t('pres.tree')}
+        <button id="soulAuto" style="font-size:11px;padding:4px 9px;border-radius:8px;border:1px solid #3d4a80;background:#1d2550;color:#cfe0ff;cursor:pointer">${t('pres.auto')}</button></div>
+      <div class="d" style="opacity:.7;margin:4px 0 8px">${t('pres.treeHelp')}</div>
       ${tree}
     </div>`;
 
@@ -401,12 +387,12 @@ function renderPrestige() {
   });
   $('soulAuto').onclick = () => {
     const k = PR.buyCheapest();
-    if (k) { after(); ctx.toast(`영혼 트리 +${k}레벨 (가장 싼 것부터)`); } else ctx.toast('올릴 수 있는 노드가 없습니다');
+    if (k) { after(); ctx.toast(t('pres.autoToast', { n: k })); } else ctx.toast(t('pres.noNode'));
   };
 
   const btn = $('presBtn');
   if (btn) btn.onclick = () => {
-    if (!presConfirm) { presConfirm = true; renderPrestige(); ctx.toast('한 번 더 누르면 환생합니다'); return; }
+    if (!presConfirm) { presConfirm = true; renderPrestige(); ctx.toast(t('pres.again')); return; }
     presConfirm = false;
     const Lps = LgoldPerSec(Math.max(1, S.best - 1));      // 리셋 **전** 최전선 수입 — 도약 골드의 기준
     const r = PR.doPrestige(Lps);
@@ -419,6 +405,6 @@ function renderPrestige() {
     enterStage(st, MODE.RUN);
     ctx.onLeadChange();
     after();
-    ctx.toast(`환생! 영혼 +${fmt(r.Lgot)} · ${n0(st)}층에서 다시 시작 · ${n0(r.from)}층까지 골드 ×${PR.echoMul()}`);
+    ctx.toast(t('pres.done', { n: fmt(r.Lgot), st: n0(st), from: n0(r.from), m: PR.echoMul() }));
   };
 }

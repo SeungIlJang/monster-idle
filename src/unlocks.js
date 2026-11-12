@@ -5,6 +5,7 @@
 // UI 모듈이 아니라 여기에 둔다.
 import { B } from './balance.js';
 import { S } from './state.js';
+import { t } from './i18n.js';
 
 let cache = null;
 
@@ -15,16 +16,16 @@ export function milestones() {
   if (cache) return cache;
   const out = [];
   for (const m of B.roster.monsters) {
-    if (m.unlock > 1) out.push({ at: m.unlock, ic: '🐾', what: `몬스터 <b>${m.name}</b> 해금`, plain: `${m.name} 합류!`, kind: 'mon' });
+    if (m.unlock > 1) out.push({ at: m.unlock, ic: '🐾', what: t('unl.mon', { name: m.name }), plain: t('unl.monPlain', { name: m.name }), kind: 'mon' });
   }
   for (const b of B.gacha.banners) {
     b.slotUnlock.forEach((at, i) => {
-      if (at > 1) out.push({ at, ic: b.icon, what: `${b.name} <b>${i + 1}번째 슬롯</b>`, plain: `${b.name} 슬롯 ${i + 1} 해금!`, kind: 'slot' });
+      if (at > 1) out.push({ at, ic: b.icon, what: t('unl.slot', { name: b.name, n: i + 1 }), plain: t('unl.slotPlain', { name: b.name, n: i + 1 }), kind: 'slot' });
     });
   }
   for (const [, v] of Object.entries(B.stats)) {
     if (typeof v.reqStage === 'number' && v.reqStage > 1) {
-      out.push({ at: v.reqStage, ic: v.icon || '✨', what: `스탯 <b>${v.name}</b> 해금`, plain: `${v.name} 해금!`, kind: 'stat' });
+      out.push({ at: v.reqStage, ic: v.icon || '✨', what: t('unl.stat', { name: v.name }), plain: t('unl.statPlain', { name: v.name }), kind: 'stat' });
     }
   }
   return (cache = out.sort((a, b) => a.at - b.at || a.kind.localeCompare(b.kind)));

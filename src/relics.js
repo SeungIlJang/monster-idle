@@ -10,6 +10,7 @@
 import { B } from './balance.js';
 import { S } from './state.js';
 import { shardSoulMul } from './prestige.js';
+import { t, has } from './i18n.js';
 
 const RL = B.relics || { list: [], shardBase: 0, shardSlope: 0 };
 export const RELICS = RL.list;
@@ -70,14 +71,8 @@ export function progress() {
 
 /** 효과를 사람 말로 */
 export function describe(effObj) {
-  const T = {
-    atk: v => `모든 피해 ×${v}`, hp: v => `최대 체력 ×${v}`, gold: v => `골드 ×${v}`,
-    bossDmg: v => `보스 피해 ×${v}`, shardMul: v => `유물 조각 ×${v}`,
-    healerBudget: v => `적 힐러 회복량 ${Math.round((1 - v) * 100)}% 감소`,
-    offlineHours: v => `오프라인 상한 +${v}시간`, pickaxes: v => `곡괭이 최대 +${v}`,
-    dungeonKeys: v => `마을 침공 키 +${v}/일`, crit: v => `치명 확률 +${Math.round(v * 100)}%p`,
-    chainHold: v => `처치 연쇄 유지 +${v}초`, freePulls: v => `무료 뽑기 +${v}/일`,
-    gateSoft: v => `관문이 처음부터 ${Math.round(v * 100)}% 약화`,
-  };
-  return Object.entries(effObj || {}).map(([k, v]) => (T[k] ? T[k](v) : `${k} ${v}`)).join(' · ');
+  // 문구는 언어팩 rfx.<효과>. {p} 는 퍼센트로 바꾼 값 — 힐러는 '줄어든 몫', 나머지는 그대로
+  const pct = (k, v) => Math.round((k === 'healerBudget' ? 1 - v : v) * 100);
+  return Object.entries(effObj || {})
+    .map(([k, v]) => (has('rfx.' + k) ? t('rfx.' + k, { v, p: pct(k, v) }) : `${k} ${v}`)).join(' · ');
 }

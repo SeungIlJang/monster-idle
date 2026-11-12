@@ -7,6 +7,7 @@ import { S } from './state.js';
 import { B, chapterLabel } from './balance.js';
 import { evoPrefix } from './sprites.js';
 import { monTier } from './companions.js';
+import { t, josaWa } from './i18n.js';
 
 const $ = id => document.getElementById(id);
 
@@ -125,17 +126,12 @@ export function showTitle(onStart, onPress) {
   if (!el) { onStart?.(); return; }
 
   const fresh = S.life <= 1 && S.st <= 1;
-  $('tStart').textContent = fresh ? '시작하기' : '이어하기';
+  $('tStart').textContent = fresh ? t('title.start') : t('title.continue');
   const lead = B.roster.monsters.find(m => m.key === S.mon)?.name || '';
-  // 받침이 있으면 '과', 없으면 '와' — "본가드 와 함께" 처럼 어색하게 붙는 걸 막는다
-  const josa = w => {
-    const c = w.charCodeAt(w.length - 1);
-    if (c < 0xac00 || c > 0xd7a3) return '와';
-    return (c - 0xac00) % 28 ? '과' : '와';
-  };
+  // 한국어는 받침에 따라 '과/와' — "본가드 와 함께" 처럼 어색하게 붙는 걸 막는다. 다른 언어는 {josa} 를 안 쓴다
   $('tSave').innerHTML = fresh
-    ? '몬스터가 되어 숲을 지킨다'
-    : `최고 <b style="color:#ffd34d">${chapterLabel(S.life)}</b> · ${lead}${josa(lead)} 함께`;
+    ? t('title.fresh')
+    : t('title.saved', { stage: `<b style="color:#ffd34d">${chapterLabel(S.life)}</b>`, lead, josa: josaWa(lead) });
   $('tVer').textContent = 'v' + B.version;
   try { buildCast(); } catch (e) { console.warn('타이틀 출연진', e); }   // 실패해도 기본 3장이 남는다
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
-<title>무럭무럭 몬스터</title>
+<title data-i18n="app.title">무럭무럭 몬스터</title>
 <link rel="icon" href="data:,"/><!-- 브라우저가 자동 요청하는 /favicon.ico 404 억제 -->
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
@@ -488,8 +488,8 @@
     <div class="tveil"></div>
     <div id="tField"></div>
     <div class="tmain">
-      <div class="ttag">인간 용사들이 숲을 침략했다</div>
-      <h1 class="tname">무럭무럭<br><b>몬스터</b></h1>
+      <div class="ttag" data-i18n="title.tag">인간 용사들이 숲을 침략했다</div>
+      <h1 class="tname" data-i18n-html="title.name">무럭무럭<br><b>몬스터</b></h1>
     </div>
     <div class="tcast">
       <div class="trow" id="tRow">
@@ -501,28 +501,28 @@
     </div>
     <div class="tfoot">
       <div class="tsave" id="tSave"></div>
-      <button id="tStart">시작하기</button>
+      <button id="tStart" data-i18n="title.start">시작하기</button>
       <div class="tver" id="tVer"></div>
     </div>
   </div>
 
   <div id="hud">
-    <div class="cell"><div class="k">스테이지</div><div class="v" id="hStage">1-1</div></div>
-    <div class="cell"><div class="k">최고</div><div class="v" id="hBest">1</div></div>
-    <div class="cell"><div class="k">🪙 골드</div><div class="v" id="hGold">0</div></div>
-    <div class="cell"><div class="k">💎 젬</div><div class="v" id="hGem">0</div></div>
+    <div class="cell"><div class="k" data-i18n="hud.stage">스테이지</div><div class="v" id="hStage">1-1</div></div>
+    <div class="cell"><div class="k" data-i18n="hud.best">최고</div><div class="v" id="hBest">1</div></div>
+    <div class="cell"><div class="k">🪙 <span data-i18n="hud.gold">골드</span></div><div class="v" id="hGold">0</div></div>
+    <div class="cell"><div class="k">💎 <span data-i18n="hud.gem">젬</span></div><div class="v" id="hGem">0</div></div>
     <div class="cell"><div class="k">⚔️ DPS</div><div class="v" id="hPow">0</div></div>
-    <div class="cell" id="spdCell"><div class="k">배속</div><div class="v" id="hSpd">×1</div></div>
+    <div class="cell" id="spdCell"><div class="k" data-i18n="hud.speed">배속</div><div class="v" id="hSpd">×1</div></div>
   </div>
 
   <div id="statusbar">
-    <span id="mode" class="run">도전 중</span>
+    <span id="mode" class="run" data-i18n="mode.run">도전 중</span>
     <span id="hint"></span>
-    <button id="retryBtn" style="display:none">재도전</button>
+    <button id="retryBtn" style="display:none" data-i18n="mode.retry">재도전</button>
   </div>
 
   <div id="stageBar">
-    <div class="sname"><span id="sIcon">🚩</span> <b id="sName">몬스터 숲</b> <span id="sWave"></span> <span id="sNum">1-1</span></div>
+    <div class="sname"><span id="sIcon">🚩</span> <b id="sName"></b> <span id="sWave"></span> <span id="sNum">1-1</span></div>
     <div class="sprog"><i id="sProg"></i></div>
     <div class="sgoal" id="sGoal"></div>
   </div>
@@ -536,17 +536,17 @@
   <div id="mainUpg" class="scroll"></div>
 
   <div id="nav">
-    <div class="nav on" data-t="battle"><span class="ic">⚔️</span>전투</div>
-    <div class="nav" data-t="gacha" style="position:relative"><span class="ic">🎲</span>뽑기<span id="gDot" style="display:none;position:absolute;top:5px;right:24%;width:8px;height:8px;background:#2d7d46;border-radius:50%"></span></div>
-    <div class="nav" data-t="dun" style="position:relative"><span class="ic">🗝️</span>던전<span id="dDot" class="dot"></span></div>
-    <div class="nav" data-t="daily" style="position:relative"><span class="ic">📋</span>일일<span id="qDot" class="dot"></span></div>
-    <div class="nav" data-t="grow" style="position:relative"><span class="ic">🌱</span>성장<span id="grDot" class="dot" style="background:#2d7d46"></span></div>
+    <div class="nav on" data-t="battle"><span class="ic">⚔️</span><span data-i18n="nav.battle">전투</span></div>
+    <div class="nav" data-t="gacha" style="position:relative"><span class="ic">🎲</span><span data-i18n="nav.gacha">뽑기</span><span id="gDot" style="display:none;position:absolute;top:5px;right:24%;width:8px;height:8px;background:#2d7d46;border-radius:50%"></span></div>
+    <div class="nav" data-t="dun" style="position:relative"><span class="ic">🗝️</span><span data-i18n="nav.dun">던전</span><span id="dDot" class="dot"></span></div>
+    <div class="nav" data-t="daily" style="position:relative"><span class="ic">📋</span><span data-i18n="nav.daily">일일</span><span id="qDot" class="dot"></span></div>
+    <div class="nav" data-t="grow" style="position:relative"><span class="ic">🌱</span><span data-i18n="nav.grow">성장</span><span id="grDot" class="dot" style="background:#2d7d46"></span></div>
   </div>
 
   <!-- 강화 -->
   <div class="panel" id="p_upg">
     <span class="closeX" data-close>✕</span>
-    <h2>🔨 강화</h2>
+    <h2>🔨 <span data-i18n="upg.title">강화</span></h2>
     <div class="bar">
       <div class="seg on" id="bm_1">×1</div>
       <div class="seg" id="bm_10">×10</div>
@@ -558,7 +558,7 @@
   <!-- 가챠 -->
   <div class="panel" id="p_gacha">
     <span class="closeX" data-close>✕</span>
-    <h2>🎲 뽑기</h2>
+    <h2>🎲 <span data-i18n="gacha.title">뽑기</span></h2>
     <div class="bar" id="gBanners"></div>
     <div id="gHead"></div>
     <div id="gActions"></div>
@@ -571,7 +571,7 @@
   <div class="panel" id="p_grow">
     <span class="closeX" data-close>✕</span>
     <!-- 🌱 는 개발자 모드 입구다. 평범한 아이콘으로 보여야 해서 따로 꾸미지 않는다 -->
-    <h2><span id="devKey" style="cursor:pointer">🌱</span> 성장</h2>
+    <h2><span id="devKey" style="cursor:pointer">🌱</span> <span data-i18n="grow.title">성장</span></h2>
     <div id="growRes"></div>
     <div class="bar" id="growTabs"></div>
     <div class="scroll" id="growBody"></div>
@@ -580,47 +580,47 @@
   <!-- 던전 -->
   <div class="panel" id="p_dun">
     <span class="closeX" data-close>✕</span>
-    <h2>🗝️ 던전</h2>
+    <h2>🗝️ <span data-i18n="dun.title">던전</span></h2>
     <div class="scroll" id="dunList"></div>
   </div>
 
   <!-- 해금 로드맵 — 스테이지 바를 누르면 열린다 -->
   <div class="panel" id="p_road">
     <span class="closeX" data-close>✕</span>
-    <h2>🗺️ 해금 로드맵</h2>
+    <h2>🗺️ <span data-i18n="road.title">해금 로드맵</span></h2>
     <div class="scroll" id="roadList"></div>
   </div>
 
   <!-- 일일 -->
   <div class="panel" id="p_daily">
     <span class="closeX" data-close>✕</span>
-    <h2>📋 일일</h2>
+    <h2>📋 <span data-i18n="daily.title">일일</span></h2>
     <div class="scroll" id="dailyList"></div>
   </div>
 
   <!-- 오프라인 보상 -->
   <div class="modal" id="offline">
     <div class="box">
-      <h3>🌙 돌아오셨군요</h3>
-      <div class="sub" id="offTime">오프라인 0분</div>
-      <div>그동안 모은 골드</div>
+      <h3>🌙 <span data-i18n="off.title">돌아오셨군요</span></h3>
+      <div class="sub" id="offTime"></div>
+      <div data-i18n="off.gold">그동안 모은 골드</div>
       <div class="g" id="offGold">+0</div>
-      <button id="offClaim2">📺 2배로 받기</button>
-      <button id="offClaim">그냥 받기</button>
+      <button id="offClaim2">📺 <span data-i18n="off.double">2배로 받기</span></button>
+      <button id="offClaim" data-i18n="off.claim">그냥 받기</button>
     </div>
   </div>
 
   <!-- 던전 결과 — 하루 2키뿐인 "오늘 할 일" 인데 결과가 11px 한 줄로 지나가고 있었다 -->
   <div class="modal" id="dunRes">
     <div class="box">
-      <h3 id="drTitle">던전 결과</h3>
+      <h3 id="drTitle"></h3>
       <div class="sub" id="drSub"></div>
       <div class="drBar"><i id="drFill"></i></div>
       <div class="drScore" id="drScore"></div>
-      <div style="margin-top:12px">획득</div>
+      <div style="margin-top:12px" data-i18n="dr.gain">획득</div>
       <div class="g" id="drGain">—</div>
       <div class="drNext" id="drNext"></div>
-      <button id="drClose">확인</button>
+      <button id="drClose" data-i18n="ui.ok">확인</button>
     </div>
   </div>
 
@@ -635,7 +635,7 @@
   <!-- 광고 오버레이 (폰에서는 실제 광고가 그 위에 뜬다) -->
   <div id="adOv">
     <div style="font-size:44px">📺</div>
-    <div class="msg" style="font-size:16px;font-weight:800">광고 준비 중…</div>
+    <div class="msg" style="font-size:16px;font-weight:800" data-i18n="ad.preparing">광고 준비 중…</div>
     <div class="sub" style="font-size:12px;opacity:.5"></div>
   </div>
 

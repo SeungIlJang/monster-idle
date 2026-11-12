@@ -5,6 +5,7 @@ import { LDPS, ab, nval } from './stats.js';
 import { add, ratio, fromNum, fmt } from './logmath.js';
 import { goldMul } from './layer2.js';
 import { eff as relicEff } from './relics.js';
+import { dur } from './i18n.js';
 
 /** 파밍 기준 스테이지에서의 초당 골드 (log10) */
 export function LgoldPerSec(stage) {
@@ -39,13 +40,7 @@ export function claimOffline(o, mul = 1) {
   S.Lg = add(S.Lg, o.Lgold + fromNum(mul));
 }
 
-export function fmtDuration(sec) {
-  sec = Math.floor(sec);
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  if (h > 0) return h + '시간 ' + m + '분';
-  if (m > 0) return m + '분';
-  return sec + '초';
-}
+/** 3시간 5분 · 3h 5m · 3時間5分 (i18n.dur) */
+export const fmtDuration = sec => dur(sec);
 
 export { fmt };

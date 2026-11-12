@@ -13,6 +13,7 @@ import { tickSkills, normalShare } from './skills.js';
 import { goldMul } from './layer2.js';
 import { eff as relicEff } from './relics.js';
 import { L0, add, sub, ratio, fromNum, fmt } from './logmath.js';
+import { t as tr } from './i18n.js';
 
 export const MODE = { RUN: 'run', FARM: 'farm' };
 // 파밍을 이만큼 돌면 전투력 판단과 무관하게 한 번 찔러본다 (canClear 가 보수적일 때의 안전장치)
@@ -146,8 +147,8 @@ export function enterStage(stage, mode = MODE.RUN) {
   // 관문은 더 크게 알린다 — 규칙이 다른 싸움이라는 걸 모르면 그냥 억울하게 죽는다
   if (R.gate) {
     const soft = gateSoft(R.stage);
-    banner('⛩️ 관문 — 오래 끌면 쓰러진다'
-      + (soft < 1 ? ` (${Math.round((1 - soft) * 100)}% 약화됨)` : ''), 2.6, true);
+    banner(tr('cb.gate')
+      + (soft < 1 ? ' ' + tr('cb.weak', { p: Math.round((1 - soft) * 100) }) : ''), 2.6, true);
   }
   spawnWave();
 }
@@ -332,7 +333,7 @@ function onKill(e, idx) {
   S.st = cleared + 1;
   bumpDaily('stage');     // 일일퀘스트: 스테이지 클리어 (파밍 반복은 위에서 걸러진다)
   if (opened.length) banner(opened.map(o => o.ic + ' ' + o.plain).join('   '), 3.2, true);
-  else banner(isBoss(cleared) ? '👑 ' + R.heroName + ' 격파!' : '스테이지 클리어');
+  else banner(isBoss(cleared) ? tr('cb.bossDown', { name: R.heroName }) : tr('cb.clear'));
   onEvent({ type: 'stageClear', stage: cleared });
   save();
   enterStage(S.st, MODE.RUN);
@@ -350,8 +351,8 @@ function playerDied() {
   // 어디로 왜 가는지 말해 준다. 측정해 보니 첫 1시간에 16~17번 죽는데(2~3분에 한 번),
   // 전부 자동 복구라 "졌다" 도 "돌아왔다" 도 체감되지 않았다. 사건이 보이지 않으면 긴장도 없다.
   banner(wasGate
-    ? `관문에 막혔다 — 다음엔 ${Math.round((1 - gateSoft(retryAt)) * 100)}% 약해진다`
-    : '쓰러졌다 — ' + chapterLabel(farmAt) + ' 에서 힘을 모은다', 2.4, true);
+    ? tr('cb.gateFail', { p: Math.round((1 - gateSoft(retryAt)) * 100) })
+    : tr('cb.died', { st: chapterLabel(farmAt) }), 2.4, true);
   onEvent({ type: 'death', stage: retryAt, farmAt });
   save();
   enterStage(farmAt, MODE.FARM);
@@ -436,7 +437,7 @@ export function tick(dt) {
   R.stageTime += dt;
   // 광폭화가 시작되는 순간은 **사건**이다 — 조용히 세지면 왜 죽었는지 알 수 없다
   if (R.boss && B.stage.bossEnrage && t0 <= B.stage.bossEnrage.after && R.stageTime > B.stage.bossEnrage.after) {
-    banner('🔥 ' + R.heroName + ' 광폭화! 공격력이 계속 오른다', 2.6, true);
+    banner(tr('cb.enrage', { name: R.heroName }), 2.6, true);
   }
 
   // 플레이어 공격
@@ -589,7 +590,7 @@ export function retry() {
   S.st = Math.max(1, S.best + (S.best >= 1 ? 1 : 0));
   if (S.st <= S.best) S.st = S.best + 1;
   enterStage(S.st, MODE.RUN);
-  banner('재도전!');
+  banner(tr('cb.retry'));
   save();
 }
 

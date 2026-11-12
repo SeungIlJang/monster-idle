@@ -5,6 +5,7 @@
 // 레전드 슬라임의 월드맵이 하는 일이 이것이다(docs/reference-legend-of-slime.md §6).
 import { S } from './state.js';
 import { milestones } from './unlocks.js';
+import { t } from './i18n.js';
 
 const $ = id => document.getElementById(id);
 
@@ -31,13 +32,13 @@ export function renderRoad() {
         <div class="rnode">${done ? '✓' : at}</div>
         <div class="rbody">
           ${items}
-          ${isNext ? `<div class="rhint">${at - S.life} 스테이지 남음</div>` : ''}
+          ${isNext ? `<div class="rhint">${t('road.left', { n: at - S.life })}</div>` : ''}
         </div>
       </div>`);
   }
 
   el.innerHTML = `
-    <div class="rhead">현재 최고 <b>${S.life}</b> 스테이지 · ${list.filter(m => S.life >= m.at).length}/${list.length} 해금</div>
+    <div class="rhead">${t('road.head', { n: S.life, got: list.filter(m => S.life >= m.at).length, all: list.length })}</div>
     ${rows.join('')}`;
 
   // 다음 해금이 보이도록 스크롤

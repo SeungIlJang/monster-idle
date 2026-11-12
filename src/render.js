@@ -9,6 +9,7 @@ import { R, enrage, gateSecondsLeft, gateSoft, CHAIN_WARM, DANGER_AT, WAVE_IN_SE
 import { pick, preload, boxOf, frameCount, evoPrefix } from './sprites.js';
 import { activeCompanions, compImage, monTier, skyCompanions } from './companions.js';
 import { L0, ratio, fmt } from './logmath.js';
+import { t as tr } from './i18n.js';
 
 const WAVES = B.stage.waves;
 // 세로로 긴 폰 화면에서 위쪽이 텅 비어 보였다 — 바닥을 올려 전투를 화면 가운데로 끌어온다
@@ -850,9 +851,9 @@ export function render(dt) {
   const me = B.roster.monsters.find(m => m.key === S.mon);
   const nameY = feet - pH - 38, hpY = feet - pH - 26;
   ctx.font = '800 12px system-ui';
-  ctx.strokeText((me ? me.name : '몬스터'), W * 0.30, nameY);
+  ctx.strokeText((me ? me.name : tr('rd.monster')), W * 0.30, nameY);
   ctx.fillStyle = ALLY;
-  ctx.fillText((me ? me.name : '몬스터'), W * 0.30, nameY);
+  ctx.fillText((me ? me.name : tr('rd.monster')), W * 0.30, nameY);
   ctx.font = '600 10px system-ui';
   ctx.strokeText('HP ' + fmt(R.Lhp), W * 0.30, hpY);
   ctx.fillStyle = '#cfdcf2';
@@ -1095,9 +1096,9 @@ export function render(dt) {
     ctx.strokeStyle = 'rgba(40,16,4,.85)'; ctx.lineWidth = 3;
     // 이름표(feet-pH-38)·HP(feet-pH-26) 위로 올린다 — 겹치면 둘 다 안 읽힌다
     const cy = feet - pH - 56;
-    ctx.strokeText(R.chain + ' 연쇄', W * 0.30, cy);
+    ctx.strokeText(tr('rd.chain', { n: R.chain }), W * 0.30, cy);
     ctx.fillStyle = heat > 0.6 ? '#ffd34d' : '#ffb04a';
-    ctx.fillText(R.chain + ' 연쇄', W * 0.30, cy);
+    ctx.fillText(tr('rd.chain', { n: R.chain }), W * 0.30, cy);
     ctx.restore();
   }
 
@@ -1269,7 +1270,7 @@ export function render(dt) {
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ffd34d';
     ctx.font = '800 15px system-ui';
-    ctx.fillText('새로운 해금!', W * 0.5, by - 8);
+    ctx.fillText(tr('rd.newUnlock'), W * 0.5, by - 8);
     ctx.fillStyle = '#fff6c9';
     ctx.font = '800 13px system-ui';
     ctx.fillText(R.banner, W * 0.5, by + 14);
@@ -1312,8 +1313,8 @@ export function render(dt) {
         ctx.textAlign = 'center';
         ctx.fillStyle = urgent ? '#ff6b6b' : '#ffd34d';
         const soft = gateSoft();
-        ctx.fillText('⛩️ 관문 · 버틸 수 있는 시간 ' + Math.max(0, left).toFixed(0) + '초'
-          + (soft < 1 ? `  (${Math.round((1 - soft) * 100)}% 약화됨)` : ''), W / 2, by + 24);
+        ctx.fillText(tr('rd.gateTime', { s: Math.max(0, left).toFixed(0) })
+          + (soft < 1 ? '  ' + tr('cb.weak', { p: Math.round((1 - soft) * 100) }) : ''), W / 2, by + 24);
       }
       ctx.restore();
     }
@@ -1339,7 +1340,7 @@ export function render(dt) {
       ctx.textAlign = 'center';
       ctx.fillStyle = '#ffd34d';
       ctx.font = '800 22px system-ui';
-      ctx.fillText('👑 보스 ' + R.heroName, W / 2, H * 0.42 + 8);
+      ctx.fillText(tr('rd.boss', { name: R.heroName }), W / 2, H * 0.42 + 8);
     }
     ctx.restore();
   }

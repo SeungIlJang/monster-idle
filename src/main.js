@@ -1,4 +1,6 @@
 // 부팅 + 메인 루프.
+// 언어팩이 가장 먼저 — balance.json 의 이름을 이 언어로 덮어쓰고(i18n.js) 고정 글자를 채운다
+import { t, applyStatic } from './i18n.js';
 import { B } from './balance.js';
 import { S, load, save } from './state.js';
 import { enterStage, tick, setEventHandler, MODE, R } from './combat.js';
@@ -13,6 +15,7 @@ import { showTitle } from './ui-title.js';
 import * as sfx from './audio.js';
 
 load();
+applyStatic();
 
 initAds().then(ok => console.log('[ads]', ok ? 'AdMob 초기화 완료' : (isNative() ? 'AdMob 실패 — 시뮬' : '웹 — 시뮬레이션')));
 
@@ -58,7 +61,7 @@ function showOfflineReward() {
   if (!off) return;
   const box = document.getElementById('offline');
   document.getElementById('offTime').textContent = fmtDuration(off.seconds) +
-    (off.seconds > off.capped ? ' (최대 ' + B.offline.capHours + '시간까지)' : '');
+    (off.seconds > off.capped ? ' ' + t('off.capped', { h: B.offline.capHours }) : '');
   document.getElementById('offGold').textContent = '+ ' + fmt(off.Lgold);
   box.classList.add('on');
   document.getElementById('offClaim').onclick = () => {
@@ -68,12 +71,12 @@ function showOfflineReward() {
     refresh();
   };
   document.getElementById('offClaim2').onclick = async () => {
-    if (!await playRewarded()) { toast('광고를 끝까지 봐야 보상을 받습니다'); return; }
+    if (!await playRewarded()) { toast(t('ad.notFinished')); return; }
     claimOffline(off, 2);
     save();
     box.classList.remove('on');
     refresh();
-    toast('오프라인 보상 2배!');
+    toast(t('off.doubled'));
   };
 }
 
