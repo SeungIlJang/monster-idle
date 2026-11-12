@@ -147,8 +147,14 @@ export function load() {
   return S;
 }
 
+// 오프라인 보상을 **받기 전에는** 저장 시각을 붙잡아 둔다(main.js 가 건다).
+// 첫 화면은 5초마다 · 페이지를 떠날 때 저장한다. 그때 시각이 '지금' 으로 바뀌면
+// 첫 화면에서 언어를 바꿔 새로고침했을 때 쌓여 있던 오프라인 보상이 통째로 사라진다.
+let heldT = 0;
+export function holdSaveTime(t) { heldT = t || 0; }
+
 export function save() {
-  S.t = Date.now();
+  S.t = heldT || Date.now();
   try {
     // -Infinity 는 JSON 에서 null 이 되므로 문자열로 보존
     localStorage.setItem(KEY, JSON.stringify(S, (k, v) =>

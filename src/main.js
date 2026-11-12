@@ -2,7 +2,7 @@
 // 언어팩이 가장 먼저 — balance.json 의 이름을 이 언어로 덮어쓰고(i18n.js) 고정 글자를 채운다
 import { t, applyStatic } from './i18n.js';
 import { B } from './balance.js';
-import { S, load, save } from './state.js';
+import { S, load, save, holdSaveTime } from './state.js';
 import { enterStage, tick, setEventHandler, MODE, R } from './combat.js';
 import { initRender, render, preloadFor, resize, bgAdvance } from './render.js';
 import { initUI, refresh, toast } from './ui.js';
@@ -57,6 +57,7 @@ setEventHandler(ev => {
 
 // 오프라인 보상 — **타이틀을 닫은 뒤** 띄운다. 먼저 띄우면 타이틀 뒤에 가려진다.
 const off = pendingOffline();
+if (off) holdSaveTime(S.t);          // 받을 때까지 저장 시각을 그대로 둔다(state.save)
 function showOfflineReward() {
   if (!off) return;
   const box = document.getElementById('offline');
@@ -66,6 +67,7 @@ function showOfflineReward() {
   box.classList.add('on');
   document.getElementById('offClaim').onclick = () => {
     claimOffline(off, 1);
+    holdSaveTime(0);
     save();
     box.classList.remove('on');
     refresh();
@@ -73,6 +75,7 @@ function showOfflineReward() {
   document.getElementById('offClaim2').onclick = async () => {
     if (!await playRewarded()) { toast(t('ad.notFinished')); return; }
     claimOffline(off, 2);
+    holdSaveTime(0);
     save();
     box.classList.remove('on');
     refresh();

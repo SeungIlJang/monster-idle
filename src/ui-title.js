@@ -3,11 +3,11 @@
 // 방치형에서 타이틀이 매번 길게 걸리면 성가시다. 그래서 **한 번 누르면 끝**이고
 // 애니메이션도 0.45초다. 대신 이어서 하는 사람에게는 "최고 몇 층" 을 보여줘서
 // 누르기 전에 자기 진행 상황이 보이게 한다.
-import { S } from './state.js';
+import { S, save } from './state.js';
 import { B, chapterLabel } from './balance.js';
 import { evoPrefix } from './sprites.js';
 import { monTier } from './companions.js';
-import { t, josaWa } from './i18n.js';
+import { t, josaWa, LANG, LANGS, setLang } from './i18n.js';
 
 const $ = id => document.getElementById(id);
 
@@ -133,6 +133,17 @@ export function showTitle(onStart, onPress) {
     ? t('title.fresh')
     : t('title.saved', { stage: `<b style="color:#ffd34d">${chapterLabel(S.life)}</b>`, lead, josa: josaWa(lead) });
   $('tVer').textContent = 'v' + B.version;
+  // 언어 — 저장하고 새로고침한다(i18n.setLang). 출연진보다 먼저 깐다: 버튼 줄만큼 무대 아래 끝이 정해진다
+  const lang = $('tLang');
+  if (lang) {
+    lang.innerHTML = '<i>🌐</i>' + LANGS.map(l =>
+      `<button data-lang="${l.code}" class="${l.code === LANG ? 'on' : ''}">${l.label}</button>`).join('');
+    lang.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => {
+      if (done || b.dataset.lang === LANG) return;
+      save();
+      setLang(b.dataset.lang);
+    });
+  }
   try { buildCast(); } catch (e) { console.warn('타이틀 출연진', e); }   // 실패해도 기본 3장이 남는다
 
   let done = false;
