@@ -5,7 +5,7 @@
 - AAB: `android/app/build/outputs/bundle/release/app-release.aab` (서명됨)
 - 업로드 키: `C:\dev\keystores\monsteridle-upload.jks` (alias `monsteridle`) — ⚠️ repo 커밋 금지, 반드시 백업(분실 시 업데이트 불가)
 - 개인정보처리방침 URL: `https://seungiljang.github.io/games/monsteridle-privacy.html`
-- 스토어 이미지: `store-assets/icon-512.png` · `store-assets/feature-1024x500.png` · 스크린샷 `store-assets/*.png`
+- 스토어 이미지: `store-assets/icon-512.png` · `store-assets/feature-1024x500.png` · 스크린샷 `store-assets/*.png`(한국어) · `store-assets/en/*.png`(영어) · `store-assets/ja/*.png`(일본어) — `node tools/shots.mjs --lang=ko|en|ja` 로 다시 찍는다
 
 > 이 파일은 `4a5ca52`(2026-10-21)에서 한글이 `?` 로 깨진 채 저장돼 있었다. 2026-11-12 에 손상 전 `dddb32d` 본문으로 되돌리고
 > 그 뒤 바뀐 버전 줄만 다시 반영했다. 한글이 든 파일을 PowerShell 로 고치면 같은 일이 생긴다 — UTF-8 로 저장할 것.
@@ -178,7 +178,7 @@ No in-app purchases. Progress is saved on your device. (Includes rewarded ads to
 | 타겟층 | **만 13세 이상** 권장 |
 | 데이터 보안 | 게임 진행도는 기기에만 저장(서버 전송 없음). 단, **AdMob 광고가 광고 식별자(기기 또는 기타 ID)를 수집** → 데이터 안전성 "기기 또는 기타 ID 수집·광고 목적" 체크, **광고 ID 선언 = "예"** |
 | 개인정보처리방침 | `https://seungiljang.github.io/games/monsteridle-privacy.html` |
-| 일본어 추가 | 스토어 등록정보 → **번역 관리 → 일본어(ja-JP) 추가** → 위 日本語 세 칸을 붙여넣기. 그림은 기본 언어 것을 그대로 쓴다(일본어 화면 스크린샷은 따로 없다) |
+| 일본어 추가 | 스토어 등록정보 → **번역 관리 → 일본어(ja-JP) 추가** → 위 日本語 세 칸을 붙여넣기. 스크린샷은 `store-assets/ja/` 4장(일본어 화면). 영어(en-US)도 같은 방식으로 `store-assets/en/` 4장 |
 
 ## ⚠️ 출시 전 필수 체크
 - [x] **광고**: 실 리워드·배너 ID 와 앱 ID 반영 완료(`8596fa1`). 단 AdMob 계정 정지 기간(2026-11-03~12-02) 동안 `src/ads.js` 의 `ADS_ENABLED=false` 로 꺼 두었다 — 기간이 끝나면 다시 켤지 검토.
