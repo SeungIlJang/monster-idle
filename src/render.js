@@ -389,7 +389,7 @@ function drawSky(base) {
   // 멀리 있는 것이 더 크면 거리감이 깨진다. 지면 동료보다 작게 잡는다.
   const h = base * 0.062;
   for (const c of list) {
-    const img = compImage(c.id, blinkFrame(c.phase));     // 가끔 대기 둘째 장(날갯짓·눈 감기)
+    const img = compImage(c.id, blinkFrame(c.phase), c.rarity);   // 등급 외형 · 가끔 대기 둘째 장(날갯짓·눈 감기)
     if (!img) continue;
     const r = Math.max(0, Math.min(4, c.rarity || 0));
     const cx = W * c.x;

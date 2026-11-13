@@ -6,6 +6,7 @@ import * as G from './gacha.js';
 import { playRewarded } from './ads.js';
 import * as sfx from './audio.js';
 import { t } from './i18n.js';
+import { rarSuffix } from './sprites.js';
 
 const $ = id => document.getElementById(id);
 let ctx = { refresh: () => {}, toast: () => {} };
@@ -14,7 +15,8 @@ let ctx = { refresh: () => {}, toast: () => {} };
 // 주소는 **이 모듈 기준**으로 만든다. OTA 앱은 HTML 을 document.write 로 주입해서 'assets/…' 같은 상대경로가
 // 앱 속 옛 www/ 를 가리킨다 — 모듈 주소는 원격이라 거기서 받는다(companions.js 와 같은 방식).
 // 못 받으면 이모지로 되돌린다.
-const compImg = id => new URL(`../assets/comp/${id}.png`, import.meta.url).href;
+// 등급 외형(영웅·전설·신화)이 있으면 그 그림을 쓴다(sprites.rarSuffix). 못 받으면 기본 그림 → 이모지 순으로 물러난다.
+const compImg = (id, rarity = 0) => new URL(`../assets/comp/${id}${rarSuffix(id, rarity)}.png`, import.meta.url).href;
 // 등급 빛 — 그림 뒤에 등급 색을 깐다. 높을수록 진하고, 전설 이상은 숨 쉬듯 빛난다(CSS .rgl).
 // 하늘의 등급 연출(render.drawRarity)과 같은 색 · 같은 순서라 뽑기 화면과 전투 화면이 같은 말을 한다.
 const rarGlow = (r, under = '') => {
@@ -23,7 +25,8 @@ const rarGlow = (r, under = '') => {
   return `background:radial-gradient(circle at 50% 45%, ${c}${a} 0%, transparent 68%)${under ? ',' + under : ''};--rc:${c}`;
 };
 const iconOf = (banner, it) => (banner === 'comp' && it?.id
-  ? `<img class="gimg" src="${compImg(it.id)}" alt="" onerror="this.replaceWith(document.createTextNode('${it.icon || '❔'}'))">`
+  ? `<img class="gimg" src="${compImg(it.id, it.rarity)}" alt="" data-base="${compImg(it.id)}"`
+    + ` onerror="if(this.src!==this.dataset.base){this.src=this.dataset.base}else{this.replaceWith(document.createTextNode('${it.icon || '❔'}'))}">`
   : (it?.icon ?? '❔'));
 export function initGacha(c) { ctx = { ...ctx, ...c }; }
 

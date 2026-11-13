@@ -47,6 +47,18 @@ export function evoPrefix(group, key, tier = 0) {
   return '';
 }
 
+/**
+ * 뽑기 동료 등급 외형 접미사 — 받은 변형(manifest comp.<id>.rar) 중 **이 등급 이하에서 가장 높은 것**.
+ * 신화인데 r4 그림이 아직 없으면 r3 → r2 → 기본 순으로 내려간다. 없으면 ''.
+ * 적혀 있지 않은 등급은 찾지 않는다 — 없는 파일을 매번 요청하지 않으려는 것이다.
+ */
+export function rarSuffix(id, rarity = 0) {
+  const have = MANIFEST.comp?.[id]?.rar;
+  if (!have) return '';
+  for (let r = Math.min(4, rarity); r >= 2; r--) if (have.includes(r)) return `_r${r}`;
+  return '';
+}
+
 /** 지금 보이는 겉모습 단계 번호 (1 = 기본) */
 export const evoStage = (group, key, tier = 0) => {
   const p = evoPrefix(group, key, tier);
