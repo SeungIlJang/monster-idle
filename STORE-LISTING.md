@@ -1,7 +1,7 @@
 # 무럭무럭 몬스터 — Play 스토어 등록 자료
 
 - 패키지명: `com.moduseries.monsteridle` · 퍼블리셔: 모두의시리즈 · 카테고리: **게임 > 롤플레잉**(또는 캐주얼)
-- 버전: versionCode **6** / versionName **1.0.5** · targetSdk 36 · minSdk 24 · Capacitor 6
+- 버전: 다음 빌드 versionCode **9** / versionName **1.0.8** · Play 최신 번들 8 (1.0.7) · targetSdk 36 · minSdk 24 · Capacitor 6
 - AAB: `android/app/build/outputs/bundle/release/app-release.aab` (서명됨)
 - 업로드 키: `C:\dev\keystores\monsteridle-upload.jks` (alias `monsteridle`) — ⚠️ repo 커밋 금지, 반드시 백업(분실 시 업데이트 불가)
 - 개인정보처리방침 URL: `https://seungiljang.github.io/games/monsteridle-privacy.html`
@@ -20,7 +20,11 @@
 무럭무럭 몬스터
 
 ### 간단한 설명 (최대 80자)
-이번엔 네가 몬스터다! 숲을 침략한 용사를 사냥하는 귀여운 방치형 RPG 🐲
+이번엔 네가 몬스터다! 숲을 침략한 용사를 사냥하는 귀여운 방치형 RPG
+
+> 끝의 🐲 는 2026-11-12 에 뺐다. **간단한 설명에 이모지가 있으면** Play 가
+> "특수문자가 들어가 프로모션 대상에서 빠질 수 있다"고 경고한다(심사는 통과한다).
+> 느낌표는 괜찮다 — 이모지만 문제다. 자세한 설명의 이모지는 상관없다.
 
 ### 자세한 설명 (최대 4000자)
 ◆ 무럭무럭 몬스터 ◆
@@ -122,7 +126,7 @@ No in-app purchases. Progress is saved on your device. (Includes rewarded ads to
 すくすくモンスター
 
 ### 簡単な説明 (最大80文字)
-今度はキミがモンスター！森に攻めてきた勇者を狩る、かわいい放置系RPG🐲
+今度はキミがモンスター！森に攻めてきた勇者を狩る、かわいい放置系RPG
 
 ### 詳しい説明 (最大4000文字)
 ◆ すくすくモンスター ◆
