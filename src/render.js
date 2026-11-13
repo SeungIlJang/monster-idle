@@ -507,7 +507,7 @@ function drawBG(dt) {
  * targetH 는 **캐릭터가 보이는 높이**다 — 캔버스 높이가 아니라 box(내용 경계) 기준이라
  * 캐릭터마다 캔버스 여백이 달라도 같은 크기로 보인다.
  */
-function drawSprite(img, cx, feetY, targetH, box, { flip = false, sx = 1, sy = 1, dx = 0, alpha = 1, ring = null, rot = 0, shadow = true } = {}) {
+function drawSprite(img, cx, feetY, targetH, box, { flip = false, sx = 1, sy = 1, dx = 0, alpha = 1, ring = null, rot = 0, shadow = true, glow = null, glowBlur = 0 } = {}) {
   if (!img) return;
   const iw = img.naturalWidth, ih = img.naturalHeight;
   const bh = Math.max(0.01, box.h), bw = Math.max(0.01, box.w);
@@ -545,6 +545,8 @@ function drawSprite(img, cx, feetY, targetH, box, { flip = false, sx = 1, sy = 1
   }
   ctx.translate(cx + dx - midOff, feetY - footOff);
   if (flip) { ctx.translate(midOff * 2, 0); ctx.scale(-1, 1); }
+  // 윤곽 빛 — 그림 가장자리를 따라 색이 번진다(성장 단계 · 등급). 발밑 그림자·고리에는 걸지 않는다
+  if (glow && glowBlur > 0) { ctx.shadowColor = glow; ctx.shadowBlur = glowBlur; }
   ctx.drawImage(img, 0, 0, dw, dh);
   ctx.restore();
 }
@@ -563,9 +565,11 @@ function bar(x, y, w, h, frac, color) {
 // 그 지점은 이미 공격력 보너스를 주는 자리라, 보이는 변화와 보상이 같이 온다.
 // 진짜 진화 그림이 오기 전까지의 몫이다 — 그림 없이 캔버스로만 티를 낸다.
 // 단계가 오를수록 **겹이 늘어난다** — 고리 하나로는 Lv.10 과 Lv.90 이 거의 같아 보였다.
-//   Lv10 발밑 빛 · Lv25 떠오르는 빛가루 · Lv50 몸 뒤 후광 · Lv75 도는 빛줄기 · Lv100 무지개 + 별
+//   Lv10 발밑 빛 + 퍼지는 파문 · Lv25 허리를 도는 빛 + 떠오르는 빛가루 · Lv50 몸 뒤 후광 · Lv75 도는 빛줄기 · Lv100 무지개 + 별
+// Lv10 · 25 는 처음엔 고리 색과 작은 빛가루뿐이라 Lv0 과 거의 같아 보였다(2026-11-13) — **움직임**을 더했다.
 // 색은 동 · 은 · 금 · 보라 · 무지개.
-const TIER_RGB = [null, [224, 163, 112], [214, 228, 255], [255, 211, 77], [196, 168, 255]];
+// 1단계 동색은 진하게 둔다 — 옅은 동색(224,163,112)은 노란 풀밭 위에서 거의 안 보였다(2026-11-13)
+const TIER_RGB = [null, [240, 146, 72], [214, 228, 255], [255, 211, 77], [196, 168, 255]];
 const tierScale = tier => 1 + tier * 0.03;        // 티어마다 3% 씩 커진다
 const tierRGBA = (tier, a, shift = 0) => (tier >= 5
   ? `hsla(${Math.round(t * 70 + shift) % 360},95%,68%,${a})`
@@ -579,25 +583,61 @@ function drawTier(cx, cy, size, tier, strength = 1, layer = 'back') {
   if (!tier) return;
   tier = Math.min(tier, 5);
   const mid = cy - size * 0.5;
+  // 은빛(2단계)은 밝은 배경(숲 하늘·설원)에서 흰색과 구별이 안 된다 — 푸른 빛번짐을 둘러 윤곽을 세운다
+  const glowCol = tier === 2 ? 'rgba(90,140,255,.95)' : tierRGBA(tier, 1);
+  // ②' 허리를 도는 빛 — Lv.25 부터. 앞을 지날 때는 몸 앞(front), 뒤를 지날 때는 몸 뒤(back)에 그려 입체로 돈다
+  const orbit = front => {
+    if (tier < 2) return;
+    const n = tier >= 4 ? 3 : 2;
+    const rx = size * 0.58, ry = size * 0.16, oy = mid + size * 0.12;
+    for (let i = 0; i < n; i++) {
+      const a = t * 1.7 + i * (6.2832 / n) + cx * 0.013;
+      if ((Math.sin(a) > 0) !== front) continue;
+      const near = front ? 1.15 : 0.8;                       // 뒤로 돌면 작고 흐리다
+      const s = (2.2 + tier * 0.3) * near * (0.6 + strength * 0.4);
+      ctx.shadowColor = glowCol;
+      ctx.shadowBlur = 7;
+      for (let k = 4; k >= 0; k--) {                         // 꼬리 — 지나온 자리를 짧게 남긴다
+        const ak = a - k * 0.14;
+        ctx.fillStyle = tierRGBA(tier, Math.min(1, (k ? 0.5 - k * 0.1 : 1) * near * strength));
+        ctx.beginPath(); ctx.arc(cx + Math.cos(ak) * rx, oy + Math.sin(ak) * ry, s * (1 - k * 0.16), 0, 7); ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+    }
+  };
   ctx.save();
   if (layer === 'back') {
     // ① 발밑 빛 — 납작한 타원 그라데이션 + 고리
     ctx.save();
     ctx.translate(cx, cy); ctx.scale(1, 0.3);
     const g = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 0.85);
-    g.addColorStop(0, tierRGBA(tier, 0.7 * strength));
-    g.addColorStop(0.6, tierRGBA(tier, 0.3 * strength));
+    g.addColorStop(0, tierRGBA(tier, 0.85 * strength));
+    g.addColorStop(0.6, tierRGBA(tier, 0.35 * strength));
     g.addColorStop(1, tierRGBA(tier, 0));
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(0, 0, size * 0.85, 0, 7); ctx.fill();
     ctx.restore();
     // 밝은 배경(설원)에서 빛이 묻히지 않게 고리 아래에 어두운 테를 한 번 깐다
-    ctx.strokeStyle = `rgba(10,14,30,${0.35 * strength})`;
-    ctx.lineWidth = 2.5 + tier * 0.4;
+    ctx.strokeStyle = `rgba(10,14,30,${0.4 * strength})`;
+    ctx.lineWidth = 3.2 + tier * 0.4;
     ctx.beginPath(); ctx.ellipse(cx, cy, size * 0.5, size * 0.16, 0, 0, 7); ctx.stroke();
-    ctx.strokeStyle = tierRGBA(tier, Math.min(1, (0.55 + tier * 0.09) * strength));
-    ctx.lineWidth = 1.2 + tier * 0.4;
+    ctx.strokeStyle = tierRGBA(tier, Math.min(1, (0.62 + tier * 0.08) * strength));
+    ctx.lineWidth = 1.9 + tier * 0.4;
     ctx.beginPath(); ctx.ellipse(cx, cy, size * 0.5, size * 0.16, 0, 0, 7); ctx.stroke();
+    // ①' 파문 — Lv.10 부터. 발밑 고리가 약 1.8초마다 바깥으로 퍼지며 사라진다.
+    // 고리 색만 바뀌어서는 Lv.0 과 구별이 안 됐다 — 움직이는 것이 있어야 작은 화면에서도 '붙었다' 가 읽힌다
+    {
+      const u = (t * 0.55 + cx * 0.01) % 1;
+      const rr = 0.5 + u * 0.55;
+      const lw = (2.4 + tier * 0.3) * (1 - u * 0.5);
+      ctx.strokeStyle = `rgba(10,14,30,${(1 - u) * 0.35 * strength})`;   // 밝은 풀밭에서도 선이 서게
+      ctx.lineWidth = lw + 1.6;
+      ctx.beginPath(); ctx.ellipse(cx, cy, size * rr, size * rr * 0.32, 0, 0, 7); ctx.stroke();
+      ctx.strokeStyle = tierRGBA(tier, Math.min(1, (1 - u) * 0.95 * strength));
+      ctx.lineWidth = lw;
+      ctx.beginPath(); ctx.ellipse(cx, cy, size * rr, size * rr * 0.32, 0, 0, 7); ctx.stroke();
+    }
+    orbit(false);
     // ③ 몸 뒤 후광 — 천천히 숨쉰다
     // 후광·빛줄기는 '겹쳐 밝히기'(lighter) — 색이 배경 위에 더해져 어두운 지역에서 빛나 보인다.
     // 한 가지 색으로만 그렸더니 같은 색 배경(보랏빛 늪 + 보라 단계)에서 통째로 묻혔다.
@@ -630,17 +670,18 @@ function drawTier(cx, cy, size, tier, strength = 1, layer = 'back') {
       }
     }
   } else {
+    orbit(true);
     // ② 떠오르는 빛가루 — 발밑에서 머리 위로 올라가며 사라진다
     if (tier >= 2) {
-      const n = Math.round((4 + tier * 3) * (0.5 + strength * 0.5));
-      ctx.shadowColor = tierRGBA(tier, 1);
-      ctx.shadowBlur = 7;
+      const n = Math.round((6 + tier * 3) * (0.5 + strength * 0.5));
+      ctx.shadowColor = glowCol;
+      ctx.shadowBlur = 8;
       for (let i = 0; i < n; i++) {
         const u = (t * 0.42 + i * 0.618) % 1;
         const x = cx + Math.sin(i * 2.3 + t * 1.3) * size * 0.5;
         const y = cy - u * size * 1.35;
         ctx.fillStyle = tierRGBA(tier, Math.min(1, Math.sin(u * Math.PI) * 1.1 * strength));
-        ctx.beginPath(); ctx.arc(x, y, 1.5 + (i % 3) * 0.7, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.arc(x, y, 2 + (i % 3) * 0.9, 0, 7); ctx.fill();
       }
       ctx.shadowBlur = 0;
     }
@@ -867,7 +908,8 @@ export function render(dt) {
     drawTier(cx, cy, h, c.tier || 0, 0.45, 'back');
     // 숨쉬기 — 그림이 1장이라 가만히 있으면 멈춘 사진처럼 보였다. 저마다 박자를 어긋낸다
     const br = Math.sin(t * 2.6 + c.phase) * 0.026;
-    const opt = { dx: lunge * W * 0.03, sx: (1 + lunge * 0.08) * (1 - br * 0.6), sy: (1 - lunge * 0.06) * (1 + br), alpha: 0.92 };
+    const opt = { dx: lunge * W * 0.03, sx: (1 + lunge * 0.08) * (1 - br * 0.6), sy: (1 - lunge * 0.06) * (1 + br), alpha: 0.92,
+      glow: c.tier ? tierRGBA(c.tier, 0.7) : null, glowBlur: h * 0.06 };   // 리드보다 옅게
     // 지면 동료도 제 무기로 쏜다 — 살짝 내지르기만 해서 가만히 있는 것처럼 보였다
     allyUnits.push({ px: cx + h * 0.3, py: cy - h * 0.55, sz: h * 0.1, w: c.bolt });
     const own = compImage(c.id);
@@ -928,6 +970,9 @@ export function render(dt) {
     sx: (1 + lungePhase * 0.1 * k + dash * 0.12) * (1 - br * 0.6),
     sy: (1 - lungePhase * 0.08 * k - dash * 0.07) * (1 + br),
     ring: ALLY,
+    // Lv.10 부터 몸 윤곽이 단계 색으로 빛난다 — 발밑 연출만으로는 Lv.0 과 구별이 안 됐다
+    glow: leadTier ? tierRGBA(leadTier, 0.95) : null,
+    glowBlur: pHt * (0.07 + leadTier * 0.012),
   });
   drawTier(W * 0.30 + leadDx, feet, pHt, leadTier, 1, 'front');
   for (const c of comps) if (c.d > LEAD_D) drawComp(c);      // 리드보다 앞 — 카메라에 가깝다
