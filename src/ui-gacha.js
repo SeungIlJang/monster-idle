@@ -9,6 +9,15 @@ import { t } from './i18n.js';
 
 const $ = id => document.getElementById(id);
 let ctx = { refresh: () => {}, toast: () => {} };
+
+// 동료는 그림이 있다(assets/comp/<id>.png) — 이모지 대신 실제 그림을 쓴다. 장비·스킬은 그림이 없어 이모지 그대로.
+// 주소는 **이 모듈 기준**으로 만든다. OTA 앱은 HTML 을 document.write 로 주입해서 'assets/…' 같은 상대경로가
+// 앱 속 옛 www/ 를 가리킨다 — 모듈 주소는 원격이라 거기서 받는다(companions.js 와 같은 방식).
+// 못 받으면 이모지로 되돌린다.
+const compImg = id => new URL(`../assets/comp/${id}.png`, import.meta.url).href;
+const iconOf = (banner, it) => (banner === 'comp' && it?.id
+  ? `<img class="gimg" src="${compImg(it.id)}" alt="" onerror="this.replaceWith(document.createTextNode('${it.icon || '❔'}'))">`
+  : (it?.icon ?? '❔'));
 export function initGacha(c) { ctx = { ...ctx, ...c }; }
 
 let gBanner = 'equip';
@@ -74,7 +83,7 @@ export function renderGacha() {
   // 마지막 뽑기 결과
   $('gResult').innerHTML = gLast.map(r => {
     const c = G.RARITIES[r.rarity];
-    return `<span class="chip" style="color:${c.color};border-color:${c.color}">${r.icon} ${c.name}</span>`;
+    return `<span class="chip" style="color:${c.color};border-color:${c.color}">${iconOf(gBanner, r)} ${c.name}</span>`;
   }).join('');
 
   // 장착 슬롯 (자동 장착 — 가장 센 것부터 채운다)
@@ -86,7 +95,7 @@ export function renderGacha() {
     if (i >= slots) cells.push(`<div class="slot lock">🔒<small>st.${bDef.slotUnlock[i]}</small></div>`);
     else if (eq[i]) {
       const c = G.RARITIES[eq[i].rarity];
-      cells.push(`<div class="slot" style="border-color:${c.color}">${eq[i].icon}<small style="color:${c.color}">+${eq[i].val.toFixed(0)}%</small></div>`);
+      cells.push(`<div class="slot" style="border-color:${c.color}">${iconOf(gBanner, eq[i])}<small style="color:${c.color}">+${eq[i].val.toFixed(0)}%</small></div>`);
     } else cells.push(`<div class="slot empty">·<small>${t('gacha.empty')}</small></div>`);
   }
   $('gSlots').innerHTML =
@@ -103,7 +112,7 @@ export function renderGacha() {
         const need = top ? B.gacha.fuse.dupToEnhance : B.gacha.fuse.sameRarityToPromote;
         const ready = it.count >= need;
         return `<div class="ginv ${ready ? 'ready' : ''}">
-          <div class="ic">${it.icon}</div>
+          <div class="ic">${iconOf(gBanner, it)}</div>
           <div class="mid">
             <div class="t"><span style="color:${c.color}">${c.name}</span> ${it.name}${it.enh ? ' <b style="color:#7fd07f">+' + it.enh + '</b>' : ''}</div>
             <div class="d">${t('gacha.unit', { u: it.unit.toFixed(2), s: it.total.toFixed(1) })}${ready ? t('gacha.ready', { n: need, act: top ? t('gacha.enh') : t('gacha.promote') }) : ''}</div>
