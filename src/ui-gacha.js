@@ -15,6 +15,13 @@ let ctx = { refresh: () => {}, toast: () => {} };
 // 앱 속 옛 www/ 를 가리킨다 — 모듈 주소는 원격이라 거기서 받는다(companions.js 와 같은 방식).
 // 못 받으면 이모지로 되돌린다.
 const compImg = id => new URL(`../assets/comp/${id}.png`, import.meta.url).href;
+// 등급 빛 — 그림 뒤에 등급 색을 깐다. 높을수록 진하고, 전설 이상은 숨 쉬듯 빛난다(CSS .rgl).
+// 하늘의 등급 연출(render.drawRarity)과 같은 색 · 같은 순서라 뽑기 화면과 전투 화면이 같은 말을 한다.
+const rarGlow = (r, under = '') => {
+  const c = G.RARITIES[r]?.color || '#9aa7c7';
+  const a = Math.round((0.16 + r * 0.11) * 255).toString(16).padStart(2, '0');
+  return `background:radial-gradient(circle at 50% 45%, ${c}${a} 0%, transparent 68%)${under ? ',' + under : ''};--rc:${c}`;
+};
 const iconOf = (banner, it) => (banner === 'comp' && it?.id
   ? `<img class="gimg" src="${compImg(it.id)}" alt="" onerror="this.replaceWith(document.createTextNode('${it.icon || '❔'}'))">`
   : (it?.icon ?? '❔'));
@@ -95,7 +102,7 @@ export function renderGacha() {
     if (i >= slots) cells.push(`<div class="slot lock">🔒<small>st.${bDef.slotUnlock[i]}</small></div>`);
     else if (eq[i]) {
       const c = G.RARITIES[eq[i].rarity];
-      cells.push(`<div class="slot" style="border-color:${c.color}">${iconOf(gBanner, eq[i])}<small style="color:${c.color}">+${eq[i].val.toFixed(0)}%</small></div>`);
+      cells.push(`<div class="slot ${eq[i].rarity >= 3 ? 'rgl' : ''}" style="border-color:${c.color};${rarGlow(eq[i].rarity, '#161c3c')}">${iconOf(gBanner, eq[i])}<small style="color:${c.color}">+${eq[i].val.toFixed(0)}%</small></div>`);
     } else cells.push(`<div class="slot empty">·<small>${t('gacha.empty')}</small></div>`);
   }
   $('gSlots').innerHTML =
@@ -112,7 +119,7 @@ export function renderGacha() {
         const need = top ? B.gacha.fuse.dupToEnhance : B.gacha.fuse.sameRarityToPromote;
         const ready = it.count >= need;
         return `<div class="ginv ${ready ? 'ready' : ''}">
-          <div class="ic">${iconOf(gBanner, it)}</div>
+          <div class="ic ${it.rarity >= 3 ? 'rgl' : ''}" style="${rarGlow(it.rarity)}">${iconOf(gBanner, it)}</div>
           <div class="mid">
             <div class="t"><span style="color:${c.color}">${c.name}</span> ${it.name}${it.enh ? ' <b style="color:#7fd07f">+' + it.enh + '</b>' : ''}</div>
             <div class="d">${t('gacha.unit', { u: it.unit.toFixed(2), s: it.total.toFixed(1) })}${ready ? t('gacha.ready', { n: need, act: top ? t('gacha.enh') : t('gacha.promote') }) : ''}</div>

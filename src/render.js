@@ -292,6 +292,96 @@ function drawAllyBolt(b) {
  * 등급은 **빛 색**으로 구별한다. 6종이 균등 확률이라 종류로는 세기를 알 수 없고,
  * 실제로 세기를 정하는 건 등급뿐이다 — 보이는 것과 수치가 같은 것을 가리켜야 한다.
  */
+// ── 뽑기 동료 등급 연출 ──
+// 등급은 그림이 아니라 **연출**로만 갈린다(같은 동료는 등급이 달라도 그림이 같다).
+// 예전엔 빛 색과 1px 고리뿐이라, 폰에서 20px 남짓한 동료로는 일반과 희귀를 구별할 수 없었다.
+// 몬스터 진화 오라(drawTier)와 같은 말투로 **크기 · 겹 수 · 움직임**을 더한다 — 작게 그려도 읽힌다.
+//   일반: 옅은 빛 + 얇은 고리
+//   희귀: 진한 빛 + 두꺼운 고리
+//   영웅: + 숨 쉬는 후광
+//   전설: + 천천히 도는 빛줄기 8줄
+//   신화: + 빛줄기 12줄 + 반짝이는 별가루
+const rarScale = r => 1 + r * 0.075;
+const hexA = (hex, a) => hex + Math.round(Math.max(0, Math.min(1, a)) * 255).toString(16).padStart(2, '0');
+
+/**
+ * 납작한 그림 보정. drawSprite 는 내용 **높이**를 맞추므로 가로로 넓은 동료(작은 슬라임 · 박쥐 떼 · 그림자,
+ * 내용 216×145)가 세로로 긴 도깨비불(152×216)보다 면적이 두 배 가까이 커 보였다.
+ * 내용 면적이 비슷해지도록 높이를 √(가로/세로) 로 나눈다. 너무 줄거나 늘지 않게 묶어 둔다.
+ */
+function flatFix(img, box) {
+  const asp = (box.w * img.naturalWidth) / Math.max(1, box.h * img.naturalHeight);
+  return Math.max(0.78, Math.min(1.12, 1 / Math.sqrt(asp || 1)));
+}
+
+/** 등급 오라. 'back' 은 그림 전(빛 · 고리 · 후광 · 빛줄기), 'front' 는 그림 뒤(별가루). */
+function drawRarity(cx, cy, size, r, color, layer, visW = size) {
+  ctx.save();
+  if (layer === 'back') {
+    // ① 몸 둘레 빛 — 등급이 오를수록 넓고 진하다
+    const gr = size * (0.85 + r * 0.06);
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, gr);
+    g.addColorStop(0, hexA(color, 0.24 + r * 0.1));
+    g.addColorStop(1, hexA(color, 0));
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(cx, cy, gr, 0, 7); ctx.fill();
+    // ② 발밑 고리 — 밝은 지역(설원·용암)에서 묻히지 않게 어두운 테를 먼저 깐다.
+    // 몸 폭에 맞추고 발보다 살짝 아래에 둔다 — 몸보다 좁으면 납작한 동료(슬라임·그림자) 뒤에 통째로 가려졌다
+    const rx = Math.max(size * 0.4, visW * 0.5), ry = rx * 0.3, fy = cy + size * 0.56;
+    const lw = Math.max(1, size * (0.04 + r * 0.022));
+    ctx.strokeStyle = 'rgba(10,14,30,.45)';
+    ctx.lineWidth = lw + 1.4;
+    ctx.beginPath(); ctx.ellipse(cx, fy, rx, ry, 0, 0, 7); ctx.stroke();
+    ctx.strokeStyle = hexA(color, 0.6 + r * 0.1);
+    ctx.lineWidth = lw;
+    ctx.beginPath(); ctx.ellipse(cx, fy, rx, ry, 0, 0, 7); ctx.stroke();
+    // ③④ 후광 · 빛줄기는 '겹쳐 밝히기' — 배경 위에 빛이 더해져 어두운 지역에서도 빛나 보인다
+    ctx.globalCompositeOperation = 'lighter';
+    if (r >= 2) {                                   // 영웅 이상 — 숨 쉬는 후광
+      const pulse = 0.85 + 0.15 * Math.sin(t * 2.4 + cx);
+      const hr = size * (0.75 + (r - 2) * 0.12) * pulse;
+      const hg = ctx.createRadialGradient(cx, cy, 0, cx, cy, hr);
+      hg.addColorStop(0, hexA(color, 0.5));
+      hg.addColorStop(0.55, hexA(color, 0.2));
+      hg.addColorStop(1, hexA(color, 0));
+      ctx.fillStyle = hg;
+      ctx.beginPath(); ctx.arc(cx, cy, hr, 0, 7); ctx.fill();
+    }
+    if (r >= 3) {                                   // 전설 이상 — 몸 뒤에서 도는 빛줄기
+      ctx.translate(cx, cy);
+      ctx.rotate(t * (r >= 4 ? 0.6 : 0.4) + cx);
+      const n = r >= 4 ? 12 : 8, len = size * (r >= 4 ? 1.35 : 1.15);
+      for (let i = 0; i < n; i++) {
+        ctx.rotate(6.2832 / n);
+        const lg = ctx.createLinearGradient(0, 0, len, 0);
+        lg.addColorStop(0, hexA(color, 0.15));
+        lg.addColorStop(0.4, hexA(color, 0.5));
+        lg.addColorStop(1, hexA(color, 0));
+        ctx.fillStyle = lg;
+        const w = size * (i % 2 ? 0.06 : 0.1);
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(len, -w); ctx.lineTo(len, w); ctx.closePath(); ctx.fill();
+      }
+    }
+  } else if (r >= 4) {
+    // ⑤ 신화 — 몸 둘레에서 반짝였다 사라지는 별가루 (네 갈래 별)
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 6;
+    for (let i = 0; i < 6; i++) {
+      const u = (t * 0.55 + i / 6) % 1;              // 0 → 1 동안 커졌다 작아진다
+      const a = i * 1.047 + t * 0.35;
+      const d = size * (0.55 + 0.18 * Math.sin(i * 2.1 + t));
+      const x = cx + Math.cos(a) * d, y = cy - size * 0.05 + Math.sin(a) * d * 0.8;
+      const s = size * 0.11 * Math.sin(u * Math.PI);
+      ctx.fillStyle = hexA('#ffffff', 0.9 * Math.sin(u * Math.PI));
+      ctx.beginPath();
+      ctx.moveTo(x, y - s); ctx.lineTo(x + s * 0.28, y - s * 0.28); ctx.lineTo(x + s, y); ctx.lineTo(x + s * 0.28, y + s * 0.28);
+      ctx.lineTo(x, y + s); ctx.lineTo(x - s * 0.28, y + s * 0.28); ctx.lineTo(x - s, y); ctx.lineTo(x - s * 0.28, y - s * 0.28);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
 function drawSky(base) {
   const list = skyCompanions();
   if (!list.length) return;
@@ -301,29 +391,30 @@ function drawSky(base) {
   for (const c of list) {
     const img = compImage(c.id, blinkFrame(c.phase));     // 가끔 대기 둘째 장(날갯짓·눈 감기)
     if (!img) continue;
+    const r = Math.max(0, Math.min(4, c.rarity || 0));
     const cx = W * c.x;
     const cy = H * c.y + Math.sin(t * 1.6 + c.phase) * h * 0.14;   // 느리게 오르내린다
-    const size = h * c.s;
+    const size = h * c.s * rarScale(r);                    // 등급이 높을수록 크다 (일반 ×1 → 신화 ×1.3)
+    const box = boxOf('comp', c.id);
+    const th = size * flatFix(img, box);
+    const visW = th * (box.w * img.naturalWidth) / Math.max(1, box.h * img.naturalHeight);   // 화면에 보이는 몸 폭
     ctx.save();
-    // 등급 후광. 용암·설원처럼 밝은 지역에서는 그라데이션만으로는 묻혀서
-    // **고리**를 같이 그린다 — 색이 선으로 남아야 등급이 읽힌다.
-    const glow = 0.22 + c.rarity * 0.09;
-    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.85);
-    g.addColorStop(0, c.color + Math.round(glow * 255).toString(16).padStart(2, '0'));
-    g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(cx, cy, size * 0.85, 0, 7); ctx.fill();
-    ctx.strokeStyle = c.color;
-    ctx.globalAlpha = 0.5 + c.rarity * 0.11;
-    ctx.lineWidth = Math.max(1, size * 0.045);
-    ctx.beginPath(); ctx.ellipse(cx, cy + size * 0.42, size * 0.42, size * 0.13, 0, 0, 7); ctx.stroke();
-    ctx.globalAlpha = 1;
-    // 밝은 배경에서 그림이 배경에 녹지 않게 어두운 그림자를 깐다
-    ctx.shadowColor = 'rgba(8,10,22,.55)';
-    ctx.shadowBlur = size * 0.22;
-    ctx.shadowOffsetY = size * 0.06;
-    drawSprite(img, cx, cy + size * 0.5, size, boxOf('comp', c.id), {});
+    drawRarity(cx, cy, size, r, c.color, 'back', visW);
+    if (r >= 2) {
+      // 영웅 이상 — 윤곽이 등급 색으로 빛난다. 밝은 하늘(숲·설원)에서는 후광이 묻혀서
+      // 몸 자체가 빛나야 등급이 읽힌다
+      ctx.shadowColor = hexA(c.color, 0.95);
+      ctx.shadowBlur = size * (0.2 + (r - 2) * 0.07);
+      ctx.shadowOffsetY = 0;
+    } else {
+      // 밝은 배경에서 그림이 배경에 녹지 않게 어두운 그림자를 깐다
+      ctx.shadowColor = 'rgba(8,10,22,.55)';
+      ctx.shadowBlur = size * 0.22;
+      ctx.shadowOffsetY = size * 0.06;
+    }
+    drawSprite(img, cx, cy + size * 0.5, th, box, {});
     ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+    drawRarity(cx, cy, size, r, c.color, 'front');
     // 강화가 붙은 것만 작게 표시한다 — 전부 띄우면 하늘이 글자밭이 된다
     if (c.enh > 0) {
       ctx.globalAlpha = 1;

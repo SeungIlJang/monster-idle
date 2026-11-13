@@ -8,6 +8,8 @@
 //   mon_<key>_t2_idle_2.png     mon_<key>_t2_attack_windup.png     …  (2차 — 진화 단계)
 //   hero_<key>_idle_2.png       hero_<key>_attack_windup.png       hero_<key>_attack_follow.png
 //   comp_<id>_idle_2.png
+//   comp_<id>_r2_idle_1.png     comp_<id>_r2_idle_2.png            (등급 변형 — r2 영웅 · r3 전설 · r4 신화,
+//                                                                    docs/comp-rarity-art-handoff.md)
 //
 // 기준은 이미 게임에 들어 있는 1번 그림이다(assets/<group>/<key>/<단계>idle_1.png 등).
 // 새 프레임이 그것과 **캔버스 · 발 행 · 가로 중심** 이 다르면 프레임이 바뀔 때마다 캐릭터가
@@ -32,6 +34,8 @@ const CX_TOL = 0.6;        // 가로 중심 허용 오차(px)
 const IDLE_TOL = 6;        // idle_2 내용 크기가 idle_1 과 달라도 되는 폭(px) — 숨쉬기 정도
 const H_RATIO = [0.7, 1.15];   // 공격 프레임 높이 / idle 높이 허용 범위
 const MIN_DIFF = 0.02;     // 1번 그림과 이만큼(내용 픽셀 비율)은 달라야 한다 — 복사본 방지
+const RAR_SIZE = [0.9, 1.25];  // 등급 변형 내용 크기 / 기본 그림 — 장식이 붙어 조금 커지는 건 된다
+const RAR_DIFF = 0.08;     // 등급 변형은 기본 그림과 이만큼은 달라야 한다 — 작게 그려도 차이가 보여야 한다
 
 const dir = process.argv[2];
 if (!dir || !fs.existsSync(dir)) {
@@ -69,8 +73,9 @@ function diffRatio(a, b) {
   return n ? d / n : 0;
 }
 
-// 파일 이름 해석: <group>_<key>[_t2|_t3]_<frame>.png
-const RE = /^(mon|hero|comp)_([a-z0-9]+?)(?:_(t2|t3))?_(idle_2|attack_windup|attack_follow)\.png$/;
+// 파일 이름 해석: <group>_<key>[_t2|_t3|_r2|_r3|_r4]_<frame>.png
+const RE = /^(mon|hero|comp)_([a-z0-9]+?)(?:_(t2|t3|r2|r3|r4))?_(idle_1|idle_2|attack_windup|attack_follow)\.png$/;
+const inDir = new Set(fs.readdirSync(dir));
 const files = fs.readdirSync(dir).filter(f => f.toLowerCase().endsWith('.png')).sort();
 const ok = [], bad = [], skipped = [];
 let totalKB = 0;
@@ -80,6 +85,46 @@ for (const f of files) {
   const m = RE.exec(f);
   if (!m) { skipped.push(`${f} — 이름 규칙에 안 맞음 (예: mon_slime_idle_2.png)`); continue; }
   const [, group, key, stage = '', fr] = m;
+  const rar = stage.startsWith('r');
+  if (rar) {
+    // 등급 변형 — 기본 그림(assets/comp/<id>.png)과 캔버스 · 발 행 · 가로 중심이 같아야 하고, 눈에 띄게 달라야 한다
+    if (group !== 'comp' || !fr.startsWith('idle')) { bad.push(`${f} — 등급 변형(r2·r3·r4)은 뽑기 동료 idle_1 · idle_2 만 받습니다`); continue; }
+    const base = path.join(ASSETS, 'comp', `${key}.png`);
+    if (!fs.existsSync(base)) { bad.push(`${f} — 게임에 기본 그림이 없음 (${path.relative(ROOT, base)}) · 키 이름 확인`); continue; }
+    const b = measure(base), a = measure(path.join(dir, f));
+    totalKB += a.kb;
+    // idle_2 는 같은 등급의 idle_1 과 견준다(숨쉬기 · 깜빡임). 그게 폴더에 없으면 기본 그림과
+    const sib = `comp_${key}_${stage}_idle_1.png`;
+    const ref1 = fr === 'idle_2' && inDir.has(sib) ? measure(path.join(dir, sib)) : null;
+    const why = [];
+    if (a.colorType !== 6) why.push(`RGBA(색상타입 6)가 아님 — 지금 ${a.colorType}`);
+    if (a.w !== b.w || a.h !== b.h) why.push(`캔버스 ${a.w}×${a.h} — ${b.w}×${b.h} 이어야 함`);
+    if (a.x1 < 0) why.push('그림이 비어 있음');
+    else {
+      if (a.y1 !== b.y1) why.push(`발 행 ${a.y1} — ${b.y1} 이어야 함 (기본 그림과 같아야 등급이 바뀌어도 제자리에 선다)`);
+      if (Math.abs(a.cx - b.cx) > CX_TOL * 3) why.push(`가로 중심 ${a.cx} — ${b.cx} ±${CX_TOL * 3} 이어야 함`);
+      if (a.x0 < 1 || a.x1 > a.w - 2 || a.y0 < 1) why.push(`캔버스 가장자리에 닿음 (${a.x0},${a.y0}~${a.x1},${a.y1}) — 잘려 보임`);
+      const rw = a.cw / b.cw, rh = a.ch / b.ch;
+      if (rw < RAR_SIZE[0] || rw > RAR_SIZE[1] || rh < RAR_SIZE[0] || rh > RAR_SIZE[1])
+        why.push(`내용 크기 ${a.cw}×${a.ch} = 기본(${b.cw}×${b.ch})의 ${rw.toFixed(2)}×${rh.toFixed(2)}배 — ${RAR_SIZE[0]}~${RAR_SIZE[1]} 이어야 함 (크기 차이는 게임이 따로 준다)`);
+      if (ref1) {
+        if (Math.abs(a.cw - ref1.cw) > IDLE_TOL || Math.abs(a.ch - ref1.ch) > IDLE_TOL)
+          why.push(`내용 크기 ${a.cw}×${a.ch} — 같은 등급 idle_1 ${ref1.cw}×${ref1.ch} ±${IDLE_TOL} 이어야 함`);
+        const d1 = diffRatio(a, ref1);
+        if (d1 < MIN_DIFF) why.push(`같은 등급 idle_1 과 거의 같음 — ${(d1 * 100).toFixed(1)}% 만 다름 (눈 감기 · 날갯짓이 보여야 함)`);
+      } else {
+        const d = diffRatio(a, b);
+        if (d < RAR_DIFF) why.push(`기본 그림과 거의 같음 — ${(d * 100).toFixed(1)}% 만 다름. 등급 차이가 화면에서 안 보입니다 (${(RAR_DIFF * 100).toFixed(0)}% 이상)`);
+      }
+    }
+    const tag = `comp/${key}/${stage}`;
+    if (!seen.has(tag)) seen.set(tag, new Set());
+    seen.get(tag).add(fr);
+    if (why.length) bad.push(`${f}\n      - ` + why.join('\n      - '));
+    else ok.push(`${f}  (${a.cw}×${a.ch}, ${a.kb.toFixed(0)}KB)`);
+    continue;
+  }
+  if (fr === 'idle_1') { bad.push(`${f} — idle_1 은 등급 변형(comp_<id>_r2_idle_1.png 등)에만 받습니다`); continue; }
   if (group === 'comp' && (stage || fr !== 'idle_2')) { bad.push(`${f} — 뽑기 동료는 idle_2 한 장만 받습니다`); continue; }
   const pre = stage ? stage + '_' : '';
   // 기준 그림
@@ -121,6 +166,7 @@ for (const f of files) {
 // 공격은 짝으로 와야 한다 — 준비만 있고 마무리가 없으면 동작이 중간에 끊긴다
 const pairs = [];
 for (const [tag, set] of seen) {
+  if (set.has('idle_1') !== set.has('idle_2') && /\/r[234]$/.test(tag)) pairs.push(`${tag} — 등급 변형은 idle_1 과 idle_2 를 같이 보내 주세요 (지금 ${[...set].join(', ')})`);
   if (set.has('attack_windup') !== set.has('attack_follow')) pairs.push(`${tag} — attack_windup 과 attack_follow 는 같이 보내 주세요 (지금 ${[...set].join(', ')})`);
 }
 

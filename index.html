@@ -448,7 +448,10 @@
   .chip{font-size:10px;font-weight:800;padding:3px 7px;border-radius:7px;border:1px solid}
   .ginv{display:flex;align-items:center;gap:9px;background:#161c3c;border:1px solid #2a3360;
     border-radius:11px;padding:8px 10px;margin-bottom:6px}
-  .ginv .ic{font-size:17px}
+  .ginv .ic{font-size:17px;flex:0 0 42px;height:42px;display:flex;align-items:center;justify-content:center;border-radius:50%}
+  /* 전설 이상 — 등급 색으로 숨 쉬듯 빛난다(ui-gacha rarGlow 가 --rc 를 넣는다) */
+  .rgl{animation:rgl 2.2s ease-in-out infinite}
+  @keyframes rgl{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 12px 1px var(--rc)}}
   /* 동료 그림 — 이모지 자리에 들어간다(ui-gacha iconOf) */
   .gimg{display:inline-block;object-fit:contain;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45))}
   .slot .gimg{display:block;width:30px;height:30px;margin:0 auto}
