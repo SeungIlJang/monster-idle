@@ -13,6 +13,7 @@ import { initAds, playRewarded, isNative } from './ads.js';
 import { renderSkillBar } from './ui-skills.js';
 import { showTitle } from './ui-title.js';
 import * as sfx from './audio.js';
+import { DEV } from './dev-flags.js';
 
 load();
 applyStatic();
@@ -97,7 +98,7 @@ function loop(now) {
   if (dt > 0.1) dt = 0.1;            // 탭 복귀 시 점프 방지
   // 배속은 **라이브 루프에만** 건다. 오프라인 보상은 실제 경과 시간으로 따로 계산하므로
   // 여기서 늘려도 그쪽은 영향받지 않는다(시뮬이 검증한 것도 전투 처리량뿐이다).
-  let sdt = dt * (S.spd || 1);
+  let sdt = dt * (S.spd || 1) * DEV.speed;    // DEV.speed: 개발자 모드 배속(보통 1, 0 이면 멈춤)
   // ── 히트스톱 ── 큰 타격에 몇 프레임 멈춘다.
   // 멈춘 시간은 **버리지 않고 모아 둔다** — 그냥 건너뛰면 전투 처리량이 깎여
   // 시뮬과 어긋난다(치명타가 5.6초마다, 처치는 더 자주 온다).
@@ -110,7 +111,12 @@ function loop(now) {
     return;
   }
   if (R.freezeBank > 0) { sdt += R.freezeBank; R.freezeBank = 0; }   // 모아 둔 시간을 돌려준다
-  tick(sdt);
+  // 개발자 모드로 크게 빨리 돌리면 한 프레임이 길어진다. tick 은 한 번에 공격 한 번이라
+  // 그대로 넣으면 공격 횟수가 프레임 수에 묶인다 — 잘게 쪼개 돌린다. 평소(배속 ×1·×2)는 그대로.
+  if (DEV.speed > 1 && sdt > 0.05) {
+    const n = Math.min(80, Math.ceil(sdt / 0.05));
+    for (let i = 0; i < n; i++) tick(sdt / n);
+  } else tick(sdt);
   render(sdt);
   renderSkillBar();        // 쿨 채움은 매 프레임 — DOM 은 구성이 바뀔 때만 다시 만든다
   acc += dt;

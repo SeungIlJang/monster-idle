@@ -309,6 +309,19 @@
   .devQuick{display:flex;gap:7px}
   .devQuick button{background:#39406a}
   .devBox .devDanger{background:#5a2130;color:#ffd7de;margin-top:14px}
+  /* 개발자 모드 탭 — 기능이 많아 한 화면에 다 두면 스크롤이 끝없다 */
+  .devBox.wide{width:min(96vw,460px)}
+  .devTabs{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0 10px}
+  .devBox .devTabs button{flex:1 0 auto;width:auto;margin:0;padding:6px 8px;font-size:11px;border-radius:8px;background:#232a4a;color:#aab6d8}
+  .devBox .devTabs button.on{background:#4a6bd0;color:#fff}
+  .devSec{font-size:12px;font-weight:800;color:#ffd34d;margin:14px 0 6px}
+  .devSec:first-child{margin-top:2px}
+  .devBtns{display:flex;flex-wrap:wrap;gap:6px}
+  .devBox .devBtns button{flex:1 0 30%;width:auto;margin:0;padding:9px 6px;font-size:11px;background:#39406a}
+  .devBox .devBtns button.on{background:#2f8a52}
+  .devInfo{font-size:11px;color:#9fb0d6;line-height:1.6;background:#0e1430;border-radius:8px;padding:7px 9px}
+  .devInfo b{color:#fff}
+  .devBox textarea{width:100%;height:110px;background:#0e1430;border:1px solid #2d375c;border-radius:8px;color:#cfdcf2;font:11px/1.4 monospace;padding:6px;box-sizing:border-box}
   #devPass{width:100%;background:#0e1430;border:1px solid #2d375c;border-radius:10px;
     padding:12px;color:#eaf1ff;font-size:18px;text-align:center;letter-spacing:6px;font-family:inherit}
 
@@ -579,7 +592,7 @@
   <div class="panel" id="p_grow">
     <span class="closeX" data-close>✕</span>
     <!-- 🌱 는 개발자 모드 입구다. 평범한 아이콘으로 보여야 해서 따로 꾸미지 않는다 -->
-    <h2><span id="devKey" style="cursor:pointer">🌱</span> <span data-i18n="grow.title">성장</span></h2>
+    <h2 id="devKey" style="cursor:pointer">🌱 <span data-i18n="grow.title">성장</span></h2>
     <div id="growRes"></div>
     <div class="bar" id="growTabs"></div>
     <div class="scroll" id="growBody"></div>

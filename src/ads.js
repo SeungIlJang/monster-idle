@@ -7,6 +7,7 @@
 // 그래서 실ID 가 비어 있는데 테스트 모드가 꺼져 있으면 보상을 주지 않고 경고를 찍는다.
 import * as sfx from './audio.js';
 import { t } from './i18n.js';
+import { DEV } from './dev-flags.js';
 
 const res = await fetch(new URL('./ads.json', import.meta.url));
 const CFG = await res.json();
@@ -117,6 +118,7 @@ async function playNative() {
  * @returns {Promise<boolean>} 보상을 줘도 되는가 (끝까지 봤는가)
  */
 export async function playRewarded() {
+  if (DEV.adSkip) return true;          // 개발자 모드 '광고 건너뛰기' — 바로 보상
   // 광고가 뜨는 동안 효과음을 멈춘다. 보상 여부와 무관하게 끝나면 되살린다.
   sfx.suspend();
   try { return await playRewardedInner(); } finally { sfx.resume(); }

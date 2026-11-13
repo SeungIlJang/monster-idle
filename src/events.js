@@ -11,6 +11,7 @@
 // 하루 한도가 정해져 있어 깊이와 무관하다.
 import { B } from './balance.js';
 import { S } from './state.js';
+import { DEV } from './dev-flags.js';
 
 const CFG = B.events || { pointPer: {}, gemBudgetPerDay: 0, list: [] };
 
@@ -22,6 +23,8 @@ function parse(d) {
 
 /** 지금 열려 있는 이벤트 (없으면 null). 겹치면 먼저 적힌 것이 이긴다. */
 export function activeEvent(now = Date.now()) {
+  // 개발자 모드: 기간과 상관없이 연다
+  if (DEV.event) { const f = (CFG.list || []).find(e => e.id === DEV.event); if (f) return f; }
   for (const e of CFG.list || []) {
     if (now >= parse(e.from) && now < parse(e.to) + 86400000) return e;
   }

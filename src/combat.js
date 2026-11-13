@@ -14,6 +14,7 @@ import { goldMul } from './layer2.js';
 import { eff as relicEff } from './relics.js';
 import { L0, add, sub, ratio, fromNum, fmt } from './logmath.js';
 import { t as tr } from './i18n.js';
+import { DEV } from './dev-flags.js';
 
 export const MODE = { RUN: 'run', FARM: 'farm' };
 // 파밍을 이만큼 돌면 전투력 판단과 무관하게 한 번 찔러본다 (canClear 가 보수적일 때의 안전장치)
@@ -365,7 +366,7 @@ function playerDied() {
 export function fireSkill(sk, secs) {
   const tgt = front();
   if (!tgt) return false;        // 때릴 게 없으면 쿨을 쓰지 않는다 (몫이 증발하면 DPS 가 샌다)
-  const Ldmg = LDPS(R.boss) + fromNum(secs);
+  const Ldmg = LDPS(R.boss) + fromNum(secs) + DEV.Ldmg;
   tgt.Lhp = sub(tgt.Lhp, Ldmg);
   tgt.hitT = 0.16;
   const idx = R.enemies.indexOf(tgt);
@@ -459,7 +460,7 @@ export function tick(dt) {
     const critMul = crit ? nval('cdmg') : 1;
     // normalShare() 는 스킬이 가져간 몫을 뺀 나머지다. 스킬이 없으면 1 이다.
     const Ldmg = LDPS(R.boss) - fromNum(nval('aspd')) - fromNum(critF())
-               + fromNum(critMul * normalShare());
+               + fromNum(critMul * normalShare()) + DEV.Ldmg;   // DEV.Ldmg: 개발자 모드 피해 배수(보통 0)
     // **피해는 여기서 끝난다.** 아래 연출이 늦게 오더라도 수치는 이미 적용됐다 —
     // 피해를 명중까지 미루면 DPS 가 비행시간만큼 깎여 시뮬과 어긋난다.
     f.Lhp = sub(f.Lhp, Ldmg);
@@ -578,11 +579,19 @@ function foeStrike(e) {
   const bite = gateBite();
   const Lbite = bite > 0 ? R.LhpMax + fromNum(bite) : L0;
   const Ltotal = Lbite > L0 ? add(Ldmg, Lbite) : Ldmg;
+  // 개발자 모드 무적 — 맞는 모습만 내고 체력은 그대로
+  if (DEV.god) { spawnFoeBolt(e, Ltotal); return false; }
   // 피해는 **지금** 들어간다. 날아가는 그림은 연출일 뿐이다(플레이어 투사체와 같은 규칙).
   if (Ltotal >= R.Lhp) { R.Lhp = L0; playerDied(); return true; }
   R.Lhp = sub(R.Lhp, Ltotal);
   spawnFoeBolt(e, Ltotal);
   return false;
+}
+
+/** 개발자 모드: 지금 무리를 한 번에 쓰러뜨린다. 처치 보상·웨이브/스테이지 클리어는 평소대로 흐른다 */
+export function devKillAll() {
+  const list = R.enemies;              // 마지막 처치가 다음 웨이브를 깔면 R.enemies 가 바뀐다
+  list.forEach((e, i) => { if (e.Lhp > L0) { e.Lhp = L0; onKill(e, i); } });
 }
 
 /** 재도전: 최고 기록 다음 스테이지로 복귀 */

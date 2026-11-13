@@ -442,7 +442,7 @@ export function initUI() {
   initGacha({ refresh, toast });
   // 개발자 모드가 값을 바꾸면 **지금 열려 있는 패널**도 다시 그려야 한다 —
   // refresh() 는 상단 HUD 만 손대서, 성장 패널의 조각·광석이 0 인 채로 남았다.
-  initDev({ refresh, toast, redraw: () => PANEL_RENDER[tab]?.() });
+  initDev({ refresh, toast, redraw: () => PANEL_RENDER[tab]?.(), onLeadChange: () => preloadFor(R.stage) });
   $('retryBtn').onclick = () => { retry(); refresh(); };
   $('drClose').onclick = () => $('dunRes').classList.remove('on');
   const wb = $('wipeBtn');
