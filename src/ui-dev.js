@@ -433,6 +433,7 @@ SECTIONS.stat = () => ({
 // ── 뽑기 ─────────────────────────────────────────────────────
 const lastThresh = () => B.gacha.lvThresh[B.gacha.lvThresh.length - 1];
 let giveBanner = G.BANNERS[0]?.key;
+let allBanner = G.BANNERS.find(b => b.key === 'comp')?.key || giveBanner;   // '전부 강화' 는 동료가 기본
 
 SECTIONS.gacha = () => {
   const items = G.CATALOG[giveBanner] || [];
@@ -453,7 +454,18 @@ SECTIONS.gacha = () => {
       <button id="dvGive">지급</button>
       ${sec('⚡ 빠르게')}
       ${btns([['gPull', '배너마다 무료 10연'], ['gFree', '무료 뽑기 횟수 초기화'], ['gMaxLv', '배너 전부 최대 레벨'],
-        ['gBest', '전 아이템 최고 등급 1개씩'], ['gClear', '보유 아이템 전부 삭제']])}`,
+        ['gBest', '전 아이템 최고 등급 1개씩'], ['gClear', '보유 아이템 전부 삭제']])}
+      ${sec('⭐ 전부 강화')}
+      <div class="devInfo">${G.BANNERS.map(b => {
+        const sl = G.activeSlots(b.key), max = b.slotUnlock?.length || b.slots || 0;
+        return `${b.icon || ''} ${b.name} <b>+${n0(S.own[b.key] + S.eqv[b.key])}%</b> (보유 ${n0(S.own[b.key])}% · 장착 ${n0(S.eqv[b.key])}%) · 슬롯 ${sl}/${max}`;
+      }).join('<br>')}</div>
+      <div class="devGrid" style="margin-top:7px">
+        <label class="devRow"><span>배너</span><select id="dvAB">${G.BANNERS.map(b => `<option value="${b.key}" ${b.key === allBanner ? 'selected' : ''}>${b.icon || ''} ${b.name}</option>`).join('')}</select></label>
+        <label class="devRow"><span>등급</span><select id="dvAR">${G.RARITIES.map((r, i) => `<option value="${i}" ${i === G.RARITIES.length - 1 ? 'selected' : ''}>${r.name}</option>`).join('')}</select></label>
+        ${row('dvAE', '강화', 10, '+1마다 효과 ×' + B.gacha.fuse.enhanceMul)}
+      </div>
+      ${btns([['aSet', '6종 전부 이 등급·강화로 (교체)'], ['aUp', '보유 전부 강화 +1'], ['aSlots', '이 배너 슬롯 전부 열기']])}`,
     bind() {
       $('dvGB').onchange = e => { giveBanner = e.target.value; showPanel(); };
       on('dvApply', () => {
@@ -484,6 +496,34 @@ SECTIONS.gacha = () => {
           for (const it of G.CATALOG[b.key] || []) { const k = `${it.id}|${top}|0`; inv[k] = (inv[k] || 0) + 1; }
         }
         done('전 아이템 ' + G.RARITIES[top].name + ' 1개씩');
+      });
+      $('dvAB').onchange = e => { allBanner = e.target.value; };
+      on('aSet', () => {
+        const f = form();
+        const enh = f.int('dvAE', 0, 999);
+        if (f.fail()) return;
+        const b = $('dvAB').value, r = +$('dvAR').value, e = enh || 0;
+        // 종류마다 1개씩 — 슬롯이 다 열려 있으면 전부 장착되고 동료는 하늘에 전부 뜬다
+        S.inv[b] = Object.fromEntries((G.CATALOG[b] || []).map(it => [`${it.id}|${r}|${e}`, 1]));
+        const bn = G.BANNERS.find(x => x.key === b);
+        done(`${bn?.name || b} ${(G.CATALOG[b] || []).length}종 전부 ${G.RARITIES[r].name}${e ? ' +' + e : ''}`);
+      });
+      on('aUp', () => {
+        const b = $('dvAB').value;
+        const inv = S.inv[b] || {}, next = {};
+        for (const [k, n] of Object.entries(inv)) {
+          const [id, r, e] = k.split('|');
+          const nk = `${id}|${r}|${(+e || 0) + 1}`;
+          next[nk] = (next[nk] || 0) + n;
+        }
+        S.inv[b] = next;
+        done(`${G.BANNERS.find(x => x.key === b)?.name || b} 보유 전부 강화 +1`);
+      });
+      on('aSlots', () => {
+        const bn = G.BANNERS.find(x => x.key === $('dvAB').value);
+        const need = Math.max(1, ...(bn?.slotUnlock || [1]));
+        S.life = Math.max(S.life, need);        // 슬롯은 평생 최고 기록으로 열린다 — 다른 해금도 같이 열린다
+        done(`${bn?.name} 슬롯 전부 열림 (평생 최고 ${n0(S.life)}층)`);
       });
       on('gClear', () => {
         if (!confirm('세 배너의 보유 아이템을 전부 지웁니다. 계속할까요?')) return;
