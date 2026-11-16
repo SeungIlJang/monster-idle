@@ -162,9 +162,42 @@ function showPanel() {
       ${devOnNote()}</div>
     <div class="devTabs">${TABS.map(([k, n]) => `<button data-dtab="${k}" class="${k === tab ? 'on' : ''}">${n}</button>`).join('')}</div>
     <div id="devSecBody">${S_.html}</div>
-    <div class="devErr" id="devErr"></div>`;
+    <div class="devErr" id="devErr"></div>
+    <button id="dvResetAll" class="devDanger">🧨 전체 초기화 — 처음 설치한 상태로</button>`;
   $('devBody').querySelectorAll('[data-dtab]').forEach(b => b.onclick = () => { tab = b.dataset.dtab; showPanel(); });
+  on('dvResetAll', resetAll);
   S_.bind();
+}
+
+/** 이 게임이 localStorage 에 둔 키 (세이브 · 소리 · 언어 …). 백업 슬롯은 뺀다.
+ *  같은 출처(seungiljang.github.io)를 다른 게임들도 쓰므로 localStorage.clear() 는 절대 안 된다 —
+ *  그러면 남의 세이브까지 지운다. 접두사로 우리 것만 고른다(나중에 키가 늘어도 따라온다). */
+function ownKeys() {
+  const out = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k === 'monsteridle' || k.startsWith('monsteridle.')) && k !== BAK) out.push(k);
+    }
+  } catch {}
+  return out;
+}
+
+/** 전체 초기화 — 세이브와 설정을 지우고 새로고침한다. 처음 설치한 것과 같은 상태가 된다
+ *  (언어는 기기 언어로, 소리는 기본값으로). 전투 스위치(DEV)는 저장하지 않으니 새로고침으로 꺼진다.
+ *  백업 슬롯만 남긴다 — 지운 걸 되돌릴 유일한 길이라서. */
+function resetAll() {
+  let bak = null;
+  try { bak = JSON.parse(localStorage.getItem(BAK) || 'null'); } catch {}
+  const bakNote = bak
+    ? `백업 슬롯(${new Date(bak.at).toLocaleString('ko-KR')})은 남깁니다.`
+    : '백업이 없어서 되돌릴 수 없습니다. 필요하면 먼저 세이브 탭에서 백업하세요.';
+  if (!confirm(`전체 초기화\n\n세이브 · 소리 설정 · 언어 설정을 전부 지우고 처음 설치한 상태로 시작합니다.\n${bakNote}\n\n계속할까요?`)) return;
+  const keys = ownKeys();
+  wipe();                       // 세이브를 지우고 저장을 잠근다 — 떠날 때 저장이 다시 쓰지 않게
+  for (const k of keys) { try { localStorage.removeItem(k); } catch {} }
+  holdSaveTime(0);
+  location.reload();
 }
 
 /** 켜 둔 전투 스위치를 경고에 띄운다 — 켠 걸 잊고 플레이하면 체감이 전부 틀린다 */
@@ -699,7 +732,7 @@ SECTIONS.save = () => {
       ${btns([['sExport', '내보내기'], ['sCopy', '복사'], ['sImport', '불러오기 (새로고침)']])}
       ${sec('🔄 기타')}
       ${btns([['sReload', '저장하고 새로고침']])}
-      <button id="dvWipe" class="devDanger">세이브 초기화</button>`,
+      <button id="dvWipe" class="devDanger">세이브만 초기화 (설정은 유지)</button>`,
     bind() {
       on('sBak', () => {
         localStorage.setItem(BAK, JSON.stringify({ at: Date.now(), life: S.life, s: ser() }));

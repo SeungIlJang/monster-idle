@@ -153,7 +153,12 @@ export function load() {
 let heldT = 0;
 export function holdSaveTime(t) { heldT = t || 0; }
 
+// wipe() 뒤에는 새로고침까지 저장하지 않는다. 떠날 때 저장(pagehide)이 기본값을 도로 적으면
+// 다음 실행이 '세이브가 없는 첫 실행' 이 아니게 된다 — 지우는 쪽은 전부 바로 새로고침한다
+let frozen = false;
+
 export function save() {
+  if (frozen) return;
   S.t = heldT || Date.now();
   try {
     // -Infinity 는 JSON 에서 null 이 되므로 문자열로 보존
@@ -177,4 +182,5 @@ export function reviveNumbers(obj) {
 export function wipe() {
   try { localStorage.removeItem(KEY); } catch {}
   S = defaults();
+  frozen = true;
 }
