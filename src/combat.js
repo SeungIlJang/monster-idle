@@ -2,8 +2,8 @@
 //   · 전투 중 회복 없음 — 회복 스탯은 웨이브 사이에만 작동
 //   · 제한시간 없음 — 유일한 실패 조건은 사망
 //   · 사망 시 직전 스테이지로 내려가 파밍하고, 플레이어가 재도전을 누른다
-import { B, perWave, isBoss, isGate, gateCfg, LeHP, LeATK, LeGOLD, heroAt, foeAt,
-  fixSupportOnly, bossHeroAt, chapterLabel } from './balance.js';
+import { B, perWave, isBoss, isGate, gateCfg, LeHP, LeATK, LeGOLD, heroAt, waveFoes,
+  bossHeroAt, chapterLabel } from './balance.js';
 import { S, save } from './state.js';
 import { LDPS, LHP, LDEF, nval, shots, critF, Linc, bestFarmStage, canClear, ab } from './stats.js';
 import { bump as bumpDaily } from './daily.js';
@@ -103,12 +103,9 @@ function spawnWave() {
   const Lhp = LeHP(R.stage, R.boss);
   // 보스는 그 구역의 용사 **본인** 이다 — 섞지 않는다. 잡몹만 지금까지 본 용사들로 채운다.
   // 지원형(백마법사)은 혼자 설 수 없다 — 보스로도, 전원 지원형으로도 안 나온다.
-  let heroes = R.boss
-    ? [bossHeroAt(R.stage)]
-    : fixSupportOnly([...Array(n)].map((_, i) => foeAt(R.stage, R.waveIdx, i)), R.stage, R.waveIdx);
-  // 진형: 근접 < 궁수 < 마법사 < 백마법사(맨 뒤) — balance.json roster.heroes[].row.
-  // 순서가 곧 자리(render)이고 맞는 순서다(앞에서부터 때린다). 같은 줄끼리는 뽑힌 순서 그대로(안정 정렬).
-  if (!R.boss) heroes = heroes.slice().sort((a, b) => (a?.row || 0) - (b?.row || 0));
+  // 진형 정렬까지 balance.waveFoes 가 한다: 근접 < 궁수 < 마법사 < 백마법사(맨 뒤), 같은 줄은 대표가 앞·같은 용사끼리.
+  // 순서가 곧 자리(render)이고 맞는 순서다(앞에서부터 때린다).
+  const heroes = R.boss ? [bossHeroAt(R.stage)] : waveFoes(R.stage, R.waveIdx, n);
   const period = 1 / B.enemy.aspd;
   R.enemies = heroes.map((hero, i) => ({
     Lhp, Lmax: Lhp, hitT: 0, healT: 0, ph: Math.random() * 6.28, hero,

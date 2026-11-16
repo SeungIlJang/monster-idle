@@ -118,17 +118,52 @@ function hash(a, b, c) {
  * 그렇다고 전부 균등하게 섞으면 이번엔 **"이 구역의 적" 이라는 감각이 사라진다** —
  * 36층부터는 8종이 다 풀린 상태라 모든 스테이지가 똑같은 8종 수프가 되고,
  * 새 용사가 등장하는 순간도 사건으로 읽히지 않는다.
- * 그래서 이번 구역의 용사를 leadFoePct 만큼 남기고 나머지를 과거 용사로 채운다.
+ * 그래서 이번 구역의 용사를 leadFoePct 만큼 남기고 나머지를 **직전 몇 구역의 용사**로 채운다.
+ *
+ * 나머지를 "지금까지 나온 전원" 에서 고르던 때(대표 45%)는 그래도 정신없었다 — 36~400층 측정에서
+ * 4기 웨이브에 평균 2.84종이 섞였고, 넷 다 다른 웨이브가 21%, 대표가 한 명도 없는 웨이브가 10.7%였다.
+ * 지금은 대표 65% + 직전 2구역(restZones)이라 "이 구역의 적 + 막 지나온 구역의 잔당" 으로 읽힌다.
  *
  * 밸런스 영향 없음 — LeHP/LeATK/LeGOLD 는 누가 나오든 스테이지와 보스 여부만 본다.
  */
+/** 대표 말고 섞여 나올 수 있는 용사 — 직전 restZones 구역의 대표들 (아직 안 나온 구역은 없다) */
+export function restPool(stage) {
+  const lead = heroAt(stage);
+  const out = [];
+  for (let k = 1; k <= (B.stage.restZones ?? 2); k++) {
+    const s = stage - k * sceneEvery();
+    if (s < 1) break;
+    const h = heroAt(s);
+    if (h !== lead && !out.includes(h)) out.push(h);
+  }
+  return out;
+}
+
 export function foeAt(stage, wave, slot) {
   const lead = heroAt(stage);
-  const rest = heroPool(stage).filter(h => h !== lead);
+  const rest = restPool(stage);
   if (!rest.length) return lead;                       // 아직 한 종류뿐 (1~5층)
   const h = hash(stage, wave, slot);
   if (h % 100 < B.stage.leadFoePct) return lead;
   return rest[(h >>> 8) % rest.length];
+}
+
+/**
+ * 웨이브 한 무리 — 뽑고, 고치고, 세운다. combat.spawnWave 가 이 순서 그대로 자리를 잡는다.
+ *  1) 자리마다 foeAt
+ *  2) 대표가 한 명도 없으면 한 자리를 대표로 — 그 구역의 적이라는 감각이 웨이브마다 끊기지 않게
+ *  3) 지원형만 남지 않게 (fixSupportOnly)
+ *  4) 진형: 근접 < 궁수 < 마법사 < 백마법사(roster.heroes[].row). 같은 줄 안에서는
+ *     **대표가 앞, 같은 용사끼리 붙여** 세운다 — 뽑힌 순서대로 두면 "카엘 사일러스 카엘" 처럼 갈라졌다(9%).
+ */
+export function waveFoes(stage, wave, n) {
+  const lead = heroAt(stage);
+  let list = [...Array(n)].map((_, i) => foeAt(stage, wave, i));
+  if (n > 0 && !list.includes(lead)) list[hash(stage, wave, 77) % n] = lead;
+  list = fixSupportOnly(list, stage, wave);
+  const order = h => B.roster.heroes.indexOf(h);
+  return list.slice().sort((a, b) => (a?.row || 0) - (b?.row || 0)
+    || (b === lead) - (a === lead) || order(a) - order(b));
 }
 
 /**
@@ -142,7 +177,9 @@ export function foeAt(stage, wave, slot) {
 export const isSupport = h => !!(h && h.support);
 export function fixSupportOnly(list, stage, wave) {
   if (!list.length || !list.every(isSupport)) return list;
-  const alt = heroPool(stage).filter(h => !isSupport(h));
+  // 섞여 나오는 풀(restPool)에서 먼저 찾는다 — 없을 때만 지금까지 나온 전원으로
+  const near = restPool(stage).filter(h => !isSupport(h));
+  const alt = near.length ? near : heroPool(stage).filter(h => !isSupport(h));
   if (!alt.length) return list;                        // 비지원형이 아직 없으면 어쩔 수 없다
   const out = list.slice();
   out[out.length - 1] = alt[hash(stage, wave, 99) % alt.length];
