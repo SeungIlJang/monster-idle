@@ -6,7 +6,7 @@ import { B, perWave, isBoss, isGate, gateCfg, LeHP, LeATK, LeGOLD, heroAt, waveF
   bossHeroAt, chapterLabel } from './balance.js';
 import { S, save } from './state.js';
 import { LDPS, LHP, LDEF, nval, shots, critF, Linc, bestFarmStage, canClear, ab } from './stats.js';
-import { bump as bumpDaily } from './daily.js';
+import { bump as bumpDaily, killDrop } from './daily.js';
 import { recomputeGacha } from './gacha.js';
 import { crossed } from './unlocks.js';
 import { tickSkills, normalShare } from './skills.js';
@@ -136,10 +136,18 @@ function spawnWave() {
   }
   const grunt = heroes.find(h => !h?.support) || heroes[0];   // 병사 모습 — 힐러 모습으로 때리면 이상하다
   const total = m + nh;
+  // ── 황금 병사 (뜻밖의 보상) ── 몇 웨이브에 한 번, 병사 하나가 금빛이고 골드를 J 배 준다.
+  // 기댓값을 지킨다: 이 판의 모든 처치 골드에 a = nh / (nh + p·(J−1)·hm) 를 곱한다 — 황금이 안 나온 웨이브도 똑같이.
+  // 그래야 웨이브 골드의 기댓값이 예전 nh 기분 그대로다(시뮬 불변).
+  const LK = B.stage.luck || {};
+  const p = SW ? (LK.goldenChance || 0) : 0, J = LK.goldenMul || 1;
+  const La = p > 0 ? Math.log10(nh / (nh + p * (J - 1) * hm)) : 0;
+  const goldenAt = p > 0 && Math.random() < p ? Math.floor(Math.random() * Math.min(m, SW.shown || m)) : -1;
   const make = (hero, share, minion, i) => ({
     Lhp: Lhp + Math.log10(share), Lmax: Lhp + Math.log10(share),
     hitT: 0, healT: 0, ph: Math.random() * 6.28, hero, minion,
-    Lgold: Math.log10(share),                       // 처치 골드 = 예전 한 기 × 체력 몫
+    golden: minion && i === goldenAt,
+    Lgold: Math.log10(share) + La + (minion && i === goldenAt ? Math.log10(J) : 0),   // 처치 골드 = 예전 한 기 × 체력 몫
     Latk: Math.log10(c * share),                    // 한 대 피해 = 예전 한 기 × c × 체력 몫
     // 힐러가 이번 웨이브에 채울 수 있는 총량(아군 최대체력 대비). 바닥나면 더 못 채운다 —
     // 이게 없으면 회복이 DPS 를 넘는 순간 적이 영영 안 죽는다(실측: 2분간 100% 고정).
@@ -289,11 +297,12 @@ export const aliveCount = () => R.enemies.reduce((n, e) => n + (e.Lhp > L0 ? 1 :
  * jx:    가로 흔들림. 같은 자리에 쌓이지 않게 한다.
  */
 function fx(type, text, x, y, delay = 0) {
+  const lucky = type === 'golden' || type === 'chest' || type === 'gem';   // 뜻밖의 보상은 천천히 오래 뜬다
   R.fx.push({
     type, text, x, y, delay,
-    life: type === 'crit' ? 1.0 : 0.8,
-    vy: type === 'gold' ? -70 : -34,
-    jx: (Math.random() - 0.5) * (type === 'gold' ? 34 : 30),
+    life: lucky ? 1.6 : type === 'crit' ? 1.0 : 0.8,
+    vy: lucky ? -26 : type === 'gold' || type === 'golden' ? -70 : -34,
+    jx: lucky ? 0 : (Math.random() - 0.5) * (type === 'gold' ? 34 : 30),
   });
   if (R.fx.length > 60) R.fx.shift();
 }
@@ -344,13 +353,32 @@ function onKill(e, idx) {
   // 전투 판정에는 영향이 없다 — front()/aliveCount() 는 Lhp 로만 판단한다.
   e.deadT = B.combatFx.deathSec;
   if (R.boss) { R.bossSlainT = 0.5; R.shake = Math.max(R.shake, 0.45); }
+  // ── 보스 상자 (뜻밖의 보상) ── 보스 골드에 나무 · 은 · 금 상자 배수. 기댓값 1.00 (balance.json luck.chest)
+  let chest = -1;
+  if (R.boss && B.stage.luck?.chest) {
+    let r = Math.random();
+    chest = B.stage.luck.chest.findIndex(([pr]) => (r -= pr) < 0);
+    if (chest < 0) chest = 0;
+    e.Lgold = (e.Lgold || 0) + Math.log10(B.stage.luck.chest[chest][1]);
+  }
   gainGold(e);
   // 일일 퀘스트 '처치' 는 용사만 센다 — 병사까지 세면 웨이브마다 처치가 5배가 돼 퀘스트가 공짜가 된다
-  if (!e.minion) bumpDaily('kill');
-  fx('gold', '+' + fmt(LeGOLD(R.stage, R.boss) + (e.Lgold || 0)), idx, -16);
+  if (!e.minion) {
+    bumpDaily('kill');
+    // 처치 퀘스트 보상에서 덜어 둔 젬이 그날 처음 40기 중 무작위 3번에 떨어진다(daily.killDrop — 합은 그대로)
+    const g = killDrop();
+    if (g) { fx('gem', '💎 +' + g, idx, -34); onEvent({ type: 'lucky', what: 'gem' }); }
+  }
+  const Lgot = LeGOLD(R.stage, R.boss) + (e.Lgold || 0);
+  fx(e.golden ? 'golden' : 'gold', '+' + fmt(Lgot), idx, -16);
+  if (e.golden) { banner(tr('cb.golden', { g: fmt(Lgot) }), 1.6); onEvent({ type: 'lucky', what: 'golden' }); }
+  if (chest >= 0) {
+    fx('chest', tr('cb.chest', { tier: [tr('chest.t0'), tr('chest.t1'), tr('chest.t2')][chest], m: B.stage.luck.chest[chest][1] }), idx, -48);
+    if (chest > 0) onEvent({ type: 'lucky', what: 'chest' });
+  }
   // 금화가 튀어 오른다. 숫자만 뜨는 것보다 "벌었다" 가 훨씬 잘 느껴진다.
-  // 보스는 골드가 10배라 더 많이 튀게 한다. 병사는 몫이 작아 두 개만.
-  const coins = R.boss ? 9 : e.minion ? 2 : 5;
+  // 보스는 골드가 10배라 더 많이 튀게 한다. 병사는 몫이 작아 두 개만, 황금 병사는 한 움큼.
+  const coins = e.golden ? 16 : R.boss ? 9 + Math.max(0, chest) * 5 : e.minion ? 2 : 5;
   for (let i = 0; i < coins; i++) {
     fx('coin', '', idx, -10, i * 0.035);
     const c = R.fx[R.fx.length - 1];

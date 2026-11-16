@@ -33,8 +33,33 @@ export function questState() {
   return QUESTS.map(q => {
     const cur = S.daily[q.id] || 0;
     const done = cur >= q.goal;
-    return { ...q, cur: Math.min(cur, q.goal), done, claimed: !!S.daily.claimed[q.id], gem: B.gems.questReward };
+    return { ...q, cur: Math.min(cur, q.goal), done, claimed: !!S.daily.claimed[q.id], gem: questGem(q.id) };
   });
+}
+
+// '처치' 퀘스트 보상의 일부를 처치 중에 떨어뜨린다(killDrop) — 퀘스트를 마치면 하루 합은 그대로다
+const KD = B.gems.killDrops || { count: 0, gem: 0 };
+const questGem = id => B.gems.questReward - (id === 'kill' ? KD.count * KD.gem : 0);
+
+/**
+ * 용사 처치 한 번마다 부른다(bump('kill') 뒤). 그날 처음 목표(40)기 중 미리 뽑아 둔 순번이면 젬을 준다.
+ * 순번을 그날 처음 한 번 뽑아 세이브에 둔다 — 껐다 켜도, 몇 번을 다시 계산해도 합이 정확히 count × gem 이다.
+ */
+export function killDrop() {
+  ensureDaily();
+  if (!KD.count) return 0;
+  const goal = (QUESTS.find(q => q.id === 'kill') || {}).goal || 40;
+  if (!S.daily.drops) {
+    const set = new Set();
+    while (set.size < Math.min(KD.count, goal)) set.add(1 + Math.floor(Math.random() * goal));
+    S.daily.drops = [...set];
+    S.daily.dropGot = [];
+  }
+  const n = S.daily.kill || 0;
+  if (!S.daily.drops.includes(n) || S.daily.dropGot.includes(n)) return 0;
+  S.daily.dropGot.push(n);
+  S.gem += KD.gem;
+  return KD.gem;
 }
 
 export function claimQuest(id) {

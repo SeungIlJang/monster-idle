@@ -50,6 +50,8 @@ setEventHandler(ev => {
     // 연쇄가 길수록 배경이 더 달린다 — 화면이 같이 앞으로 쏠려야 "몰아친다" 가 읽힌다
     case 'kill':      sfx.kill(); if (R.chain >= 3) bgAdvance(0.18 + Math.min(R.chain, 10) * 0.02); break;
     case 'wave':      bgAdvance(); break;        // 웨이브를 넘길 때 한 걸음 더
+    // 뜻밖의 보상(황금 병사 · 은/금 상자 · 떨어진 젬) — 뽑기의 좋은 결과 소리를 빌린다. 귀로도 '오!' 가 와야 한다
+    case 'lucky':     if (ev.what === 'gem') sfx.upgrade(); else sfx.gachaResult(1); break;
     // 클리어마다 다음 장면 자원을 예열한다 (적·배경이 5스테이지마다 바뀐다)
     case 'stageClear': refresh(); preloadFor(ev.stage + 1); bgAdvance(1.1); break;   // 스테이지는 더 길게
     case 'death':      refresh(); break;

@@ -1068,7 +1068,8 @@ export function render(dt) {
   // (입장은 위 진형 계산의 '화면 밖에서 미끄러져 들어오기' 가 맡는다)
   for (const { e, idx, d, x: ex } of shown) {
     const ey = laneY(d);
-    const h = eH * laneS(d) * (e.minion ? (SW.scale || 0.62) : 1);   // 병사는 작게 — 용사가 누구인지 묻히지 않게
+    // 병사는 작게 — 용사가 누구인지 묻히지 않게. 황금 병사는 조금 크게 + 금빛(아래 glow) — 멀리서도 눈에 띄어야 '노려볼' 맛이 난다
+    const h = eH * laneS(d) * (e.minion ? (SW.scale || 0.62) * (e.golden ? 1.18 : 1) : 1);
     const eb = Math.sin(t * 2.4 + e.ph) * h * 0.015;
     const hit = e.hitT > 0 ? e.hitT / 0.12 : 0;
     const dying = e.deadT > 0 ? e.deadT / (B.combatFx?.deathSec || 0.32) : 0;
@@ -1085,6 +1086,28 @@ export function render(dt) {
       continue;
     }
     const kb = e.kbT > 0 ? Math.sin((e.kbT / 0.26) * Math.PI) : 0;   // 강타에 밀렸다 돌아온다
+    // 황금 병사 — 발밑 금빛 웅덩이 + 위로 오르는 반짝임. 몸빛(glow)만으론 작은 그림이라 묻혔다(실측 화면)
+    if (e.golden && dying <= 0) {
+      const pulse = 0.75 + 0.25 * Math.sin(t * 6 + e.ph);
+      ctx.save();
+      const gr = ctx.createRadialGradient(ex, ey, 0, ex, ey, h * 0.9);
+      gr.addColorStop(0, `rgba(255,220,90,${0.55 * pulse})`);
+      gr.addColorStop(1, 'rgba(255,200,60,0)');
+      ctx.fillStyle = gr;
+      ctx.beginPath(); ctx.ellipse(ex, ey, h * 0.9, h * 0.32, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#fff3b0';
+      for (let k = 0; k < 3; k++) {
+        const u = ((t * 0.9 + k / 3 + e.ph) % 1);
+        ctx.globalAlpha = (1 - u) * 0.9;
+        ctx.beginPath(); ctx.arc(ex + Math.sin(k * 2.1 + t * 2) * h * 0.3, ey - u * h * 1.1, 1.6 + (1 - u) * 1.4, 0, 7); ctx.fill();
+      }
+      // 머리 위 돈주머니 — 작은 병사 무리 속에서 '저놈이다' 가 한눈에 보이게
+      ctx.globalAlpha = 1;
+      ctx.font = `${Math.round(h * 0.42)}px system-ui`;
+      ctx.textAlign = 'center';
+      ctx.fillText('💰', ex, ey - h * 1.08 + Math.sin(t * 5 + e.ph) * h * 0.05);
+      ctx.restore();
+    }
     if (dying > 0) ctx.globalAlpha = Math.max(0, dying);   // 쓰러지며 옅어진다
     // 프레임: 공격은 포즈 진행도로 준비 → 타격 → 마무리, 대기는 가끔 눈 감기. 예전엔 초당 7장으로
     // 돌렸는데 대기 2장을 그렇게 돌리면 깜빡거린다
@@ -1095,6 +1118,7 @@ export function render(dt) {
       dx: hit * 7 + kb * W * 0.05 + (1 - dying) * (dying > 0 ? 14 : 0),    // 맞은 쪽으로 밀리며 쓰러진다
       sx: 1 + hit * 0.06,
       ring: dying > 0 ? null : FOE,
+      glow: e.golden ? `rgba(255,214,70,${0.75 + 0.25 * Math.sin(t * 7)})` : null, glowBlur: e.golden ? h * 0.7 : 0,
     });
     ctx.globalAlpha = 1;
     if (dying > 0) continue;              // 쓰러지는 적은 체력바를 지운다
@@ -1417,7 +1441,11 @@ export function render(dt) {
     }
     // 적에게 뜨는 공격 수치(평타·치명타·스킬)는 한 단계(2px)씩 줄였다 — 큰 단위(6.81az)가 여러 발
     // 겹치면 적 머리 위가 숫자로 덮였다. 크기 차이(평타 < 스킬 < 치명타)는 그대로 둔다.
-    if (f.type === 'foe') { ctx.fillStyle = '#ff6b6b'; ctx.font = '800 14px system-ui'; }
+    // 뜻밖의 보상 — 황금 병사 · 보스 상자 · 떨어진 젬. 평소 숫자보다 크고 오래 남는다(combat.fx 의 life)
+    if (f.type === 'golden') { ctx.fillStyle = '#ffe24a'; ctx.font = '900 21px system-ui'; }
+    else if (f.type === 'chest') { ctx.fillStyle = '#ffd34d'; ctx.font = '900 16px system-ui'; }
+    else if (f.type === 'gem') { ctx.fillStyle = '#7fe3ff'; ctx.font = '900 16px system-ui'; }
+    else if (f.type === 'foe') { ctx.fillStyle = '#ff6b6b'; ctx.font = '800 14px system-ui'; }
     else if (f.type === 'skill') { ctx.fillStyle = '#b59bff'; ctx.font = '800 18px system-ui'; }
     else if (f.type === 'crit') { ctx.fillStyle = '#ffe24a'; ctx.font = '800 20px system-ui'; }
     else if (f.type === 'gold') { ctx.fillStyle = '#ffd34d'; ctx.font = '800 15px system-ui'; }
