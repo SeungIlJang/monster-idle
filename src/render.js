@@ -1380,11 +1380,13 @@ export function render(dt) {
       ctx.fillRect(fx - 2, fy - 2, 4, 4);
       continue;
     }
+    // 적에게 뜨는 공격 수치(평타·치명타·스킬)는 한 단계(2px)씩 줄였다 — 큰 단위(6.81az)가 여러 발
+    // 겹치면 적 머리 위가 숫자로 덮였다. 크기 차이(평타 < 스킬 < 치명타)는 그대로 둔다.
     if (f.type === 'foe') { ctx.fillStyle = '#ff6b6b'; ctx.font = '800 14px system-ui'; }
-    else if (f.type === 'skill') { ctx.fillStyle = '#b59bff'; ctx.font = '800 20px system-ui'; }
-    else if (f.type === 'crit') { ctx.fillStyle = '#ffe24a'; ctx.font = '800 22px system-ui'; }
+    else if (f.type === 'skill') { ctx.fillStyle = '#b59bff'; ctx.font = '800 18px system-ui'; }
+    else if (f.type === 'crit') { ctx.fillStyle = '#ffe24a'; ctx.font = '800 20px system-ui'; }
     else if (f.type === 'gold') { ctx.fillStyle = '#ffd34d'; ctx.font = '800 15px system-ui'; }
-    else { ctx.fillStyle = '#fff'; ctx.font = '800 16px system-ui'; }
+    else { ctx.fillStyle = '#fff'; ctx.font = '800 14px system-ui'; }
     ctx.strokeStyle = 'rgba(30,20,10,.75)';
     ctx.lineWidth = 3;
     ctx.strokeText(f.text, fx, fy);
