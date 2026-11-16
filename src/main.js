@@ -10,7 +10,7 @@ import { pendingOffline, claimOffline, fmtDuration } from './offline.js';
 import { fmt } from './logmath.js';
 import { autoBuyTick } from './stats.js';
 import { initAds, playRewarded, isNative } from './ads.js';
-import { renderSkillBar } from './ui-skills.js';
+import { renderSkillBar, renderFever } from './ui-skills.js';
 import { showTitle } from './ui-title.js';
 import * as sfx from './audio.js';
 import { DEV } from './dev-flags.js';
@@ -52,6 +52,11 @@ setEventHandler(ev => {
     case 'wave':      bgAdvance(); break;        // 웨이브를 넘길 때 한 걸음 더
     // 뜻밖의 보상(황금 병사 · 은/금 상자 · 떨어진 젬) — 뽑기의 좋은 결과 소리를 빌린다. 귀로도 '오!' 가 와야 한다
     case 'powerUp':   sfx.upgrade(); break;     // 전투력이 한 계단 올랐다(combat.powerPulse)
+    // ⑥⑦ 손맛 — 피버가 찼다 · 켰다 · 큰 공격을 끊었다 · 적이 힘을 모은다(보스는 경고음)
+    case 'feverReady': sfx.gachaResult(0); break;
+    case 'fever':     sfx.gachaResult(1); break;
+    case 'cut':       sfx.upgrade(); sfx.kill(); break;
+    case 'charge':    if (ev.boss) sfx.heartbeat(0.9); break;
     case 'lucky':     if (ev.what === 'gem') sfx.upgrade(); else sfx.gachaResult(1); break;
     // 클리어마다 다음 장면 자원을 예열한다 (적·배경이 5스테이지마다 바뀐다)
     case 'stageClear': refresh(); preloadFor(ev.stage + 1); bgAdvance(1.1); break;   // 스테이지는 더 길게
@@ -112,6 +117,7 @@ function loop(now) {
     R.freezeBank += sdt;
     render(0);             // dt 0 — 화면이 그대로 멈춘다
     renderSkillBar();
+    renderFever();
     requestAnimationFrame(loop);
     return;
   }
@@ -124,6 +130,7 @@ function loop(now) {
   } else tick(sdt);
   render(sdt);
   renderSkillBar();        // 쿨 채움은 매 프레임 — DOM 은 구성이 바뀔 때만 다시 만든다
+  renderFever();
   acc += dt;
   if (acc > 0.25) {
     acc = 0;

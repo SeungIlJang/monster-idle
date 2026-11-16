@@ -20,6 +20,8 @@ const GROUND = 0.70;
 const LANE_BACK = 0.60, LANE_FRONT = 0.82;
 const laneY = d => H * (LANE_BACK + d * (LANE_FRONT - LANE_BACK));
 const laneS = d => 0.80 + d * 0.38;
+/** 방패병이 방패를 든 중인가 (combat.guarding 과 같은 판정) */
+const guardOn = e => e.guardCyc !== undefined && e.guardCyc >= e.hero.trait.open;
 // 적 깊이 줄(0 = 멀리 · 1 = 가까이). 진형 순서대로 앞에서 뒤로 서므로 중간 범위에서만 엇갈리게 하고,
 // **맨 뒤 적은 늘 가장 먼 줄**(REAR_LANE)에 세운다 — 가까운 줄에 서면 크게 그려져 앞에 있는 것처럼 읽혔다.
 const FOE_LANES = [0.60, 0.40, 0.70, 0.50];
@@ -1078,7 +1080,9 @@ export function render(dt) {
         : W * (0.56 + Math.min(myHi, 3) * 0.095 + (d - 0.5) * 0.05);       // 병사가 쓰러지면 앞으로
     }
     if (e._x === undefined) { e._x = x + W * 0.55; e._d = d; }            // 화면 밖에서 달려 들어온다
-    if (alive) { e._x += (x - e._x) * slide; e._d += (d - e._d) * slide; }
+    // 기병(돌진)은 들어올 때 세 배 빠르게 — 들어오자마자 먼저 친다(combat)
+    const sl = !e.minion && e.hero?.trait?.type === 'charge' ? Math.min(1, slide * 3) : slide;
+    if (alive) { e._x += (x - e._x) * sl; e._d += (d - e._d) * sl; }
     shown.push({ e, idx, d: e._d, x: e._x });
   });
   shown.sort((a, b) => a.d - b.d);        // 뒤에 있는 것부터 그린다
@@ -1154,8 +1158,36 @@ export function render(dt) {
       dx: hit * 7 + kb * W * 0.05 + (1 - dying) * (dying > 0 ? 14 : 0),    // 맞은 쪽으로 밀리며 쓰러진다
       sx: 1 + hit * 0.06,
       ring: dying > 0 ? null : FOE,
-      glow: e.golden ? `rgba(255,214,70,${0.75 + 0.25 * Math.sin(t * 7)})` : null, glowBlur: e.golden ? h * 0.7 : 0,
+      glow: e.windT > 0 ? `rgba(255,60,60,${0.6 + 0.4 * Math.sin(t * 18)})`
+        : e.golden ? `rgba(255,214,70,${0.75 + 0.25 * Math.sin(t * 7)})`
+        : guardOn(e) ? 'rgba(120,200,255,.9)' : null,
+      glowBlur: e.windT > 0 ? h * 0.5 : e.golden ? h * 0.7 : guardOn(e) ? h * 0.35 : 0,
     });
+    // ── 힘을 모은다 (보스 큰 공격 · 대포 장전) ── 발밑 붉은 고리가 조여 들고 머리 위에 '!'. 이때 스킬을 직접 누르면 끊긴다
+    if (e.windT > 0 && dying <= 0) {
+      const wind = e.shellCd !== undefined ? e.hero.trait.wind : (B.stage.bossHeavy?.wind || 1.6);
+      const u = 1 - e.windT / wind;                   // 0 → 1
+      ctx.save();
+      ctx.strokeStyle = `rgba(255,70,70,${0.5 + 0.5 * u})`;
+      ctx.lineWidth = 2 + u * 3;
+      const rr = h * (0.95 - u * 0.55);
+      ctx.beginPath(); ctx.ellipse(ex, ey, rr, rr * 0.32, 0, 0, 7); ctx.stroke();
+      ctx.font = `900 ${Math.round(h * (R.boss ? 0.34 : 0.3) * (1 + 0.15 * Math.sin(t * 20)))}px system-ui`;
+      ctx.textAlign = 'center';
+      ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(60,0,0,.9)';
+      ctx.strokeText('!', ex, ey - h * 1.12);
+      ctx.fillStyle = '#ff5050';
+      ctx.fillText('!', ex, ey - h * 1.12);
+      ctx.restore();
+    }
+    // ── 방패를 들었다 ── 앞(왼쪽)에 푸른 막. 이때는 평타 · 스킬이 막힌다
+    if (guardOn(e) && dying <= 0) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(140,210,255,.85)'; ctx.lineWidth = 3;
+      ctx.fillStyle = 'rgba(120,190,255,.18)';
+      ctx.beginPath(); ctx.ellipse(ex - h * 0.18, ey - h * 0.5, h * 0.42, h * 0.58, 0, Math.PI * 0.55, Math.PI * 1.45); ctx.fill(); ctx.stroke();
+      ctx.restore();
+    }
     ctx.globalAlpha = 1;
     if (dying > 0) continue;              // 쓰러지는 적은 체력바를 지운다
     // 병사는 1~2방이라 바가 꽉 찬 채로 늘어서 있으면 화면이 바로 덮인다 — 맞았을 때만 가늘게
@@ -1435,6 +1467,26 @@ export function render(dt) {
     ctx.restore();
   }
 
+  // ── 피버 ── 화면 가장자리가 달아오르고 속도선이 진하게 흐른다. 리드 발밑에 불꽃 고리
+  if (R.feverT > 0) {
+    const a = Math.min(1, R.feverT * 2) * (0.75 + 0.25 * Math.sin(t * 12));
+    ctx.save();
+    const g = ctx.createRadialGradient(W / 2, H * 0.55, Math.min(W, H) * 0.25, W / 2, H * 0.55, Math.max(W, H) * 0.7);
+    g.addColorStop(0, 'rgba(255,120,30,0)');
+    g.addColorStop(1, `rgba(255,110,20,${(0.42 * a).toFixed(3)})`);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = '#ffcf6a'; ctx.lineWidth = 2.5; ctx.globalAlpha = 0.35 * a;
+    for (let i = 0; i < 9; i++) {
+      const yy = H * (0.08 + i * 0.105) + Math.sin(t * 7 + i) * 4, len = W * 0.14;
+      const x0 = (t * 620 + i * 97) % (W + len) - len;
+      ctx.beginPath(); ctx.moveTo(x0, yy); ctx.lineTo(x0 + len, yy); ctx.stroke();
+    }
+    ctx.globalAlpha = a;
+    ctx.strokeStyle = '#ffb03a'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(W * 0.30, feet, pH * (0.7 + 0.1 * Math.sin(t * 16)), pH * 0.22, 0, 0, 7); ctx.stroke();
+    ctx.restore();
+  }
+
   // ── 버프 가시화 ── 배속은 숫자로만 있어서 켜 둔 줄도 모른다. 가장자리에 속도선을 깐다.
   if ((S.spd || 1) > 1) {
     ctx.save();
@@ -1478,7 +1530,9 @@ export function render(dt) {
     // 적에게 뜨는 공격 수치(평타·치명타·스킬)는 한 단계(2px)씩 줄였다 — 큰 단위(6.81az)가 여러 발
     // 겹치면 적 머리 위가 숫자로 덮였다. 크기 차이(평타 < 스킬 < 치명타)는 그대로 둔다.
     // 뜻밖의 보상 — 황금 병사 · 보스 상자 · 떨어진 젬. 평소 숫자보다 크고 오래 남는다(combat.fx 의 life)
-    if (f.type === 'golden') { ctx.fillStyle = '#ffe24a'; ctx.font = '900 21px system-ui'; }
+    if (f.type === 'cut') { ctx.fillStyle = '#8ff0ff'; ctx.font = '900 20px system-ui'; }
+    else if (f.type === 'block') { ctx.fillStyle = '#b8dcff'; ctx.font = '800 12px system-ui'; }
+    else if (f.type === 'golden') { ctx.fillStyle = '#ffe24a'; ctx.font = '900 21px system-ui'; }
     else if (f.type === 'chest') { ctx.fillStyle = '#ffd34d'; ctx.font = '900 16px system-ui'; }
     else if (f.type === 'gem') { ctx.fillStyle = '#7fe3ff'; ctx.font = '900 16px system-ui'; }
     else if (f.type === 'foe') { ctx.fillStyle = '#ff6b6b'; ctx.font = '800 14px system-ui'; }

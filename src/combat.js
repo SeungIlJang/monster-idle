@@ -164,6 +164,92 @@ function spawnWave() {
     ...Array.from({ length: m }, (_, i) => make(grunt, hm, true, i)),
     ...heroes.map((hero, j) => make(hero, hh, false, m + j)),
   ];
+
+  // ── 적 개성 (⑦) · 보스 큰 공격 (⑥) — 전부 '나눠 쓰기' 다 ──
+  // 한 기가 주는 피해 합 · 잡는 데 드는 시간은 예전과 같고 **박자만** 바뀐다. 그냥 두는 사람에겐 지금 밸런스 그대로이고,
+  // 손을 대는 사람(모으는 동안 스킬을 직접 누름 · 방패를 내렸을 때 스킬)만 이득을 본다.
+  for (const e of R.enemies) {
+    const tt = !e.minion && !R.boss && e.hero?.trait;   // 보스는 개성 대신 '큰 공격' 하나만 (둘을 겹치면 대포 + 큰 공격이 같이 걸렸다)
+    if (tt?.type === 'guard') {
+      // 방패병: open 초 내리고 guard 초 올린다. 올린 동안 막으므로 체력을 open/(open+guard) 배로 — 평균 잡는 시간 같음
+      const keep = tt.open / (tt.open + tt.guard);
+      e.Lhp += Math.log10(keep); e.Lmax = e.Lhp;
+      e.guardCyc = Math.random() * (tt.open + tt.guard);    // 여러 기가 같은 박자로 올리지 않게
+    } else if (tt?.type === 'shell') {
+      // 대포병: 평타 대신 장전(wind) → 포탄(units 몫). 주기 units/공속 — 합 같음
+      e.shellCd = (tt.units / B.enemy.aspd - tt.wind) * Math.random();
+      e.windT = 0;
+    } else if (tt?.type === 'charge') {
+      // 기병: 들어오자마자 돌진해 mul 몫으로 먼저 친다 — 그 뒤 첫 평타가 (mul−1) 주기 늦다(foeTick)
+      e.atkT = 0.35; e.firstMul = tt.mul;
+    }
+  }
+  const BH = B.stage.bossHeavy;
+  if (R.boss && !R.gate && BH) {
+    // 보스 큰 공격: every 초마다 wind 초 모았다가 units 몫 한 방. 모으는 동안은 평타를 쉬고 평소 평타를 f 배로 줄여
+    // 한 주기 합을 맞춘다: (every − wind)·공속·f + units = every·공속. 관문은 체력 비례 피해라 건드리지 않는다.
+    const e = R.enemies[0];
+    const f = (BH.every * B.enemy.aspd - BH.units) / ((BH.every - BH.wind) * B.enemy.aspd);
+    // 첫 예고 전까지는 제 세기로 친다 — 첫 큰 공격(first 초) 전에 끝나는 짧은 보스전이 그만큼 쉬워지지 않게(실측: 2초 보스전 받은 피해 −36%).
+    // 첫 예고가 시작되는 순간(foeTick) 평타를 f 배로 낮춘다. 그 뒤로는 한 주기 합이 예전과 같다
+    e.LatkHeavy = e.Latk + Math.log10(BH.units);
+    e.LatkLow = e.Latk + Math.log10(f);
+    e.heavyCd = BH.first; e.windT = 0;
+  }
+}
+
+/** 이 적이 지금 방패를 들고 있나 (방패병 guard) */
+const guarding = e => e.guardCyc !== undefined && e.guardCyc >= e.hero.trait.open;
+
+/**
+ * 스킬을 **직접** 눌렀을 때 — 힘을 모으던 적(보스 큰 공격 · 대포 장전)을 전부 끊는다. 그 한 방은 통째로 사라진다.
+ * 자동 발동은 끊지 않는다 — 그냥 두는 사람의 밸런스는 지금 그대로여야 하고, 끊기는 손을 댄 보상이다.
+ */
+function interruptAll() {
+  let n = 0;
+  for (const e of R.enemies) {
+    if (!(e.Lhp > L0) || !(e.windT > 0)) continue;
+    e.windT = 0; n++;
+    if (e.heavyCd !== undefined) e.heavyCd = B.stage.bossHeavy.every - B.stage.bossHeavy.wind;
+    if (e.shellCd !== undefined) e.shellCd = e.hero.trait.units / B.enemy.aspd - e.hero.trait.wind;
+    e.hitT = 0.3; e.kbT = 0.26;
+    fx('cut', tr('cb.cut'), R.enemies.indexOf(e), -44);
+  }
+  if (n) { R.shake = Math.max(R.shake, 0.3); hitstop(0.08); onEvent({ type: 'cut' }); }
+  return n;
+}
+
+/**
+ * 여러 적에게 정해진 피해를 한꺼번에 (스킬 개성 — 범위 · 전체 · 마무리). 넘침은 없다.
+ * 방패를 든 방패병은 막는다. **한 번에 쓰러뜨리는 용사는 하나까지** — 둘째부터는 1% 를 남긴다(물량전과 같은 상한:
+ * 압도적일 때 층당 최소 시간 · 환생 재등반 속도가 바뀌지 않게). 쓰러뜨린 [적, 번호] 목록을 돌려준다.
+ */
+function hitList(pairs) {
+  const out = [];
+  let heroKills = 0;
+  for (const [e, Ld] of pairs) {
+    if (!(e.Lhp > L0)) continue;
+    const i = R.enemies.indexOf(e);
+    if (guarding(e)) { blocked(e, i); continue; }
+    e.hitT = 0.16;
+    let L = sub(e.Lhp, Ld);
+    if (!(L > L0) && !e.minion && heroKills >= 1) L = e.Lmax - 2;   // 1% 남김
+    e.Lhp = L;
+    if (L > L0) continue;
+    if (!e.minion) heroKills++;
+    out.push([e, i]);
+  }
+  return out;
+}
+
+let lastBlockT = -9;
+/** 방패에 막혔다 — 글자는 0.4초에 한 번만(평타가 빠르면 '막음' 이 줄줄이 뜬다) */
+function blocked(e, i) {
+  e.hitT = 0.08;
+  if (R.stageTime - lastBlockT < 0.4) return;
+  lastBlockT = R.stageTime;
+  fx('block', tr('cb.block'), i, -20);
+  onEvent({ type: 'block' });
 }
 
 /**
@@ -179,6 +265,7 @@ function strikeFront(Ldmg) {
   for (let guard = 0; guard < 64; guard++) {
     const e = front();
     if (!e) break;
+    if (guarding(e)) { blocked(e, R.enemies.indexOf(e)); break; }   // 방패를 든 방패병 — 막혀서 넘어가지도 않는다
     const before = e.Lhp;
     e.Lhp = sub(e.Lhp, rest);
     if (e.Lhp > L0) break;
@@ -297,7 +384,7 @@ export const aliveCount = () => R.enemies.reduce((n, e) => n + (e.Lhp > L0 ? 1 :
  * jx:    가로 흔들림. 같은 자리에 쌓이지 않게 한다.
  */
 function fx(type, text, x, y, delay = 0) {
-  const lucky = type === 'golden' || type === 'chest' || type === 'gem';   // 뜻밖의 보상은 천천히 오래 뜬다
+  const lucky = type === 'golden' || type === 'chest' || type === 'gem' || type === 'cut';   // 뜻밖의 보상 · 끊기는 천천히 오래 뜬다
   R.fx.push({
     type, text, x, y, delay,
     life: lucky ? 1.6 : type === 'crit' ? 1.0 : 0.8,
@@ -346,6 +433,13 @@ function onKill(e, idx) {
   // 연쇄가 길수록 멈춤도 길어진다 — 몰아칠 때 화면이 같이 무거워져야 "달아오른다" 가 읽힌다
   R.chain++;
   R.chainT = CHAIN_HOLD + relicEff('chainHold');   // 전쟁 북 유물
+  // 피버 게이지 — 처치로 찬다(켜져 있는 동안은 안 찬다). 다 차면 한 번 알린다 — 버튼이 빛나고 소리가 난다
+  const F = B.stage.fever;
+  if (F && !(R.feverT > 0)) {
+    const was = R.feverG || 0;
+    R.feverG = Math.min(F.goal, was + (R.boss ? F.fill.boss : e.minion ? F.fill.minion : F.fill.hero));
+    if (was < F.goal && R.feverG >= F.goal) onEvent({ type: 'feverReady' });
+  }
   // 평범한 처치에는 멈추지 않는다. 보스와 **연쇄 분기점**(5·10·15…)만 — 그래야 사건이 된다.
   if (R.boss) hitstop(0.10);
   else if (R.chain % 5 === 0) hitstop(0.06);
@@ -467,14 +561,42 @@ function playerDied() {
  * 스킬 한 방. 자동 발동과 스킬바 수동 발동이 **같은 경로**를 쓰도록 내보낸다.
  * secs = 이 한 방이 "DPS 몇 초치" 인가 (쿨 동안 모은 몫).
  */
-export function fireSkill(sk, secs) {
+export function fireSkill(sk, secs, manual = false) {
   const tgt = front();
   if (!tgt) return false;        // 때릴 게 없으면 쿨을 쓰지 않는다 (몫이 증발하면 DPS 가 샌다)
+  // 직접 누른 스킬은 힘을 모으던 적(보스 큰 공격 · 대포 장전)을 끊는다 — 손을 댄 보상
+  if (manual) interruptAll();
   const Ldmg = LDPS(R.boss) + fromNum(secs) + DEV.Ldmg;
   tgt.hitT = 0.16;
   const idx = R.enemies.indexOf(tgt);
-  // 스킬 한 방은 크다 — 병사 떼를 꿰뚫고 지나간다(strikeFront 의 이월). 몇 마리를 쓸었는지가 곧 스킬의 손맛이다
-  const killed = strikeFront(Ldmg);
+  // ── 스킬 개성 (balance.json skills.kind) ── 피해량은 그대로, 맞는 곳만 다르다.
+  // 여섯 종이 전부 '앞의 적 한 방' 이라 아이콘만 달랐다. 연출(skills.fx — 튀기기 · 원뿔 · 갈라짐 …)은 이미 각자 달랐는데 맞는 곳이 같았다.
+  const kind = B.skills.kind?.[sk.id] || 'pierce';
+  let killed;
+  if (kind === 'pierce') {
+    // 꿰뚫기 — 병사 떼를 앞에서부터 뚫고 지나간다(strikeFront 의 이월)
+    killed = strikeFront(Ldmg);
+  } else {
+    const alive = R.enemies.filter(e => e.Lhp > L0);
+    const heroes = alive.filter(e => !e.minion);
+    let list, w;
+    if (kind === 'splash') {            // 튀기기 — 앞 50% · 바로 뒤 둘 25%씩 (뒤가 없으면 앞으로 모인다)
+      list = alive.slice(0, 3); w = [0.5, 0.25, 0.25].slice(0, list.length);
+    } else if (kind === 'cone') {       // 화염 — 화면에 선 병사들 + 첫 용사에 고르게
+      const shownMin = B.stage.swarm?.shown || 6;
+      list = [...alive.filter(e => e.minion).slice(0, shownMin), ...heroes.slice(0, 1)];
+    } else if (kind === 'quake') {      // 지진 — 줄 선 병사까지 살아 있는 전원에 고르게
+      list = alive;
+    } else if (kind === 'execute') {    // 마무리 — 가장 다친 용사 하나 (용사가 없으면 앞)
+      list = heroes.length ? [heroes.reduce((a, b) => (ratio(a.Lhp, a.Lmax) <= ratio(b.Lhp, b.Lmax) ? a : b))] : [tgt];
+    } else {                            // heroes — 용사들만 고르게 (병사는 건너뛴다)
+      list = heroes.length ? heroes : [tgt];
+    }
+    if (!list.length) list = [tgt];
+    if (!w) w = list.map(() => 1 / list.length);
+    const sum = w.reduce((a, b) => a + b, 0);
+    killed = hitList(list.map((e, i) => [e, Ldmg + Math.log10(w[i] / sum)]));
+  }
   for (const [e] of killed) e.hitT = 0.16;
   fx('skill', sk.icon + ' ' + fmt(Ldmg), idx, -4);
   R.skillFxT = 0.35;
@@ -508,6 +630,7 @@ export function tick(dt) {
   if (R.bossIntroT > 0) R.bossIntroT -= dt;
   if (R.bossSlainT > 0) R.bossSlainT -= dt;
   if (R.powerUp && R.powerUp.t > 0) R.powerUp.t -= dt;
+  if (R.feverT > 0) R.feverT -= dt;
   // y 는 픽셀 오프셋(위로 떠오름). delay 가 남은 것은 아직 뜨지 않은 것이다.
   for (const f of R.fx) {
     if (f.delay > 0) { f.delay -= dt; continue; }
@@ -550,7 +673,8 @@ export function tick(dt) {
 
   // 플레이어 공격
   R.atkT -= dt;
-  const interval = 1 / nval('aspd');
+  // 피버 중엔 공격속도 × aspdMul — 한 방 피해는 그대로라 그만큼 DPS 가 오른다(눌러야만 켜진다 · 시뮬 밖)
+  const interval = 1 / (nval('aspd') * (R.feverT > 0 ? (B.stage.fever?.aspdMul || 1) : 1));
   if (R.atkT <= 0) {
     R.atkT = interval;
     R.atkAnimT = Math.min(0.25, interval * 0.6);
@@ -605,7 +729,9 @@ export function tick(dt) {
   }
 
   // 스킬 — 쿨마다 모아둔 몫을 한 번에. 평타는 그만큼 줄어 있으므로 총량은 같다.
-  tickSkills(R.skillCd, dt, fireSkill);
+  // 적이 힘을 모으는 동안(R.charging)은 자동 발동을 잠깐 쥐고 있는다 — 준비된 스킬을 **직접 눌러** 끊을 수 있게.
+  // 한 방 몫은 쿨 동안 모은 양으로 정해져 있어 늦게 쏴도 피해는 같다(1~2초 늦을 뿐).
+  tickSkills(R.skillCd, dt, fireSkill, R.charging);
 
   // 적 공격 — **적마다 제 타이머**로 때린다.
   // 예전엔 그룹 1타이머가 살아있는 수에 비례한 피해를 한 번에 줬다. 총량은 같지만
@@ -616,19 +742,59 @@ export function tick(dt) {
   // 줄 서서 기다리는(화면 밖) 병사는 때리지 않는다 — spawnWave 의 받는 피해 식이 그렇게 맞춰져 있다
   const shownMin = B.stage.swarm?.shown || Infinity;
   let minRank = 0;
+  let charging = false;
+  const BH = B.stage.bossHeavy;
   for (const e of R.enemies) {
     if (!(e.Lhp > L0)) continue;                 // 죽은 적은 안 때린다 (= 예전의 alive 비례)
     if (e.minion && minRank++ >= shownMin) continue;
     if (e.aPose > 0) e.aPose -= dt;
     if (e.healT > 0) e.healT -= dt;
+    // 방패병 — 방패를 내렸다 올렸다 (guarding)
+    if (e.guardCyc !== undefined) { const g = e.hero.trait; e.guardCyc = (e.guardCyc + dt) % (g.open + g.guard); }
+    // ── 힘을 모으는 적: 보스 큰 공격(heavyCd) · 대포 장전(shellCd) ──
+    if (e.heavyCd !== undefined || e.shellCd !== undefined) {
+      if (e.windT > 0) {                         // 모으는 중 — 다 모이면 한 방
+        charging = true;
+        e.windT -= dt;
+        if (e.windT > 0) continue;               // 모으는 동안은 평타를 쉰다
+        e.windT = 0; e.aPose = FOE_POSE;
+        const shell = e.shellCd !== undefined;
+        if (shell) e.shellCd = e.hero.trait.units / B.enemy.aspd - e.hero.trait.wind;
+        else e.heavyCd = BH.every - BH.wind;
+        R.shake = Math.max(R.shake, shell ? 0.18 : 0.4);
+        if (foeStrike(e, shell ? e.Latk + Math.log10(e.hero.trait.units) : e.LatkHeavy)) return;
+        continue;
+      }
+      if (e.shellCd !== undefined) {             // 대포는 평타가 없다 — 장전만 기다린다
+        e.shellCd -= dt;
+        if (e.shellCd <= 0) { e.windT = e.hero.trait.wind; onEvent({ type: 'charge' }); }
+        continue;
+      }
+      e.heavyCd -= dt;                           // 보스는 기다리는 동안 (줄인 세기로) 평타를 계속한다
+      if (e.heavyCd <= 0) { e.windT = BH.wind; if (e.LatkLow !== undefined) { e.Latk = e.LatkLow; e.LatkLow = undefined; } onEvent({ type: 'charge', boss: true }); continue; }
+    }
     e.atkT -= dt;
     if (e.atkT > 0) continue;
     e.atkT += period;
     e.aPose = FOE_POSE;
     // 힐러는 **때리지 않는다.** 아군 체력만 채운다 — 그래서 혼자 나올 수도 없다.
     if (e.hero?.support) { foeHeal(e); continue; }
-    if (foeStrike(e)) return;                    // 죽었으면 더 처리하지 않는다
+    // 기병 돌진 — 첫 한 방이 mul 몫이고, 그만큼 다음 평타가 늦다(합 같음)
+    let Lw;
+    if (e.firstMul) { Lw = e.Latk + Math.log10(e.firstMul); e.atkT += period * (e.firstMul - 1); e.firstMul = 0; e.dashT = 0.3; }
+    if (foeStrike(e, Lw)) return;                // 죽었으면 더 처리하지 않는다
   }
+  R.charging = charging;
+}
+
+/** 피버 — 게이지가 찼으면 켠다. 버튼(ui-skills)이 부른다. 켜졌으면 true */
+export function startFever() {
+  const F = B.stage.fever;
+  if (!F || R.feverT > 0 || (R.feverG || 0) < F.goal) return false;
+  R.feverT = F.sec; R.feverG = 0;
+  banner(tr('fv.go'), 1.2);          // 큰 배너는 '새로운 해금!' 머리말이 붙는다 — 보통 배너로
+  onEvent({ type: 'fever' });
+  return true;
 }
 
 /**
@@ -689,9 +855,9 @@ function onFoeImpact(b) {
 }
 
 /** 적 한 기의 타격. 죽었으면 true */
-function foeStrike(e) {
+function foeStrike(e, Lw = e.Latk) {
   // e.Latk: 물량전의 한 대 비중(체력 몫 × c, log). 예전 용사 한 기면 0
-  const Ldmg = LeATK(R.stage, R.boss) + (e.Latk || 0) - LDEF() + fromNum(enrage());
+  const Ldmg = LeATK(R.stage, R.boss) + (Lw || 0) - LDEF() + fromNum(enrage());
   // 관문은 **최대 체력 비례** 로 한 번 더 문다. 방어·체력을 올려도 줄지 않는다 —
   // 이게 있어야 "빨리 못 죽이면 내가 죽는다" 가 성립한다(balance.json stage.gate 참조).
   // 관문은 보스전이라 적이 한 기뿐이므로 물리는 횟수가 예전과 같다.

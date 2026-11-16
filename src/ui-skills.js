@@ -4,7 +4,8 @@
 // 새로 그리고, 평소에는 채움 막대 높이와 클래스만 건드린다.
 // (이 저장소에서 매 틱 innerHTML 을 새로 쓰다 클릭 대상이 사라진 적이 있다.)
 import { S, save } from './state.js';
-import { R, fireSkill } from './combat.js';
+import { R, fireSkill, startFever } from './combat.js';
+import { B } from './balance.js';
 import { skillBar, fireNow } from './skills.js';
 import { t } from './i18n.js';
 
@@ -27,7 +28,8 @@ export function renderSkillBar() {
           <i></i><b>${s.icon}</b></div>`).join('');
     $('skAuto').onclick = () => { S.autoSkill = !S.autoSkill; save(); renderSkillBar(); };
     for (const el of bar.querySelectorAll('[data-sk]')) {
-      el.onclick = () => { if (fireNow(R.skillCd, el.dataset.sk, fireSkill)) renderSkillBar(); };
+      // 직접 누른 스킬은 힘을 모으던 적을 끊는다(fireSkill 의 manual)
+      el.onclick = () => { if (fireNow(R.skillCd, el.dataset.sk, (sk, m) => fireSkill(sk, m, true))) renderSkillBar(); };
     }
   }
 
@@ -38,5 +40,25 @@ export function renderSkillBar() {
     if (!el) continue;
     el.querySelector('i').style.height = ((1 - s.fill) * 100).toFixed(0) + '%';
     el.classList.toggle('ready', s.fill >= 1);
+    el.classList.toggle('cut', s.fill >= 1 && !!R.charging);   // 지금 누르면 끊는다 — 빨갛게 깜빡인다
   }
+}
+
+/**
+ * 피버 버튼 — 매 프레임. 게이지(원형 채움)는 CSS 변수만 바꾸고, 글자는 바뀔 때만 쓴다.
+ * 차는 중 '피버' · 다 차면 '피버!' (빛나며 커졌다 작아졌다) · 켜진 동안 남은 초.
+ */
+export function renderFever() {
+  const el = $('feverBtn');
+  if (!el) return;
+  const F = B.stage.fever;
+  if (!F) { el.style.display = 'none'; return; }
+  if (!el.onclick) el.onclick = () => { if (startFever()) renderFever(); };
+  const on = R.feverT > 0, ready = !on && (R.feverG || 0) >= F.goal;
+  const p = on ? R.feverT / F.sec : (R.feverG || 0) / F.goal;
+  el.style.setProperty('--p', (Math.max(0, Math.min(1, p)) * 100).toFixed(1) + '%');
+  el.classList.toggle('ready', ready);
+  el.classList.toggle('on', on);
+  const txt = on ? String(Math.ceil(R.feverT)) : ready ? t('fv.ready') : t('fv.btn');
+  if (el.dataset.t !== txt) { el.dataset.t = txt; $('feverTxt').textContent = txt; }
 }

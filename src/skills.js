@@ -38,7 +38,7 @@ export const normalShare = () => 1 - dpsShare();
  * @param st  { [id]: 남은쿨 } — 전투 런타임이 들고 있는다(세이브 대상 아님)
  * @param fire(skill, mul)  mul = 이 한 방이 "DPS 몇 초치" 인가
  */
-export function tickSkills(st, dt, fire) {
+export function tickSkills(st, dt, fire, hold = false) {
   const list = equippedSkills();
   if (!list.length) return;
   const share = CFG.dpsShare / list.length;
@@ -49,6 +49,9 @@ export function tickSkills(st, dt, fire) {
     // 수동 모드면 0 에서 멈춰 "준비됨" 으로 기다린다. 여기서 쿨을 더해버리면
     // 준비 상태가 한 프레임도 유지되지 않아 누를 수가 없다.
     if (S.autoSkill === false) { st[sk.id] = 0; continue; }
+    // 적이 힘을 모으는 동안(hold)은 자동으로 쏘지 않고 준비된 채 쥐고 있는다 — 직접 눌러 끊을 기회를 준다.
+    // 한 방 몫(share × cd)은 정해져 있어 조금 늦게 쏴도 피해 총량은 같다
+    if (hold) { st[sk.id] = 0; continue; }
     // 때릴 대상이 없으면 터뜨리지 않고 준비된 채로 기다린다 — 쿨만 쓰고 피해가
     // 사라지면 그만큼 DPS 가 샌다(평타는 이미 깎여 있다).
     if (fire(sk, share * sk.cd)) st[sk.id] += sk.cd;

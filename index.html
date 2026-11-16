@@ -33,7 +33,20 @@
     font-size:11px;font-weight:800;cursor:pointer}
 
   /* 전투는 화면의 절반 이하. 나머지는 강화 목록이 채운다 (레전드 슬라임과 같은 배분) */
-  #game{flex:0 0 42vh;display:block;width:100%;min-height:0}
+  #arena{position:relative;flex:0 0 42vh;min-height:0}
+  #game{display:block;width:100%;height:100%;min-height:0}
+  .fever{position:absolute;right:10px;bottom:10px;width:60px;height:60px;border-radius:50%;
+         background:conic-gradient(#ffb03a var(--p,0%),rgba(20,26,52,.85) 0);border:2px solid #4a5478;
+         display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;
+         -webkit-tap-highlight-color:transparent;box-shadow:0 2px 8px #0008}
+  .fever b{font:900 11px system-ui;color:#fff;text-shadow:0 1px 2px #000,0 0 4px #000;letter-spacing:.3px}
+  .fever.ready{border-color:#ffe27a;animation:fvPulse .6s ease-in-out infinite alternate}
+  .fever.ready b{font-size:13px;color:#fff6c8}
+  .fever.on{background:radial-gradient(circle,#ffe27a 0%,#ff8a1a var(--p,100%),#7a2a08 0);border-color:#fff}
+  .fever.on b{font-size:18px}
+  @keyframes fvPulse{from{box-shadow:0 0 6px #ffb03a;transform:scale(1)}to{box-shadow:0 0 24px #ffd34d;transform:scale(1.1)}}
+  .skSlot.cut{border-color:#ff4a5a!important;animation:cutBlink .3s steps(2) infinite}
+  @keyframes cutBlink{50%{box-shadow:0 0 16px #ff4a5a;transform:scale(1.08)}}
   #stageBar{padding:6px 12px 7px;background:#101633;border-bottom:1px solid #26304f;cursor:pointer}
   #stageBar:active{background:#16204a}
   .pv{color:#8ad8ff}
@@ -556,7 +569,8 @@
     <div class="sgoal" id="sGoal"></div>
   </div>
 
-  <canvas id="game"></canvas>
+  <!-- 전장 + 피버 버튼(전장 위 오른쪽 아래) — 처치로 차고, 다 차면 빛난다. 눌러야 켜진다 -->
+  <div id="arena"><canvas id="game"></canvas><div id="feverBtn" class="fever"><b id="feverTxt"></b></div></div>
 
   <!-- 강화는 메인 화면에 상시 노출한다. 별도 탭에 숨기면 메인이 '구경만 하는 화면'이 된다 -->
   <!-- 스킬바 — 레퍼런스처럼 전장 바로 아래. 장착한 스킬이 없으면 숨긴다 -->
