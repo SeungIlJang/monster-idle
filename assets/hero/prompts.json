@@ -74,6 +74,42 @@
       "name": "닉스",
       "full": "Nyx Shadowveil",
       "scene": "a dark mage in a black and deep-violet robe with a wide hat brim hiding the eyes, pale lavender hair, a crooked staff with a dark crystal, wisps of shadow at the hem, the most ominous of the eight but still cute"
+    },
+    {
+      "key": "spear",
+      "name": "로완",
+      "full": "Rowan Longreach",
+      "scene": "a lanky young spearman with messy teal hair, a light winged open helmet, a teal tabard over leather armour, holding an extra-long spear with a small pennant near the tip — the spear is much taller than he is and is his one defining shape"
+    },
+    {
+      "key": "shield",
+      "name": "토르빈",
+      "full": "Torvin Bulwark",
+      "scene": "a short, very broad shieldbearer almost hidden behind a huge rectangular tower shield painted with a gold lion — only a round iron pot helmet on top and stubby boots underneath peek out; the shield is clearly bigger and squarer than a knight's kite shield"
+    },
+    {
+      "key": "cavalry",
+      "name": "할든",
+      "full": "Halden Swiftmane",
+      "scene": "a dashing young cavalier riding a small round chibi pony with crimson barding and a tiny plume, a red cape, holding a short blunt-tipped lance upright — rider and pony together read as one compact shape",
+      "poses": {
+        "idle": "the pony standing still, the rider sitting tall with the lance upright, smug smile",
+        "attack": "the pony charging to the viewer's LEFT mid-gallop, the lance lowered forward toward the left target, cape streaming back",
+        "hit": "the pony rearing back to the viewer's RIGHT, the rider leaning away with eyes squeezed shut, lance wobbling",
+        "dead": "the pony sitting down dizzy and the rider slumped forward over its neck, both with eyes as closed curved lines, comical not gruesome"
+      }
+    },
+    {
+      "key": "cannon",
+      "name": "그레타",
+      "full": "Greta Thunderbrass",
+      "scene": "a stocky gunner girl with goggles pushed up on a brimmed cap, rolled-up sleeves and a soot-smudged apron, standing behind a small chunky bronze cannon on two wooden wheels; the cannon muzzle points to the viewer's LEFT",
+      "poses": {
+        "idle": "standing beside the cannon with one hand resting proudly on the barrel, smug grin",
+        "attack": "the cannon jolting back on its wheels as it fires to the viewer's LEFT, Greta leaning in with a lit match, a small round puff at the muzzle",
+        "hit": "Greta recoiling to the viewer's RIGHT, cap knocked askew, the cannon tipped back on its wheels",
+        "dead": "Greta sprawled on the ground next to the toppled cannon, eyes as closed curved lines, comical not gruesome"
+      }
     }
   ],
   "promptTemplate": "Use case: stylized-concept. Asset: production transparent sprite sheet for 2D mobile idle RPG. Square 2048x2048 sheet, exact 2 by 2 equal square cells, NO visible grid, no labels. Render the SAME character — {item.scene} — in four poses in ONE image, consistent identity, palette, volume, outline and light source across all cells. Top-left idle: {pose.idle}. Top-right attack: {pose.attack}. Bottom-left hit: {pose.hit}. Bottom-right dead: {pose.dead}. {common.style}. {common.silhouette} {common.attitude} {common.facing} Each pose entirely inside its own cell with ample transparent margin, same implied floor baseline at 85% down each cell, consistent body mass. {common.composition} {common.constraints}",

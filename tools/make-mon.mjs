@@ -8,7 +8,8 @@
 //   assets/comp/<id>.png                            — 투명 RGBA
 // 또는 **새 몬스터**는 폴더 맨 위에 평평하게:
 //   mon_<key>_idle_1.png · mon_<key>_attack_1.png · mon_<key>_hit_1.png · mon_<key>_dead_1.png
-//   (check-anim 으로 먼저 검사하고, 매니페스트에 올라가는 순간 게임에 나타난다 — docs/new-monsters-4-handoff.md)
+//   새 용사도 같다: hero_<key>_idle_1.png …
+//   (check-anim 으로 먼저 검사하고, 매니페스트에 올라가는 순간 게임에 나타난다 — docs/new-monsters-4-handoff.md · new-heroes-4-handoff.md)
 //
 // 하는 일: 검사 → (너무 크면) 축소 → 복사 → 매니페스트 갱신 → defringe 건너뛰기 등록.
 //
@@ -174,42 +175,51 @@ function importGroup(group, icon, max) {
   return n;
 }
 
-// ── 새 몬스터 — 평평한 파일 이름(mon_<key>_idle_1.png …) ─────────────
-// 아트 담당이 폴더 구조 없이 보낸다(docs/new-monsters-4-handoff.md). 먼저 check-anim 으로 규격을 본다 —
-// 매니페스트에 올라가는 순간 그 몬스터가 게임에 나타나므로(src/balance.js 가 그림 있는 몬스터만 남긴다),
-// 틀린 그림이 들어가면 바로 화면에 보인다. 게임이 모르는 키(balance.json roster 에 없음)도 막는다.
-function importFlatMon() {
-  const RE_FLAT = /^mon_([a-z0-9]+)_(idle|attack|hit|dead)_1\.png$/;
+// ── 새 몬스터 · 새 용사 — 평평한 파일 이름(mon_<key>_idle_1.png · hero_<key>_idle_1.png …) ──
+// 아트 담당이 폴더 구조 없이 보낸다(docs/new-monsters-4-handoff.md · docs/new-heroes-4-handoff.md).
+// 먼저 check-anim 으로 규격을 본다 — 매니페스트에 올라가는 순간 그 종이 게임에 나타나므로
+// (src/balance.js 가 그림 있는 몬스터·용사만 남긴다) 틀린 그림이 들어가면 바로 화면에 보인다.
+// 게임이 모르는 키(balance.json roster 에 없음)는 **쓰기 전에** 전부 확인해서 막는다.
+function importFlat() {
+  const RE_FLAT = /^(mon|hero)_([a-z0-9]+)_(idle|attack|hit|dead)_1\.png$/;
   const flat = fs.readdirSync(src).filter(f => RE_FLAT.test(f));
   if (!flat.length) return 0;
   try {
     execFileSync(process.execPath, [path.join(ROOT, 'tools', 'check-anim.mjs'), src], { stdio: 'pipe' });
   } catch (e) {
     console.log(String(e.stdout || e.message));
-    console.log('❌ 새 몬스터 그림이 검사에서 걸렸다 — 아무것도 쓰지 않았다');
+    console.log('❌ 새 그림이 검사에서 걸렸다 — 아무것도 쓰지 않았다');
     process.exit(1);
   }
-  const roster = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'balance.json'), 'utf8')).roster.monsters.map(m => m.key);
-  const byKey = new Map();
-  for (const f of flat) { const [, key, anim] = RE_FLAT.exec(f); if (!byKey.has(key)) byKey.set(key, []); byKey.get(key).push([anim, f]); }
+  const R = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'balance.json'), 'utf8')).roster;
+  const roster = { mon: R.monsters.map(m => m.key), hero: R.heroes.map(h => h.key) };
+  const label = { mon: '몬스터', hero: '용사' };
+  const byKey = new Map();                     // "group/key" → [[anim, file]]
+  for (const f of flat) {
+    const [, group, key, anim] = RE_FLAT.exec(f);
+    if (!roster[group].includes(key)) { console.log(`❌ ${f} — balance.json roster 에 없는 ${label[group]}. 아무것도 쓰지 않았다`); process.exit(1); }
+    const k = group + '/' + key;
+    if (!byKey.has(k)) byKey.set(k, []);
+    byKey.get(k).push([anim, f]);
+  }
   let n = 0;
-  for (const [key, list] of byKey) {
-    if (!roster.includes(key)) { console.log(`❌ ${key} — balance.json roster 에 없는 몬스터. 아무것도 쓰지 않았다`); process.exit(1); }
-    if (manifest.mon?.[key]) { console.log(`  건너뜀 ${key} — 이미 있는 몬스터 (기본 포즈는 바꾸지 않는다)`); continue; }
+  for (const [k, list] of byKey) {
+    const [group, key] = k.split('/');
+    if (manifest[group]?.[key]) { console.log(`  건너뜀 ${k} — 이미 있는 ${label[group]} (기본 포즈는 바꾸지 않는다)`); continue; }
     const entry = {}, lines = [];
     for (const [anim, f] of list) {
-      const r = take(path.join(src, f), path.join(ASSETS, 'mon', key, `${anim}_1.png`), MAX_MON);
+      const r = take(path.join(src, f), path.join(ASSETS, group, key, `${anim}_1.png`), group === 'mon' ? MAX_MON : MAX_HERO);
       if (!r) continue;
       entry[anim] = 1; lines.push(`${anim} ${kb(r.bytes)}`); n++;
     }
-    manifest.mon ||= {};
-    manifest.mon[key] = entry;
-    console.log(`  🆕 ${key.padEnd(10)} ${lines.join(' · ')} — 이제 게임에 나타난다`);
+    manifest[group] ||= {};
+    manifest[group][key] = entry;
+    console.log(`  🆕 ${(label[group] + ' ' + key).padEnd(14)} ${lines.join(' · ')} — 이제 게임에 나타난다`);
   }
   return n;
 }
 
-const monCount = importFlatMon() + importGroup('mon', '🐾', MAX_MON) + importGroup('hero', '⚔️', MAX_HERO);
+const monCount = importFlat() + importGroup('mon', '🐾', MAX_MON) + importGroup('hero', '⚔️', MAX_HERO);
 
 // ── 동료 ─────────────────────────────────────────────────────
 // 그림 파일은 companions.js 가 경로로 직접 읽지만, **내용 경계는 매니페스트에 적는다** —

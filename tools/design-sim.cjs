@@ -121,7 +121,8 @@ const isGate = s => GATE.on && s % GATE.every === 0;
 //   · 공격을 안 하니 그 수만큼 적 DPS 가 내려간다 (플레이어에게 유리)
 //   · 아군을 채우니 적 실효 체력이 오른다 (플레이어에게 불리)
 // 적의 13% 가 힐러(실측)라 어느 쪽이 큰지는 재 봐야 안다 — 그래서 구성을 정확히 모델링한다.
-const HEROES = B.roster.heroes;
+// 그림이 들어온 용사만 나온다(src/balance.js 가 매니페스트 hero 로 거른다) — 구역 순서와 힐러 비율이 그걸로 정해진다
+const HEROES = B.roster.heroes.filter((h, i) => i === 0 || require('../assets/manifest.json').hero?.[h.key]);
 const SCENE = D.stage.sceneEvery || D.stage.bossEvery;
 const hRot = s => HEROES[Math.floor((s - 1) / SCENE) % HEROES.length];
 const hPool = s => HEROES.slice(0, Math.min(HEROES.length, Math.floor((s - 1) / SCENE) + 1));

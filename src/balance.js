@@ -16,6 +16,10 @@ export const B = await res.json();
 // (design-sim.cjs MON_KINDS). 첫 몬스터(글룹)는 기본 리드라 무조건 남긴다.
 // 2026-11-16: 루트링·그리플링·요툰·임피(120~180층)가 이 상태로 그림을 기다린다 — docs/new-monsters-4-handoff.md
 B.roster.monsters = B.roster.monsters.filter((m, i) => i === 0 || MANIFEST.mon?.[m.key]);
+// 적 용사도 같다 — 그림 없는 용사가 구역 대표가 되면 그 구역 내내 빈 자리와 싸운다(보스까지).
+// 구역 순서(heroAt)가 이 배열을 돌므로 그림이 들어오는 날 순서가 한 번 밀린다(저장되는 값이 아니라 문제없다).
+// 2026-11-16: 로완·토르빈·할든·그레타가 이 상태로 그림을 기다린다 — docs/new-heroes-4-handoff.md
+B.roster.heroes = B.roster.heroes.filter((h, i) => i === 0 || MANIFEST.hero?.[h.key]);
 
 // 자주 쓰는 로그 상수를 미리 계산
 export const LG = {

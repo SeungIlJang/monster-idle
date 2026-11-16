@@ -1278,6 +1278,47 @@
           "shape": "wedge",
           "color": "#c08aff"
         }
+      },
+      {
+        "key": "spear",
+        "dir": "Rowan_Longreach_Spearman",
+        "name": "로완",
+        "row": 1,
+        "atk": {
+          "type": "slash",
+          "color": "#9fe8d8"
+        }
+      },
+      {
+        "key": "shield",
+        "dir": "Torvin_Bulwark_Shieldbearer",
+        "name": "토르빈",
+        "row": 0,
+        "atk": {
+          "type": "slash",
+          "color": "#ffd27a"
+        }
+      },
+      {
+        "key": "cavalry",
+        "dir": "Halden_Swiftmane_Cavalier",
+        "name": "할든",
+        "row": 0,
+        "atk": {
+          "type": "slash",
+          "color": "#ff7a6a"
+        }
+      },
+      {
+        "key": "cannon",
+        "dir": "Greta_Thunderbrass_Cannoneer",
+        "name": "그레타",
+        "row": 2,
+        "atk": {
+          "type": "bolt",
+          "shape": "orb",
+          "color": "#5b6070"
+        }
       }
     ],
     "_heroAtk": "용사별 공격 연출. type: slash(근접 섬광) · bolt(투사체) · beam(지원 광선). 적 8종이 외형만 다르고 행동이 전부 같아서 사실상 1종으로 보였다 — 수치는 건드리지 않고 보이는 것만 가른다.",

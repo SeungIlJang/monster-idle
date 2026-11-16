@@ -10,7 +10,7 @@
 //   comp_<id>_idle_2.png
 //   comp_<id>_r2_idle_1.png     comp_<id>_r2_idle_2.png            (등급 변형 — r2 영웅 · r3 전설 · r4 신화,
 //                                                                    docs/comp-rarity-art-handoff.md)
-//   mon_<key>_idle_1.png  mon_<key>_attack_1.png  mon_<key>_hit_1.png  mon_<key>_dead_1.png
+//   mon_<key>_idle_1.png  mon_<key>_attack_1.png  mon_<key>_hit_1.png  mon_<key>_dead_1.png   (hero_<key>_… 도 같다 — 새 용사)
 //                                                                   (**새 몬스터의 기본 포즈 4장** — 게임에 아직 없는 키만,
 //                                                                    docs/new-monsters-4-handoff.md)
 //   comp_<id>_idle_1.png        comp_<id>_idle_2.png               (**새 동료의 기본 그림** — 게임에 아직 없는 키만,
@@ -48,6 +48,9 @@ const NEW_COMP = { w: 240, h: 240, foot: 231, cx: 119.5, cxTol: 1.8, size: [140,
 const BASE_POSES = ['idle_1', 'attack_1', 'hit_1', 'dead_1'];
 const NEW_MON = { w: 320, h: 320, foot: 309, cx: 159.5, cxTol: 1.5, idleW: [170, 304], idleH: [170, 290],
   ratio: { attack_1: [0.8, 1.2], hit_1: [0.65, 1.05], dead_1: [0.3, 0.7] } };
+// 새 용사 — 기존 8종 실측(발 309 · 중심 158.5~159.5 · idle 224~275 × 225~300 · 공격 0.94~1.15 · 피격 0.84~0.95 · 쓰러짐 0.43~0.60).
+// 기병(말)·대포병(대포)은 옆으로 넓어서 폭은 몬스터만큼 열어 둔다
+const NEW_HERO = { ...NEW_MON, idleW: [190, 304], idleH: [200, 304] };
 
 const dir = process.argv[2];
 if (!dir || !fs.existsSync(dir)) {
@@ -167,24 +170,25 @@ for (const f of files) {
     else ok.push(`${f}  (새 동료 · ${a.cw}×${a.ch}, ${a.kb.toFixed(0)}KB)`);
     continue;
   }
-  if (group === 'mon' && !stage && BASE_POSES.includes(fr)) {
-    // 새 몬스터의 기본 포즈 4장 — 비교할 그림이 아직 없으니 기존 12종이 선 규격으로 잰다
-    if (fs.existsSync(path.join(ASSETS, 'mon', key, 'idle_1.png'))) { bad.push(`${f} — 이미 게임에 있는 몬스터입니다. 기본 포즈는 바꾸지 않습니다`); continue; }
+  if ((group === 'mon' || group === 'hero') && !stage && BASE_POSES.includes(fr)) {
+    const who = group === 'mon' ? '몬스터' : '용사';
+    // 새 몬스터·용사의 기본 포즈 4장 — 비교할 그림이 아직 없으니 기존 종들이 선 규격으로 잰다
+    if (fs.existsSync(path.join(ASSETS, group, key, 'idle_1.png'))) { bad.push(`${f} — 이미 게임에 있는 ${who}입니다. 기본 포즈는 바꾸지 않습니다`); continue; }
     const a = measure(path.join(dir, f));
     totalKB += a.kb;
-    const N = NEW_MON, why = [];
-    const idleF = `mon_${key}_idle_1.png`;
+    const N = group === 'mon' ? NEW_MON : NEW_HERO, why = [];
+    const idleF = `${group}_${key}_idle_1.png`;
     const idle = fr === 'idle_1' ? a : (inDir.has(idleF) ? measure(path.join(dir, idleF)) : null);
     if (a.colorType !== 6) why.push(`RGBA(색상타입 6)가 아님 — 지금 ${a.colorType}`);
     if (a.w !== N.w || a.h !== N.h) why.push(`캔버스 ${a.w}×${a.h} — ${N.w}×${N.h} 이어야 함`);
     if (a.x1 < 0) why.push('그림이 비어 있음');
     else {
-      if (a.y1 !== N.foot) why.push(`발 행 ${a.y1} — ${N.foot} 이어야 함 (기존 몬스터와 같은 땅을 밟아야 함)`);
+      if (a.y1 !== N.foot) why.push(`발 행 ${a.y1} — ${N.foot} 이어야 함 (기존 ${who}와 같은 땅을 밟아야 함)`);
       if (Math.abs(a.cx - N.cx) > N.cxTol) why.push(`가로 중심 ${a.cx} — ${N.cx} ±${N.cxTol} 이어야 함`);
       if (a.x0 < 1 || a.x1 > a.w - 2 || a.y0 < 1) why.push(`캔버스 가장자리에 닿음 (${a.x0},${a.y0}~${a.x1},${a.y1}) — 잘려 보임`);
       if (fr === 'idle_1') {
         if (a.cw < N.idleW[0] || a.cw > N.idleW[1] || a.ch < N.idleH[0] || a.ch > N.idleH[1])
-          why.push(`내용 크기 ${a.cw}×${a.ch} — 폭 ${N.idleW.join('~')} · 높이 ${N.idleH.join('~')} 이어야 함 (기존 몬스터와 덩치가 맞게)`);
+          why.push(`내용 크기 ${a.cw}×${a.ch} — 폭 ${N.idleW.join('~')} · 높이 ${N.idleH.join('~')} 이어야 함 (기존 ${who}와 덩치가 맞게)`);
       } else if (!idle) why.push(`${idleF} 가 같은 폴더에 없음 — 포즈 크기를 idle 과 견줍니다`);
       else {
         const r = a.ch / idle.ch, [lo, hi] = N.ratio[fr];
@@ -193,15 +197,15 @@ for (const f of files) {
         if (d < MIN_DIFF) why.push(`idle 과 거의 같음 — ${(d * 100).toFixed(1)}% 만 다름`);
       }
     }
-    const tag = `mon/${key}/base`;
+    const tag = `${group}/${key}/base`;
     if (!seen.has(tag)) seen.set(tag, new Set());
     seen.get(tag).add(fr);
     if (why.length) bad.push(`${f}\n      - ` + why.join('\n      - '));
-    else ok.push(`${f}  (새 몬스터 · ${a.cw}×${a.ch}, ${a.kb.toFixed(0)}KB)`);
+    else ok.push(`${f}  (새 ${who} · ${a.cw}×${a.ch}, ${a.kb.toFixed(0)}KB)`);
     continue;
   }
   if (fr === 'idle_1') { bad.push(`${f} — idle_1 은 등급 변형(comp_<id>_r2_idle_1.png 등)과 새 동료·새 몬스터 기본 그림에만 받습니다`); continue; }
-  if (BASE_POSES.includes(fr)) { bad.push(`${f} — ${fr} 는 새 몬스터 기본 포즈(mon_<키>_${fr}.png)에만 받습니다`); continue; }
+  if (BASE_POSES.includes(fr)) { bad.push(`${f} — ${fr} 는 새 몬스터·용사 기본 포즈(mon_<키>_${fr}.png · hero_<키>_${fr}.png)에만 받습니다`); continue; }
   if (group === 'comp' && (stage || fr !== 'idle_2')) { bad.push(`${f} — 뽑기 동료는 idle_2 한 장만 받습니다`); continue; }
   const pre = stage ? stage + '_' : '';
   // 기준 그림
@@ -245,7 +249,7 @@ const pairs = [];
 for (const [tag, set] of seen) {
   if (set.has('idle_1') !== set.has('idle_2') && /\/r[234]$/.test(tag)) pairs.push(`${tag} — 등급 변형은 idle_1 과 idle_2 를 같이 보내 주세요 (지금 ${[...set].join(', ')})`);
   if (/^comp\/[a-z0-9]+$/.test(tag) && set.has('idle_1') && !set.has('idle_2')) pairs.push(`${tag} — 새 동료는 idle_1 과 idle_2 를 같이 보내 주세요`);
-  if (/^mon\/[a-z0-9]+\/base$/.test(tag) && BASE_POSES.some(p => !set.has(p))) pairs.push(`${tag} — 새 몬스터 기본 포즈는 4장(idle_1 · attack_1 · hit_1 · dead_1)을 같이 보내 주세요 (지금 ${[...set].join(', ')})`);
+  if (/^(mon|hero)\/[a-z0-9]+\/base$/.test(tag) && BASE_POSES.some(p => !set.has(p))) pairs.push(`${tag} — 새 몬스터·용사 기본 포즈는 4장(idle_1 · attack_1 · hit_1 · dead_1)을 같이 보내 주세요 (지금 ${[...set].join(', ')})`);
   if (set.has('attack_windup') !== set.has('attack_follow')) pairs.push(`${tag} — attack_windup 과 attack_follow 는 같이 보내 주세요 (지금 ${[...set].join(', ')})`);
 }
 
