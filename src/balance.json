@@ -549,8 +549,7 @@
       "bombPerDay": 2
     },
     "collect": {
-      "_": "몬스터 10종을 고르게 키운다고 본다. 레벨 비용이 레벨에 비례(선형)라 총 레벨은 조각 누적의 제곱근으로 자란다.",
-      "monsters": 12,
+      "_": "몬스터를 고르게 키운다고 본다. 레벨 비용이 레벨에 비례(선형)라 총 레벨은 조각 누적의 제곱근으로 자란다. 종 수는 여기 적지 않는다 — 시뮬이 그림이 들어온 몬스터(assets/manifest.json mon)를 센다.",
       "shardCostPerLevel": 50,
       "milestoneLevels": [
         10,
@@ -987,6 +986,70 @@
         "bolt": {
           "color": "#9ae6b4",
           "shape": "orb"
+        }
+      },
+      {
+        "key": "treant",
+        "name": "루트링",
+        "unlock": 120,
+        "ability": {
+          "name": "뿌리",
+          "desc": "최대체력 +30%, 웨이브 회복 +60%, 피해 -12%",
+          "hp": 1.3,
+          "rec": 1.6,
+          "dmg": 0.88
+        },
+        "bolt": {
+          "color": "#8fd16a",
+          "shape": "shard"
+        }
+      },
+      {
+        "key": "griffin",
+        "name": "그리플링",
+        "unlock": 140,
+        "ability": {
+          "name": "돌풍",
+          "desc": "공격속도 +15%, 더블샷 +10%p, 보스 피해 -20%",
+          "aspd": 1.15,
+          "dblAdd": 0.1,
+          "boss": 0.8
+        },
+        "bolt": {
+          "color": "#ffe08a",
+          "shape": "streak"
+        }
+      },
+      {
+        "key": "frostgiant",
+        "name": "요툰",
+        "unlock": 160,
+        "ability": {
+          "name": "빙갑",
+          "desc": "받는 피해 -20%, 최대체력 +20%, 공격속도 -12%",
+          "dr": 1.25,
+          "hp": 1.2,
+          "aspd": 0.88
+        },
+        "bolt": {
+          "color": "#9fe0ff",
+          "shape": "shard"
+        }
+      },
+      {
+        "key": "imp",
+        "name": "임피",
+        "unlock": 180,
+        "ability": {
+          "name": "악의",
+          "desc": "치명확률 +8%p, 치명피해 +25%, 최대체력 -25%",
+          "critAdd": 0.08,
+          "cdmg": 1.25,
+          "hp": 0.75
+        },
+        "bolt": {
+          "color": "#ff5f7e",
+          "shape": "flame"
         }
       },
       {

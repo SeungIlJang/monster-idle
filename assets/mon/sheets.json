@@ -99,6 +99,50 @@
       "attack": "rearing right breathing a short compact puff of flame toward the right target, wings flared, neck stretched",
       "hit": "recoiling left with wings clamped shut and neck pulled in, body squashed, eyes squeezed shut, flame snuffed out",
       "dead": "flopped flat on its belly on the ground, wings spread limp, neck and tail stretched out, eyes as closed curved lines, a small puff of smoke at the mouth"
+    },
+    {
+      "key": "treant",
+      "name": "루트링",
+      "noun": "sapling treant",
+      "identity": "small cheerful sapling treant, a stubby living tree stump with two leafy twig arms, root feet and a little tuft of fresh leaves on top",
+      "palette": "Warm brown bark body with a lighter tan face patch, bright leaf-green leaf tuft, a few small moss patches, ONE simple upper-left soft highlight",
+      "idle": "standing planted on its root feet, twig arms relaxed, leaf tuft perked up, gentle smile",
+      "attack": "lunging right whipping one long twig arm forward like a vine lash toward the right target, leaf tuft fluttering, determined face",
+      "hit": "recoiling left, bark body squashed, leaf tuft drooping, eyes squeezed shut",
+      "dead": "toppled flat on its back on the ground like a small fallen log, twig arms limp, leaves wilted, eyes as closed curved lines"
+    },
+    {
+      "key": "griffin",
+      "name": "그리플링",
+      "noun": "griffin chick",
+      "identity": "small round griffin chick with an eagle head, a fluffy lion-cub body on four paws, stubby feathered wings and a tufted tail",
+      "palette": "Cream-white feathered head with a golden-yellow beak, sandy tan fur body, sky-blue feathered wing tips, ONE simple upper-left soft highlight",
+      "idle": "standing on four little paws, wings half-raised, chest puffed out proudly, beak slightly open",
+      "attack": "pouncing right with wings flared wide and front talons reaching toward the right target, feathers ruffled",
+      "hit": "recoiling left with wings clamped to its sides, feathers puffed up, eyes squeezed shut",
+      "dead": "flopped flat on its belly on the ground, wings spread limp, beak resting on the ground, eyes as closed curved lines"
+    },
+    {
+      "key": "frostgiant",
+      "name": "요툰",
+      "noun": "little frost giant creature",
+      "identity": "small stocky frost giant creature — clearly a monster, not a human: pale blue skin, a big round snowy beard, chunky icy shoulder plates and two small ice-crystal horns",
+      "palette": "Pale ice-blue skin, snow-white beard and brows, frosted crystal-blue horns and shoulder plates, ONE simple upper-left soft highlight",
+      "idle": "standing wide and sturdy, big fists hanging low, beard puffed out, calm frown",
+      "attack": "stomping forward to the right swinging one huge ice-crusted fist toward the right target, mouth open in a roar",
+      "hit": "recoiling left, shoulders hunched up, beard squashed, eyes squeezed shut",
+      "dead": "slumped flat on its back on the ground, arms spread, beard flopped to one side, eyes as closed curved lines"
+    },
+    {
+      "key": "imp",
+      "name": "임피",
+      "noun": "imp",
+      "identity": "small mischievous imp, a little demon with two curved horns, small bat-like wings, a pointed tail and a cheeky fanged grin",
+      "palette": "Crimson-red skin with a darker plum belly, violet wing membranes, black horns and claws, glowing golden eyes, ONE simple upper-left soft highlight",
+      "idle": "standing on tiptoes with wings half-spread, arms crossed, tail curled, smug grin",
+      "attack": "lunging right thrusting one clawed hand forward toward the right target, wings flared, wicked grin",
+      "hit": "recoiling left, wings folded tight, tail bristled, eyes squeezed shut",
+      "dead": "sprawled flat on its back on the ground, wings spread limp, tail limp, eyes as closed curved lines, tongue out comically"
     }
   ],
   "generated": [

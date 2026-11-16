@@ -1,12 +1,21 @@
 // balance.json 로더 + 파생 헬퍼.
 // 상수는 전부 balance.json 에만 있다 — 시뮬레이터(tools/design-sim.cjs)도 같은 파일을 읽는다.
 import { fromNum } from './logmath.js';
+import { MANIFEST } from './sprites.js';      // sprites.js 는 아무것도 import 하지 않는다 — 순환 없음
 
 const res = await fetch(new URL('./balance.json', import.meta.url));
 if (!res.ok) throw new Error('balance.json 로드 실패: ' + res.status);
 
 /** @type {any} */
 export const B = await res.json();
+
+// **그림이 들어온 몬스터만 게임에 넣는다** (매니페스트 mon 에 있는 것). 데이터를 먼저 넣고 그림은 나중에 오는데,
+// 그림 없는 몬스터가 해금되면 도감엔 '?' 가 뜨고 전장엔 안 그려진다 — 레벨·마일스톤은 오르는데 몸이 없다.
+// 여기서 거르면 해금·도감·수집·땅 동료·로드맵이 전부 B.roster.monsters 를 보므로 한 번에 숨는다.
+// 그림을 들이는 날(tools/make-mon.mjs 가 매니페스트에 적는 순간) 저절로 나타난다 — 시뮬도 같은 기준으로 센다
+// (design-sim.cjs MON_KINDS). 첫 몬스터(글룹)는 기본 리드라 무조건 남긴다.
+// 2026-11-16: 루트링·그리플링·요툰·임피(120~180층)가 이 상태로 그림을 기다린다 — docs/new-monsters-4-handoff.md
+B.roster.monsters = B.roster.monsters.filter((m, i) => i === 0 || MANIFEST.mon?.[m.key]);
 
 // 자주 쓰는 로그 상수를 미리 계산
 export const LG = {

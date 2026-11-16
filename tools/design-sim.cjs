@@ -310,6 +310,10 @@ function eqSum(cnt, slots, types) {
 // 장기 곡선이 죽는데(§6 ⚠️1), 마스터리·연구가 그 자리를 메운다.
 const L2 = B.layer2;
 const NOL2 = !!ARG.nolayer2;
+// 수집 몬스터 수 = **그림이 들어온 몬스터** (src/balance.js 가 매니페스트 mon 에 없는 몬스터를 게임에서 뺀다).
+// 예전엔 balance.json collect.monsters 에 손으로 적었는데, 종을 더할 때마다 맞춰 줘야 했다.
+// 12 → 16종이면 같은 조각으로 싼 저레벨이 늘어 총 레벨·마일스톤이 오른다: 30일 +2.1%, 365일 +5.9%.
+const MON_KINDS = B.roster.monsters.filter((m, i) => i === 0 || require('../assets/manifest.json').mon?.[m.key]).length;
 
 // ── 유물 (3단계 레이어) ──────────────────────────────────────
 // 마을 침공 던전(키 2개/일)에서 조각을 받아 정해진 순서로 유물을 연다.
@@ -377,11 +381,11 @@ function layer2Day(S, day = 0) {
   S.shards += m.shardPerDay * mult;
   S.ore += m.orePerDay * mult;
 
-  // 몬스터 10종을 고르게 키운다 → 레벨 비용이 레벨에 비례하므로 총 레벨은 조각의 제곱근
-  const unit = L2.collect.shardCostPerLevel / L2.collect.monsters;
+  // 몬스터 N종을 고르게 키운다 → 레벨 비용이 레벨에 비례하므로 총 레벨은 조각의 제곱근
+  const unit = L2.collect.shardCostPerLevel / MON_KINDS;
   S.monLv = Math.floor((-1 + Math.sqrt(1 + (8 * S.shards) / unit)) / 2);
-  const per = S.monLv / L2.collect.monsters;
-  S.milestones = L2.collect.monsters * L2.collect.milestoneLevels.filter(x => per >= x).length;
+  const per = S.monLv / MON_KINDS;
+  S.milestones = MON_KINDS * L2.collect.milestoneLevels.filter(x => per >= x).length;
 
   // 연구: 광석과 "하루 24시간"이 허락하는 만큼만
   const r = L2.research;
