@@ -1001,6 +1001,42 @@ export function render(dt) {
   ctx.fillStyle = '#cfdcf2';
   ctx.fillText('HP ' + fmt(R.Lhp), W * 0.30, hpY);
 
+  // ── 파워 업 (combat.powerPulse) ── 리드 위로 빛기둥 · 올라가는 화살표 · 한 줄. 1.8초.
+  // 자동 강화가 조용히 사던 걸 "방금 세졌다" 로 보여 준다. 수치는 아무것도 바꾸지 않는다.
+  if (R.powerUp && R.powerUp.t > 0) {
+    const pu = R.powerUp, u = 1 - pu.t / 1.8;              // 0 → 1
+    const px = W * 0.30, a = Math.min(1, pu.t * 2.2);
+    ctx.save();
+    // 빛기둥 — 처음 0.3초에 솟고 서서히 옅어진다
+    const colH = pH * 2.2 * Math.min(1, u * 3.5);
+    const g = ctx.createLinearGradient(0, feet, 0, feet - colH);
+    g.addColorStop(0, `rgba(255,230,120,${0.45 * a})`);
+    g.addColorStop(1, 'rgba(255,230,120,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(px - pH * 0.42, feet - colH, pH * 0.84, colH);
+    // 화살표 셋이 차례로 올라간다
+    ctx.fillStyle = `rgba(255,236,140,${a})`;
+    for (let k = 0; k < 3; k++) {
+      const v = (u * 1.6 + k * 0.28) % 1;
+      const ax = px + (k - 1) * pH * 0.3, ay = feet - pH * 0.3 - v * pH * 1.3, s2 = pH * 0.09;
+      ctx.globalAlpha = a * (1 - v);
+      ctx.beginPath(); ctx.moveTo(ax, ay - s2); ctx.lineTo(ax + s2, ay); ctx.lineTo(ax - s2, ay); ctx.closePath(); ctx.fill();
+    }
+    // 한 줄 — 용사를 몇 방에 쓰러뜨리는지가 줄었으면 그걸, 아니면 퍼센트
+    ctx.globalAlpha = a;
+    const txt = pu.from >= 2 && pu.from <= 99 && pu.to < pu.from
+      ? tr('pw.hits', { a: pu.from, b: pu.to }) : tr('pw.pct', { p: pu.pct });
+    ctx.font = '900 14px system-ui';
+    ctx.textAlign = 'center';
+    ctx.strokeStyle = 'rgba(40,24,0,.85)'; ctx.lineWidth = 3.5;
+    // 연쇄 수(feet−pH−56, 최대 22px) 위 한 줄 — 물량전에선 연쇄가 거의 늘 떠 있어서 같은 자리면 겹친다(실측 화면)
+    const ty = feet - pH - 86 - u * 12;
+    ctx.strokeText(txt, px, ty);
+    ctx.fillStyle = '#ffe680';
+    ctx.fillText(txt, px, ty);
+    ctx.restore();
+  }
+
   // ── 적 (용사) — 프레임 애니 + 피격 시 밀림 ──
   // 한 기마다 용사가 다르다(combat.spawnWave 가 e.hero 를 심는다). 구세이브로 들어오면
   // e.hero 가 없으므로 예전처럼 구역 용사로 폴백한다.

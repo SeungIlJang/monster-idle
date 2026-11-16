@@ -507,6 +507,7 @@ export function tick(dt) {
   if (R.skillFxT > 0) R.skillFxT -= dt;
   if (R.bossIntroT > 0) R.bossIntroT -= dt;
   if (R.bossSlainT > 0) R.bossSlainT -= dt;
+  if (R.powerUp && R.powerUp.t > 0) R.powerUp.t -= dt;
   // y 는 픽셀 오프셋(위로 떠오름). delay 가 남은 것은 아직 뜨지 않은 것이다.
   for (const f of R.fx) {
     if (f.delay > 0) { f.delay -= dt; continue; }
@@ -704,6 +705,36 @@ function foeStrike(e) {
   R.Lhp = sub(R.Lhp, Ltotal);
   spawnFoeBolt(e, Ltotal);
   return false;
+}
+
+// ── 파워 업 박자 (2026-11-16) ──
+// 자동 강화가 0.25초마다 조용히 스탯을 사서 "방금 세졌다" 는 순간이 화면에 없었다 — 강해지는 게 이 장르의 보상인데.
+// 전투력(LDPS)이 직전에 알린 값보다 POWER_STEP 넘게 오르면 한 번 알린다(POWER_GAP 초에 한 번까지).
+// 무엇 때문에 올랐는지는 묻지 않는다 — 자동 강화 · 직접 강화 · 뽑기 · 성장 전부 같은 박자로 읽힌다.
+// 숫자(%) 대신 손에 잡히는 말을 먼저 쓴다: "용사 9방 → 7방". 수치는 아무것도 바꾸지 않는다.
+const POWER_STEP = Math.log10(1.25);
+const POWER_GAP = 6;
+let powerRef = null, powerAtT = -1e9, powerClock = 0;
+/** 지금 층의 용사 한 기를 평타 몇 방에 쓰러뜨리나 (물량전의 용사 몫 체력 기준) */
+function heroHits(Ldps) {
+  const share = B.stage.swarm?.share > 0 ? 1 - B.stage.swarm.share : 1;
+  const Lhit = Ldps - fromNum(nval('aspd'));                 // 평타 한 방 ≈ DPS ÷ 공속
+  return Math.ceil(Math.pow(10, LeHP(R.stage, false) + Math.log10(share) - Lhit));
+}
+/** main 루프가 0.25초마다 부른다 (dt = 그동안 흐른 실제 시간) */
+export function powerPulse(dt) {
+  powerClock += dt;
+  const L = LDPS(false);
+  if (!(L > L0)) return;
+  if (powerRef === null || L < powerRef) { powerRef = L; return; }   // 처음 · 환생 뒤에는 기준만 다시 잡는다
+  if (powerClock - powerAtT < POWER_GAP) return;
+  // 알리는 순간: 용사를 쓰러뜨리는 데 드는 평타가 **한 방이라도 줄었을 때** — 손에 잡히는 변화다.
+  // +25% 만 보던 첫 판은 1시간에 6번(10분에 한 번)뿐이라 '보이게' 가 안 됐다(실측). 한 방에 쓰러뜨릴 만큼 세면 +25% 로 센다.
+  const from = heroHits(powerRef), to = heroHits(L);
+  if (!(to < from) && L - powerRef < POWER_STEP) return;
+  R.powerUp = { t: 1.8, pct: Math.round((Math.pow(10, L - powerRef) - 1) * 100), from, to };
+  powerRef = L; powerAtT = powerClock;
+  onEvent({ type: 'powerUp' });
 }
 
 /** 개발자 모드: 지금 무리를 한 번에 쓰러뜨린다. 처치 보상·웨이브/스테이지 클리어는 평소대로 흐른다 */

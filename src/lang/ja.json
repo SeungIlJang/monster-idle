@@ -262,6 +262,8 @@
  "cb.gateFail": "関門に阻まれた — 次は{p}%弱くなる",
  "cb.died": "倒れた — {st}から攻め上がる",
  "cb.sweep": "掃討 ▶ {st}",
+ "pw.hits": "⚡ パワーアップ！勇者 {a}発 → {b}発",
+ "pw.pct": "⚡ パワーアップ！+{p}%",
  "cb.golden": "💰 黄金の兵士！+{g}",
  "cb.chest": "🎁 {tier}の宝箱 ×{m}",
  "chest.t0": "木",

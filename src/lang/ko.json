@@ -282,6 +282,8 @@
  "cb.gateFail": "관문에 막혔다 — 다음엔 {p}% 약해진다",
  "cb.died": "쓰러졌다 — {st} 부터 쓸어 올라간다",
  "cb.sweep": "휩쓸기 ▶ {st}",
+ "pw.hits": "⚡ 파워 업! 용사 {a}방 → {b}방",
+ "pw.pct": "⚡ 파워 업! +{p}%",
  "cb.golden": "💰 황금 병사! +{g}",
  "cb.chest": "🎁 {tier} 상자 ×{m}",
  "chest.t0": "나무",

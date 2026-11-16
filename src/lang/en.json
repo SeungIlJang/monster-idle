@@ -262,6 +262,8 @@
  "cb.gateFail": "Blocked at the gate — {p}% weaker next time",
  "cb.died": "Defeated — sweeping up from {st}",
  "cb.sweep": "Sweep ▶ {st}",
+ "pw.hits": "⚡ Power up! Hero {a} hits → {b}",
+ "pw.pct": "⚡ Power up! +{p}%",
  "cb.golden": "💰 Golden soldier! +{g}",
  "cb.chest": "🎁 {tier} chest ×{m}",
  "chest.t0": "Wooden",
