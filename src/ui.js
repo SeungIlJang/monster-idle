@@ -329,7 +329,8 @@ export function refresh() {
   if (tab === 'battle') renderUpgrade();
 
   // 스테이지 진행바
-  const per = R.boss ? 1 : perWave(R.stage);
+  // 물량전: 한 웨이브 = 병사 + 용사 (combat.spawnWave). 웨이브마다 구성이 같아 지금 무리 수로 센다
+  const per = R.boss ? 1 : (R.enemies.length || perWave(R.stage));
   const waves = R.boss ? 1 : B.stage.waves;
   const alive = R.enemies.filter(e => e.Lhp > -Infinity).length;
   const killed = R.waveIdx * per + (per - alive);

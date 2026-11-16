@@ -768,7 +768,7 @@ function launchCorpse(hero, x, y, h, idx) {
     vx: W * (0.5 + Math.random() * 0.35), vy: -H * (0.42 + Math.random() * 0.22),
     rot: 0, vr: 7 + Math.random() * 6, life: 0.7, max: 0.7,
   });
-  if (corpses.length > 12) corpses.shift();
+  if (corpses.length > 18) corpses.shift();      // 물량전 — 병사가 연달아 날아간다
   const cols = ['#ffe27a', '#ffffff', '#ffb36b'];
   for (let i = 0; i < 9; i++) {
     const a = Math.random() * 6.2832, v = 60 + Math.random() * 120;
@@ -1008,15 +1008,42 @@ export function render(dt) {
   // 쓰러지는 중인 적도 그린다 — dead 포즈가 끝나야 사라진다.
   // 레인은 **R.enemies 안의 제자리 번호**로 고른다. 살아있는 것만 세서 고르면
   // 하나가 죽을 때마다 남은 적들이 레인을 갈아타며 툭 튄다.
+  // ── 물량전 진형 ── 병사(minion)는 앞 두 줄에 셋씩(SWARM.shown 기), 나머지는 화면 밖에서 줄 서 있다가
+  // 앞이 쓰러지면 달려 들어온다. 용사는 병사 뒤에 섰다가 병사가 다 쓰러지면 **앞으로 나선다**.
+  // 자리는 목표로 정하고 실제 위치(e._x · e._d)는 그쪽으로 미끄러지게 한다 — 쓰러질 때마다 툭툭 튀지 않게.
+  // 처음 그려질 때는 화면 밖(오른쪽)에서 출발하므로 웨이브 입장 연출도 이걸로 된다.
   const shown = [];
+  const SW = B.stage.swarm || {};
+  const shownMin = SW.shown || 6;
+  let nHero = 0, minAlive = 0;
+  for (const e of R.enemies) { if (!e.minion) nHero++; else if (e.Lhp > L0) minAlive++; }
+  let hi = 0, mr = 0;
+  const slide = Math.min(1, dt * 7);
   R.enemies.forEach((e, idx) => {
-    if (!(e.Lhp > L0 || e.deadT > 0)) return;
-    const nE = R.enemies.length;
-    const d = R.boss ? 0.5 : (nE > 1 && idx === nE - 1 ? REAR_LANE : FOE_LANES[idx % FOE_LANES.length]);
-    // 순번 = 진형 순서(spawnWave 가 근접 < 궁수 < 마법사 < 백마법사로 정렬). 앞에서 뒤로 한 칸씩 물러선다.
-    // 예전엔 idx % 3 이라 4번째가 맨 앞 칸으로 돌아와 백마법사가 앞에 서기도 했다.
-    const x = R.boss ? W * 0.66 : W * (0.56 + Math.min(idx, 3) * 0.095 + (d - 0.5) * 0.05);
-    shown.push({ e, idx, d, x });
+    const alive = e.Lhp > L0;
+    const myHi = e.minion ? -1 : hi++;
+    const myR = e.minion && alive ? mr++ : -1;
+    if (!(alive || e.deadT > 0)) return;
+    let d, x;
+    if (R.boss) { d = 0.5; x = W * 0.66; }
+    else if (e.minion) {
+      if (!alive) { if (e._x === undefined) return; d = e._d; x = e._x; }   // 쓰러지는 중 — 그 자리에서
+      else if (myR >= shownMin) { e._x = undefined; return; }             // 줄 서서 기다린다 (화면 밖)
+      else {
+        d = myR % 2 ? 0.30 : 0.66;
+        x = W * (0.465 + Math.floor(myR / 2) * 0.062 + (myR % 2) * 0.03);
+      }
+    } else {
+      d = nHero > 1 && myHi === nHero - 1 ? REAR_LANE : FOE_LANES[myHi % FOE_LANES.length];
+      // 순번 = 진형 순서(spawnWave 가 근접 < 궁수 < 마법사 < 백마법사로 정렬). 앞에서 뒤로 한 칸씩 물러선다.
+      // 예전엔 idx % 3 이라 4번째가 맨 앞 칸으로 돌아와 백마법사가 앞에 서기도 했다.
+      x = minAlive
+        ? W * (0.67 + Math.min(myHi, 3) * 0.072 + (d - 0.5) * 0.04)        // 병사 뒤에서 지켜본다
+        : W * (0.56 + Math.min(myHi, 3) * 0.095 + (d - 0.5) * 0.05);       // 병사가 쓰러지면 앞으로
+    }
+    if (e._x === undefined) { e._x = x + W * 0.55; e._d = d; }            // 화면 밖에서 달려 들어온다
+    if (alive) { e._x += (x - e._x) * slide; e._d += (d - e._d) * slide; }
+    shown.push({ e, idx, d: e._d, x: e._x });
   });
   shown.sort((a, b) => a.d - b.d);        // 뒤에 있는 것부터 그린다
 
@@ -1038,13 +1065,10 @@ export function render(dt) {
   // 웨이브가 막 시작했으면 화면 밖에서 달려 들어온다.
   // 적 4기를 쓸어도 다음 무리가 조용히 나타나서 "한 무리를 끝냈다" 가 없었다.
   // 뒤쪽 레인일수록 조금 늦게 들어와 한 덩어리로 안 보인다.
-  const waveU = R.waveInT > 0 ? R.waveInT / WAVE_IN_SEC : 0;    // 1 → 0
-  for (const { e, idx, d, x: ex0 } of shown) {
-    const lag = Math.max(0, Math.min(1, waveU * (1.15 + (1 - d) * 0.35)));
-    const ease = lag * lag;                                     // 빨리 들어와 부드럽게 선다
-    const ex = ex0 + ease * W * 0.55;
+  // (입장은 위 진형 계산의 '화면 밖에서 미끄러져 들어오기' 가 맡는다)
+  for (const { e, idx, d, x: ex } of shown) {
     const ey = laneY(d);
-    const h = eH * laneS(d);
+    const h = eH * laneS(d) * (e.minion ? (SW.scale || 0.62) : 1);   // 병사는 작게 — 용사가 누구인지 묻히지 않게
     const eb = Math.sin(t * 2.4 + e.ph) * h * 0.015;
     const hit = e.hitT > 0 ? e.hitT / 0.12 : 0;
     const dying = e.deadT > 0 ? e.deadT / (B.combatFx?.deathSec || 0.32) : 0;
@@ -1074,6 +1098,11 @@ export function render(dt) {
     });
     ctx.globalAlpha = 1;
     if (dying > 0) continue;              // 쓰러지는 적은 체력바를 지운다
+    // 병사는 1~2방이라 바가 꽉 찬 채로 늘어서 있으면 화면이 바로 덮인다 — 맞았을 때만 가늘게
+    if (e.minion) {
+      if (e.Lhp < e.Lmax) bar(ex - h * 0.3, ey - h - 5, h * 0.6, 3, ratio(e.Lhp, e.Lmax), '#ff8a8a');
+      continue;
+    }
     const bw = h * 0.62;
     // 회복 중이면 바를 초록으로 — **올라가는 게 보여야** 힐러가 일하는 걸 안다
     bar(ex - bw / 2, ey - h - 7, bw, 4, ratio(e.Lhp, e.Lmax), e.healT > 0 ? '#5ee88a' : '#ff5a6e');

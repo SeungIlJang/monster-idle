@@ -107,17 +107,79 @@ function spawnWave() {
   // 순서가 곧 자리(render)이고 맞는 순서다(앞에서부터 때린다).
   const heroes = R.boss ? [bossHeroAt(R.stage)] : waveFoes(R.stage, R.waveIdx, n);
   const period = 1 / B.enemy.aspd;
-  R.enemies = heroes.map((hero, i) => ({
-    Lhp, Lmax: Lhp, hitT: 0, healT: 0, ph: Math.random() * 6.28, hero,
+
+  // ── 물량전 (2026-11-16) ──
+  // 첫 1시간 실측: 한 마리에 평타 11.7방 · 처치 9초에 한 번. 처치가 곧 보상의 순간(금화 · 연쇄 · 날아가는 몸)인데
+  // 그게 9초에 한 번이라 화면에 '일' 이 거의 없었다. 웨이브를 **병사 떼 + 용사** 로 쪼갠다.
+  //   병사 m = perHero × 용사 수, 웨이브 체력의 share 를 나눠 가진다 (12.5% 짜리 — 평타 1~2방)
+  //   용사는 나머지(1 − share)를 한 기씩 — 예전보다 빨리 쓰러진다
+  // **총량은 그대로 둔다** — 시뮬(design-sim attempt)이 검증하는 세 가지:
+  //   체력: m·hm + n·hh = n (예전 용사 n 기)
+  //   골드: 체력 몫만큼 나눠 준다 → 합이 n 기분
+  //   받는 피해: 앞에서부터 쓰러뜨리면 적 i 가 살아서 때리는 시간 ∝ 그때까지의 누적 체력 C_i.
+  //     예전 총량 I0 = Σ C_i = n(n+1)/2 (용사 체력 1 단위). 물량전은 공격력을 체력 몫에 비례시키고(w = c·hp),
+  //     줄 서서 기다리는 병사는 때리지 않으므로(화면에 shown 기만) 병사 i 가 때리는 시간은 min(i, shown)·hm.
+  //     I = Σ_병사 hm·min(i,shown)·hm + Σ_용사 hh·(m·hm + j·hh) 를 재서 c = I0 / I 로 맞춘다.
+  // 보스 · 관문은 그대로 혼자 나온다 — 거기는 '센 놈 하나' 를 오래 때리는 자리다.
+  const SW = !R.boss && B.stage.swarm?.share > 0 ? B.stage.swarm : null;
+  const nh = heroes.length;
+  const m = SW ? Math.max(1, Math.round(SW.perHero * nh)) : 0;
+  const hm = SW ? SW.share * nh / m : 0;            // 병사 한 기 체력 (예전 용사 = 1)
+  const hh = SW ? 1 - SW.share : 1;                 // 용사 한 기 체력
+  let c = 1;
+  if (SW) {
+    const K = SW.shown || m;
+    let I = 0;
+    for (let i = 1; i <= m; i++) I += hm * Math.min(i, K) * hm;
+    for (let j = 1; j <= nh; j++) I += hh * (m * hm + j * hh);
+    c = (nh * (nh + 1) / 2) / I;
+  }
+  const grunt = heroes.find(h => !h?.support) || heroes[0];   // 병사 모습 — 힐러 모습으로 때리면 이상하다
+  const total = m + nh;
+  const make = (hero, share, minion, i) => ({
+    Lhp: Lhp + Math.log10(share), Lmax: Lhp + Math.log10(share),
+    hitT: 0, healT: 0, ph: Math.random() * 6.28, hero, minion,
+    Lgold: Math.log10(share),                       // 처치 골드 = 예전 한 기 × 체력 몫
+    Latk: Math.log10(c * share),                    // 한 대 피해 = 예전 한 기 × c × 체력 몫
     // 힐러가 이번 웨이브에 채울 수 있는 총량(아군 최대체력 대비). 바닥나면 더 못 채운다 —
     // 이게 없으면 회복이 DPS 를 넘는 순간 적이 영영 안 죽는다(실측: 2분간 100% 고정).
-    healLeft: (hero?.healBudget || 0) * relicEff('healerBudget'),   // 침묵의 종 유물이 줄인다
+    // 물량전에선 용사 체력이 hh 배라 같은 비율로 채우면 덜 채운다 — 1/hh 를 곱해 **채우는 양(절대값)** 을 맞춘다
+    healMul: 1 / hh,
+    healLeft: minion ? 0 : (hero?.healBudget || 0) * relicEff('healerBudget') / hh,   // 침묵의 종 유물이 줄인다
     // 적마다 자기 타이머를 쥔다. 예전엔 그룹 1타이머라 **여덟 종이 동시에 같은 포즈**로
     // 바뀌어 기계처럼 보였다. 주기는 같고 시작 위상만 흩는다 —
     // 같은 시간에 같은 횟수를 때리므로 **총 피해는 그대로**다(시뮬 수식 불변).
-    atkT: period * ((i + 0.5) / heroes.length),
+    atkT: period * ((i + 0.5) / total),
     aPose: 0,                                  // 이 적의 공격 포즈 잔여 시간
-  }));
+  });
+  R.enemies = [
+    ...Array.from({ length: m }, (_, i) => make(grunt, hm, true, i)),
+    ...heroes.map((hero, j) => make(hero, hh, false, m + j)),
+  ];
+}
+
+/**
+ * 맨 앞 적부터 피해를 넣는다. **병사를 쓰러뜨리고 남은 피해는 다음 적으로 넘어간다** —
+ * 한 방에 병사 여럿이 날아가는 게 물량전의 맛이다. 넘친 피해를 버리면 병사(1~2방)마다 반 방씩 새서 DPS 가 준다.
+ * 단 **용사를 쓰러뜨리면 거기서 멈춘다.** 공격 한 번에 용사 한 기 — 예전 상한과 같다. 압도적일 때
+ * 한 층에 드는 최소 시간(시뮬 minSeconds · 환생 뒤 재등반 속도)이 예전과 같게 남는다.
+ * 쓰러뜨린 [적, 번호] 목록을 돌려준다. 처치 처리(onKill)는 부르는 쪽이 한다 — 마지막 처치가 다음 웨이브를 깔기 때문.
+ */
+function strikeFront(Ldmg) {
+  const out = [];
+  let rest = Ldmg;
+  for (let guard = 0; guard < 64; guard++) {
+    const e = front();
+    if (!e) break;
+    const before = e.Lhp;
+    e.Lhp = sub(e.Lhp, rest);
+    if (e.Lhp > L0) break;
+    out.push([e, R.enemies.indexOf(e)]);
+    if (!e.minion) break;
+    rest = sub(rest, before);
+    if (!(rest > L0)) break;
+  }
+  return out;
 }
 
 /** 스테이지 진입. mode 가 FARM 이면 클리어해도 전진하지 않고 계속 반복한다. */
@@ -262,10 +324,11 @@ function onImpact(b) {
   onEvent({ type: 'impact', crit: b.crit, heavy: b.heavy });
 }
 
-function gainGold() {
+function gainGold(e) {
   // 리드 능력의 골드 배수(그릭 탐욕 등). 오프라인 보상은 offline.js 쪽에서 같이 건다.
   // 마스터리 탐식 노드가 여기 곱해진다 — 오프라인 보상도 offline.js 에서 같이 건다
-  S.Lg = add(S.Lg, LeGOLD(R.stage, R.boss) + fromNum(ab('gold') * goldMul()));
+  // 물량전: 체력 몫만큼만 준다(e.Lgold, log). 한 웨이브 합은 예전 용사 n 기분 그대로다
+  S.Lg = add(S.Lg, LeGOLD(R.stage, R.boss) + fromNum(ab('gold') * goldMul()) + (e?.Lgold || 0));
 }
 
 function onKill(e, idx) {
@@ -281,12 +344,13 @@ function onKill(e, idx) {
   // 전투 판정에는 영향이 없다 — front()/aliveCount() 는 Lhp 로만 판단한다.
   e.deadT = B.combatFx.deathSec;
   if (R.boss) { R.bossSlainT = 0.5; R.shake = Math.max(R.shake, 0.45); }
-  gainGold();
-  bumpDaily('kill');
-  fx('gold', '+' + fmt(LeGOLD(R.stage, R.boss)), idx, -16);
+  gainGold(e);
+  // 일일 퀘스트 '처치' 는 용사만 센다 — 병사까지 세면 웨이브마다 처치가 5배가 돼 퀘스트가 공짜가 된다
+  if (!e.minion) bumpDaily('kill');
+  fx('gold', '+' + fmt(LeGOLD(R.stage, R.boss) + (e.Lgold || 0)), idx, -16);
   // 금화가 튀어 오른다. 숫자만 뜨는 것보다 "벌었다" 가 훨씬 잘 느껴진다.
-  // 보스는 골드가 10배라 더 많이 튀게 한다.
-  const coins = R.boss ? 9 : 5;
+  // 보스는 골드가 10배라 더 많이 튀게 한다. 병사는 몫이 작아 두 개만.
+  const coins = R.boss ? 9 : e.minion ? 2 : 5;
   for (let i = 0; i < coins; i++) {
     fx('coin', '', idx, -10, i * 0.035);
     const c = R.fx[R.fx.length - 1];
@@ -294,7 +358,7 @@ function onKill(e, idx) {
     c.vjx = (Math.random() - 0.5) * 120;    // 좌우로 흩어지며
     c.life = 0.75 + Math.random() * 0.3;
   }
-  R.shake = Math.max(R.shake, R.boss ? 0.3 : 0.12);
+  R.shake = Math.max(R.shake, R.boss ? 0.3 : e.minion ? 0.06 : 0.12);
   if (aliveCount() > 0) return;
 
   // 웨이브 클리어
@@ -364,14 +428,16 @@ export function fireSkill(sk, secs) {
   const tgt = front();
   if (!tgt) return false;        // 때릴 게 없으면 쿨을 쓰지 않는다 (몫이 증발하면 DPS 가 샌다)
   const Ldmg = LDPS(R.boss) + fromNum(secs) + DEV.Ldmg;
-  tgt.Lhp = sub(tgt.Lhp, Ldmg);
   tgt.hitT = 0.16;
   const idx = R.enemies.indexOf(tgt);
+  // 스킬 한 방은 크다 — 병사 떼를 꿰뚫고 지나간다(strikeFront 의 이월). 몇 마리를 쓸었는지가 곧 스킬의 손맛이다
+  const killed = strikeFront(Ldmg);
+  for (const [e] of killed) e.hitT = 0.16;
   fx('skill', sk.icon + ' ' + fmt(Ldmg), idx, -4);
   R.skillFxT = 0.35;
   R.skillFx = sk.id;
-  R.shake = Math.max(R.shake, 0.2);
-  if (tgt.Lhp <= L0) onKill(tgt, idx);
+  R.shake = Math.max(R.shake, 0.2 + Math.min(4, killed.length) * 0.03);
+  for (const [e, i] of killed) onKill(e, i);
   return true;
 }
 
@@ -460,9 +526,10 @@ export function tick(dt) {
                + fromNum(critMul * normalShare()) + DEV.Ldmg;   // DEV.Ldmg: 개발자 모드 피해 배수(보통 0)
     // **피해는 여기서 끝난다.** 아래 연출이 늦게 오더라도 수치는 이미 적용됐다 —
     // 피해를 명중까지 미루면 DPS 가 비행시간만큼 깎여 시뮬과 어긋난다.
-    f.Lhp = sub(f.Lhp, Ldmg);
-    onEvent({ type: 'attack' });        // 실제 평타가 나간 순간 (연출이 아니라 사실)
+    // 병사를 쓰러뜨리고 남은 피해는 뒤의 적으로 넘어간다(strikeFront).
     const idx = R.enemies.indexOf(f);
+    const killed = strikeFront(Ldmg);
+    onEvent({ type: 'attack' });        // 실제 평타가 나간 순간 (연출이 아니라 사실)
     // 투사체 한 발. 도착하면 숫자·피격·소리가 한꺼번에 터진다.
     const FXC = B.combatFx;
     // 4번째마다 강타. 공속이 아주 빠르면 1초에 여러 번 돌진해 정신없으므로 최소 간격을 둔다
@@ -486,7 +553,11 @@ export function tick(dt) {
       c.jx = (i - (n - 1) / 2) * 42 + (Math.random() - 0.5) * 10;
       c.y = -i * 13;
     }
-    if (f.Lhp <= L0) onKill(f, idx);
+    // 꿰뚫고 같이 쓰러진 뒤쪽 적에게도 한 발씩 — 맞은 게 보여야 '한 방에 여럿' 이 읽힌다
+    for (let k = 1; k < killed.length; k++) {
+      R.bolts.push({ idx: killed[k][1], t: 0, dur: T + k * 0.05, crit, heavy: false, ph: Math.random() * 6.28 });
+    }
+    for (const [e, i] of killed) onKill(e, i);
   }
 
   // 스킬 — 쿨마다 모아둔 몫을 한 번에. 평타는 그만큼 줄어 있으므로 총량은 같다.
@@ -498,8 +569,12 @@ export function tick(dt) {
   // 주기(1/aspd)와 한 기당 피해는 그대로라 **시간당 총 피해가 바뀌지 않는다** —
   // 시뮬의 `aspd × alive` 모델과 그대로 맞는다.
   const period = 1 / B.enemy.aspd;
+  // 줄 서서 기다리는(화면 밖) 병사는 때리지 않는다 — spawnWave 의 받는 피해 식이 그렇게 맞춰져 있다
+  const shownMin = B.stage.swarm?.shown || Infinity;
+  let minRank = 0;
   for (const e of R.enemies) {
     if (!(e.Lhp > L0)) continue;                 // 죽은 적은 안 때린다 (= 예전의 alive 비례)
+    if (e.minion && minRank++ >= shownMin) continue;
     if (e.aPose > 0) e.aPose -= dt;
     if (e.healT > 0) e.healT -= dt;
     e.atkT -= dt;
@@ -520,11 +595,13 @@ export function tick(dt) {
  * 작아도 역할은 분명하다: 긴 싸움일수록 누적이 커지고, 체력바가 **올라가는 게 보인다**.
  */
 function foeHeal(healer) {
-  const pct = Math.min(healer.hero?.healPct || 0, healer.healLeft);
+  // healMul: 물량전에선 용사 체력이 작아져서, 같은 양(절대값)을 채우려면 비율을 그만큼 키운다(spawnWave)
+  const pct = Math.min((healer.hero?.healPct || 0) * (healer.healMul || 1), healer.healLeft);
   if (!(pct > 0)) return;                        // 총량이 바닥났으면 아무것도 안 한다
   let tgt = null, worst = Infinity;
   for (const e of R.enemies) {
-    if (e === healer || !(e.Lhp > L0) || e.hero?.support) continue;
+    // 병사는 채우지 않는다 — 1~2방에 쓰러지는 것을 채워 봐야 보이지도 않고, 시뮬의 힐러 모델(용사 체력 증가)과도 어긋난다
+    if (e === healer || !(e.Lhp > L0) || e.hero?.support || e.minion) continue;
     const frac = ratio(e.Lhp, e.Lmax);
     if (frac < worst && frac < 1) { worst = frac; tgt = e; }
   }
@@ -569,7 +646,8 @@ function onFoeImpact(b) {
 
 /** 적 한 기의 타격. 죽었으면 true */
 function foeStrike(e) {
-  const Ldmg = LeATK(R.stage, R.boss) - LDEF() + fromNum(enrage());
+  // e.Latk: 물량전의 한 대 비중(체력 몫 × c, log). 예전 용사 한 기면 0
+  const Ldmg = LeATK(R.stage, R.boss) + (e.Latk || 0) - LDEF() + fromNum(enrage());
   // 관문은 **최대 체력 비례** 로 한 번 더 문다. 방어·체력을 올려도 줄지 않는다 —
   // 이게 있어야 "빨리 못 죽이면 내가 죽는다" 가 성립한다(balance.json stage.gate 참조).
   // 관문은 보스전이라 적이 한 기뿐이므로 물리는 횟수가 예전과 같다.

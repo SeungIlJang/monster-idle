@@ -40,11 +40,13 @@ preloadFor(S.st);
 
 // 전투는 **사건만 알린다.** 소리 연결은 여기서 한다 — combat.js 가 오디오를 직접 들면
 // 전투 로직이 재생 실패에 얽힌다. 기존 동작(클리어 시 갱신·예열)은 그대로 둔다.
+let lastHitSfx = 0;
 setEventHandler(ev => {
   switch (ev.type) {
     case 'attack':    break;                    // 발사 자체는 조용하다 — 소리는 닿을 때 난다
     case 'impact':    sfx.attack(); break;      // 투사체가 맞은 순간
-    case 'playerHit': sfx.playerHit(); break;
+    // 물량전에선 병사 여럿이 잘게 때린다 — 매번 울리면 소리가 뭉개진다. 0.12초에 한 번만
+    case 'playerHit': { const n = performance.now(); if (n - lastHitSfx > 120) { lastHitSfx = n; sfx.playerHit(); } break; }
     // 연쇄가 길수록 배경이 더 달린다 — 화면이 같이 앞으로 쏠려야 "몰아친다" 가 읽힌다
     case 'kill':      sfx.kill(); if (R.chain >= 3) bgAdvance(0.18 + Math.min(R.chain, 10) * 0.02); break;
     case 'wave':      bgAdvance(); break;        // 웨이브를 넘길 때 한 걸음 더
