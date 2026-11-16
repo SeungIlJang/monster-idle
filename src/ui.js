@@ -300,7 +300,8 @@ export function refresh() {
 
   const tg = toughness();
   const slow = tg.need > B.player.giveUpSeconds;
-  $('mode').textContent = R.mode === MODE.FARM ? t('mode.farm') : t('mode.run');
+  // 휩쓸기(쓰러진 뒤 한 층씩 쓸어 올라오는 중)와 직접 고른 파밍 층을 구분해 부른다
+  $('mode').textContent = R.mode === MODE.FARM ? (R.sweepTo ? t('mode.sweep') : t('mode.farm')) : t('mode.run');
   $('mode').className = R.mode === MODE.FARM ? 'farm' : 'run';
   $('retryBtn').style.display = R.mode === MODE.FARM ? '' : 'none';
   // 깊은 스테이지에서는 need 가 천문학적 숫자가 되므로 그대로 찍지 않는다

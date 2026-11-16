@@ -200,7 +200,7 @@ export function enterStage(stage, mode = MODE.RUN) {
   R.chain = 0; R.chainT = 0;
   R.heavyT = 0; R.rings = [];
   R.freeze = 0; R.freezeBank = 0; lastStop = -9; lastHeavy = -9;
-  if (mode === MODE.RUN) R.farmClears = 0;
+  if (mode === MODE.RUN) { R.farmClears = 0; R.sweepTo = 0; }
   R.heroName = heroAt(R.stage).name;
   // 보스 스테이지에 들어서는 순간은 10스테이지마다 오는 유일한 리듬이다. 경고를 띄운다.
   R.bossIntroT = R.boss ? 1.0 : 0;
@@ -381,6 +381,15 @@ function onKill(e, idx) {
     // 30분까지 그대로. 전투력은 충분한데 돌아가질 않았다).
     R.farmClears = (R.farmClears || 0) + 1;
     if (canClear(S.st) || R.farmClears >= AUTO_RETRY_CLEARS) { retry(); return; }
+    // 휩쓸기 — 같은 층을 세 번 도는 대신 한 층씩 **쓸어 올라간다**(playerDied 가 sweepTo 를 정한다).
+    // 초당 골드는 층마다 거의 같다(한 층 아래 ×0.995 — hpGrow 1.12 · goldGrow 1.126) — 수입은 그대로, 장면만 바뀐다
+    if (R.sweepTo && R.stage < R.sweepTo) {
+      const next = R.stage + 1, to = R.sweepTo;
+      enterStage(next, MODE.FARM);
+      R.sweepTo = to;
+      banner(tr('cb.sweep', { st: chapterLabel(next) }), 1.1);
+      return;
+    }
     enterStage(R.stage, MODE.FARM);
     return;
   }
@@ -409,15 +418,21 @@ function playerDied() {
   if (wasGate) S.gateFail[retryAt] = (S.gateFail[retryAt] || 0) + 1;
   // 한 칸씩 내려가면 사망 연쇄에 빠진다 — 클리어 가능한 깊이를 바로 계산해서 간다
   const farmAt = S.farm > 0 ? S.farm : bestFarmStage(Math.max(1, retryAt - 1));
+  // 휩쓸기 — 예전엔 farmAt 한 층을 AUTO_RETRY_CLEARS(3)번 돌고 재도전했다. 첫 1시간의 37% 가 그 반복이었다.
+  // 이제 farmAt 아래 두 층부터 한 층씩 올라오며 같은 3판을 쓴다(farmAt−2 → farmAt−1 → farmAt → 재도전).
+  // 셋 다 farmAt 이하라 canClear 가 보장된다. 플레이어가 고른 파밍 층(S.farm)은 예전처럼 그 층만 돈다.
+  const sweep = S.farm > 0 ? 0 : AUTO_RETRY_CLEARS - 1;
+  const startAt = Math.max(1, farmAt - sweep);
   R.farmClears = 0;
   // 어디로 왜 가는지 말해 준다. 측정해 보니 첫 1시간에 16~17번 죽는데(2~3분에 한 번),
   // 전부 자동 복구라 "졌다" 도 "돌아왔다" 도 체감되지 않았다. 사건이 보이지 않으면 긴장도 없다.
   banner(wasGate
     ? tr('cb.gateFail', { p: Math.round((1 - gateSoft(retryAt)) * 100) })
-    : tr('cb.died', { st: chapterLabel(farmAt) }), 2.4, true);
-  onEvent({ type: 'death', stage: retryAt, farmAt });
+    : tr('cb.died', { st: chapterLabel(startAt) }), 2.4, true);
+  onEvent({ type: 'death', stage: retryAt, farmAt: startAt });
   save();
-  enterStage(farmAt, MODE.FARM);
+  enterStage(startAt, MODE.FARM);
+  R.sweepTo = startAt < farmAt ? farmAt : 0;    // enterStage 뒤에 둔다 — 휩쓸기 목표(이 층까지 올라온 뒤 재도전)
 }
 
 /**
