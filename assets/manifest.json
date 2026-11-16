@@ -361,52 +361,68 @@
       }
     },
     "frostgiant": {
-      "attack": 1,
+      "attack": 3,
       "dead": 1,
       "hit": 1,
-      "idle": 1,
+      "idle": 2,
       "box": {
         "x": 0.1187,
         "y": 0.2594,
         "w": 0.7625,
         "h": 0.7094
-      }
+      },
+      "evo": [
+        2,
+        3
+      ]
     },
     "griffin": {
-      "attack": 1,
+      "attack": 3,
       "dead": 1,
       "hit": 1,
-      "idle": 1,
+      "idle": 2,
       "box": {
         "x": 0.1187,
         "y": 0.2844,
         "w": 0.7625,
         "h": 0.6844
-      }
+      },
+      "evo": [
+        2,
+        3
+      ]
     },
     "imp": {
-      "attack": 1,
+      "attack": 3,
       "dead": 1,
       "hit": 1,
-      "idle": 1,
+      "idle": 2,
       "box": {
         "x": 0.2313,
         "y": 0.1875,
         "w": 0.5375,
         "h": 0.7813
-      }
+      },
+      "evo": [
+        2,
+        3
+      ]
     },
     "treant": {
-      "attack": 1,
+      "attack": 3,
       "dead": 1,
       "hit": 1,
-      "idle": 1,
+      "idle": 2,
       "box": {
         "x": 0.1187,
         "y": 0.2625,
         "w": 0.7625,
         "h": 0.7063
-      }
+      },
+      "evo": [
+        2,
+        3
+      ]
     }
   },
   "hero": {
@@ -507,10 +523,10 @@
       }
     },
     "cannon": {
-      "attack": 1,
+      "attack": 3,
       "dead": 1,
       "hit": 1,
-      "idle": 1,
+      "idle": 2,
       "box": {
         "x": 0.1187,
         "y": 0.2281,
@@ -519,10 +535,10 @@
       }
     },
     "cavalry": {
-      "attack": 1,
+      "attack": 3,
       "dead": 1,
       "hit": 1,
-      "idle": 1,
+      "idle": 2,
       "box": {
         "x": 0.2,
         "y": 0.1719,
@@ -531,10 +547,10 @@
       }
     },
     "shield": {
-      "attack": 1,
+      "attack": 3,
       "dead": 1,
       "hit": 1,
-      "idle": 1,
+      "idle": 2,
       "box": {
         "x": 0.1844,
         "y": 0.2188,
@@ -543,10 +559,10 @@
       }
     },
     "spear": {
-      "attack": 1,
+      "attack": 3,
       "dead": 1,
       "hit": 1,
-      "idle": 1,
+      "idle": 2,
       "box": {
         "x": 0.2,
         "y": 0.1625,
