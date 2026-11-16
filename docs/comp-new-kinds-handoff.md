@@ -1,4 +1,4 @@
-# 아트 담당(Codex) 전달 — 뽑기 동료 2종 추가 (불씨 용 · 해골새)
+# 아트 담당(Codex) 전달 — 뽑기 동료 2종 추가 (꼬마 꿀벌 · 해골새)
 
 > **상태: 그림 기다리는 중 (2026-11-16).** 코드는 준비돼 있습니다. 그림이 들어오는 날부터 뽑기에 저절로 섞입니다.
 
@@ -7,11 +7,15 @@
 
 | 키 | 이름 (ko / en / ja) | 색 | 쏘는 것 |
 |---|---|---|---|
-| `ember` | 불씨 용 / Emberling / ひのこドラゴン | 차분한 주황 | 주황 불꽃 (`flame`) |
+| `bee` | 꼬마 꿀벌 / Buzzbee / ちびミツバチ | 차분한 호박색 | 호박색 침 (`wedge`) |
 | `bonebird` | 해골새 / Bonebird / ほねどり | 상아색 | 뼈다귀 (`bone` — 새로 넣음) |
 
 지금 6종의 색(세이지 초록 · 보라 회색 · 장미 · 청록 · 회색 돌 · 숯색)과 겹치지 않게 골랐고,
 둘 다 **원래 날아다니는 생물**이라 하늘에 떠 있어도 어색하지 않습니다.
+
+> 처음엔 꼬마 꿀벌 자리에 **불씨 용**(`ember`)을 두었는데, 몬스터 **이그나리온**(빨간 꼬마 용)과 개념이 겹쳐 바꿨습니다.
+> 꿀벌은 동료·몬스터 통틀어 **곤충이 처음**이고, 노란 줄무늬 몸통이라 25px 에서도 한눈에 읽힙니다.
+> 박쥐 떼(무리)·도깨비불(빛 덩어리)과도 실루엣이 다릅니다. **진짜 벌처럼 그리지 말고** 동글동글한 장난감처럼.
 
 ## 이미 되어 있는 것 (이쪽)
 
@@ -76,10 +80,10 @@
 
 **참고 그림으로 `assets/comp/slimelet.png` 와 `assets/comp/wisp.png` 를 화풍 기준으로만 넣습니다**(외곽선 굵기 · 음영 · 채도). 다른 생물입니다.
 
-**불씨 용 `ember`**
+**꼬마 꿀벌 `bee`**
 
 ```
-2D mobile idle RPG sidekick sprite, cute chibi mascot, thick clean dark outline, flat cel shading, readable at very small size. Use the reference images as STYLE reference only (outline weight, shading, soft muted palette) — this is a different creature. A tiny round baby dragon, muted ember-orange body with a pale peach belly, two stubby rounded wings, two tiny nub horns, a short tail ending in a small soft flame tip, two dot eyes, hovering with wings slightly spread. A small helper creature, clearly smaller and simpler than a main character. Soft, rounded, non-threatening. It should look like it is following someone rather than leading. VERY simple bold silhouette — this is drawn at roughly 60px tall and eight of them share the screen at once, so it must read instantly as one shape. One or two colors only. Eyes are two small dots or short curved lines. No fine detail, no small props, no patterns. Facing the viewer in a slight 3/4 turn toward the viewer's RIGHT. Full body, hovering just above an invisible ground line at the bottom edge. Single creature, centered, filling about 65% of the frame height, leaving clear empty space above the head. Square frame. Fully transparent background — no ground shadow, no platform, no backdrop. No text, no letters, no numbers, no UI, no frame, no border, no watermark. No humans. Muted, slightly desaturated colors so the lead monster stays the brightest thing on screen.
+2D mobile idle RPG sidekick sprite, cute chibi mascot, thick clean dark outline, flat cel shading, readable at very small size. Use the reference images as STYLE reference only (outline weight, shading, soft muted palette) — this is a different creature. A tiny round honeybee, muted amber-yellow body with two soft brown stripes, a fuzzy pale-cream collar, two small rounded translucent wings, two short antennae with round tips, a tiny stinger, two dot eyes, hovering — friendly and toy-like, not a realistic insect. A small helper creature, clearly smaller and simpler than a main character. Soft, rounded, non-threatening. It should look like it is following someone rather than leading. VERY simple bold silhouette — this is drawn at roughly 60px tall and eight of them share the screen at once, so it must read instantly as one shape. One or two colors only. Eyes are two small dots or short curved lines. No fine detail, no small props, no patterns. Facing the viewer in a slight 3/4 turn toward the viewer's RIGHT. Full body, hovering just above an invisible ground line at the bottom edge. Single creature, centered, filling about 65% of the frame height, leaving clear empty space above the head. Square frame. Fully transparent background — no ground shadow, no platform, no backdrop. No text, no letters, no numbers, no UI, no frame, no border, no watermark. No humans. Muted, slightly desaturated colors so the lead monster stays the brightest thing on screen.
 ```
 
 **해골새 `bonebird`**
@@ -97,7 +101,7 @@ human, knight, armor, text, letters, numbers, UI, HUD, frame, border, watermark,
 **기본 그림의 `idle_2`** — `idle_1` 을 참고 그림으로 넣고:
 
 ```
-Second idle frame of the same image: eyes closed in a blink (bonebird: the eye glows dim to thin lines; ember: wings slightly folded), body very slightly squashed — top edge 2 to 4 pixels lower. Same position, same size.
+Second idle frame of the same image: eyes closed in a blink (bonebird: the eye glows dim to thin lines; bee: wings flapped to the other position), body very slightly squashed — top edge 2 to 4 pixels lower. Same position, same size.
 ```
 
 ### 등급 외형
@@ -107,14 +111,14 @@ Second idle frame of the same image: eyes closed in a blink (bonebird: the eye g
 
 | 키 | 영웅 r2 | 전설 r3 | 신화 r4 |
 |---|---|---|---|
-| `ember` | 이마에 작은 보라 보석 | 두 뿔 사이 작은 금관 · 날개 끝 금빛 | 머리에서 등으로 이어진 장미빛 불꽃 갈기 · 장미빛 보석 금관 · 꼬리 불꽃이 장미빛으로 더 밝게 |
+| `bee` | 날개 끝이 보라 · 이마에 작은 보라 보석 | 줄무늬가 금빛 · 더듬이 사이 작은 금관 | 장미빛 수정 날개(금테) · 장미빛 보석 금관 · 침 끝이 장미빛으로 빛남 |
 | `bonebird` | 목에 작은 보라 부적 · 눈빛이 보라 | 날개 가장자리 금테 · 머리에 작은 금관 | 장미빛 불꽃 꼬리깃 · 장미빛 보석 금관 · 눈빛이 장미빛으로 더 밝게 |
 
 영어 `{장식}`:
 
-- `ember` r2: `a small glowing violet gem on its forehead`
-- `ember` r3: `a small gold crown between its nub horns and gold-tipped wing edges`
-- `ember` r4: `a rose-red flame mane running from the head down the back, a gold crown with a rose-red jewel, and the tail flame turned rose-red and brighter`
+- `bee` r2: `violet-tinted wing tips and a small glowing violet gem on its forehead`
+- `bee` r3: `its body stripes turn gold and a tiny gold crown sits between its antennae`
+- `bee` r4: `rose-red crystal wings with gold edges, a gold crown with a rose-red jewel between its antennae, and the stinger tip glowing rose-red`
 - `bonebird` r2: `a small violet charm hanging at its neck, and the eye glows turn violet`
 - `bonebird` r3: `gold-trimmed wing edges and a tiny gold crown on top of the skull`
 - `bonebird` r4: `rose-red flame tail feathers, a gold crown with a rose-red jewel, and the eye glows turn rose-red and brighter`
@@ -125,10 +129,10 @@ Second idle frame of the same image: eyes closed in a blink (bonebird: the eye g
 
 ```
 D:/AI/workspace/game/games/output/monster-idle/comp-new-v1/
-  comp_ember_idle_1.png      · comp_ember_idle_2.png
-  comp_ember_r2_idle_1.png   · comp_ember_r2_idle_2.png
-  comp_ember_r3_idle_1.png   · comp_ember_r3_idle_2.png
-  comp_ember_r4_idle_1.png   · comp_ember_r4_idle_2.png
+  comp_bee_idle_1.png        · comp_bee_idle_2.png
+  comp_bee_r2_idle_1.png     · comp_bee_r2_idle_2.png
+  comp_bee_r3_idle_1.png     · comp_bee_r3_idle_2.png
+  comp_bee_r4_idle_1.png     · comp_bee_r4_idle_2.png
   comp_bonebird_idle_1.png   · …
 ```
 

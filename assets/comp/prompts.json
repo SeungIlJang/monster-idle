@@ -46,10 +46,10 @@
       "scene": "a small shadow creature, flat charcoal-grey silhouette with soft ragged edges, a simple hunched blob shape with no features except two pale glowing dot eyes, slightly transparent at the bottom edge"
     },
     {
-      "id": "ember",
-      "name": "불씨 용",
-      "icon": "🐲",
-      "scene": "a tiny round baby dragon, muted ember-orange body with a pale peach belly, two stubby rounded wings, two tiny nub horns, a short tail ending in a small soft flame tip, two dot eyes, hovering with wings slightly spread"
+      "id": "bee",
+      "name": "꼬마 꿀벌",
+      "icon": "🐝",
+      "scene": "a tiny round honeybee, muted amber-yellow body with two soft brown stripes, a fuzzy pale-cream collar, two small rounded translucent wings, two short antennae with round tips, a tiny stinger, two dot eyes, hovering — friendly and toy-like"
     },
     {
       "id": "bonebird",

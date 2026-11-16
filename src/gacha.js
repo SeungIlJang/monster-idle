@@ -49,7 +49,8 @@ export const CATALOG = {
     // 7·8번째(2026-11-16). 슬롯이 8칸이 되면서 6종으로는 하늘에 같은 동료가 최소 둘 겹쳤다.
     // **그림이 들어오기 전에는 안 나온다** — pullable() 이 매니페스트에 있는 것만 뽑는다
     // (docs/comp-new-kinds-handoff.md).
-    { id: 'ember', icon: '🐲', atk: { color: '#ff8a3d', shape: 'flame' } },
+    // 처음엔 불씨 용(ember)이었는데 몬스터 이그나리온(빨간 꼬마 용)과 개념이 겹쳐 꼬마 꿀벌로 바꿨다.
+    { id: 'bee', icon: '🐝', atk: { color: '#ffc93d', shape: 'wedge' } },
     { id: 'bonebird', icon: '🦴', atk: { color: '#efe6cf', shape: 'bone' } },
   ],
 };
