@@ -132,20 +132,34 @@ function hHash(a, b2, c) {
   h ^= h >>> 15; return h >>> 0;
 }
 const isSup = h => !!(h && h.support);
+/** 대표 말고 섞여 나오는 용사 — 직전 restZones 구역의 대표들 (src/balance.js restPool 과 같은 규칙) */
+function hRest(stage) {
+  const lead = hRot(stage), out = [];
+  for (let k = 1; k <= (D.stage.restZones ?? 2); k++) {
+    const s = stage - k * SCENE;
+    if (s < 1) break;
+    const h = hRot(s);
+    if (h !== lead && !out.includes(h)) out.push(h);
+  }
+  return out;
+}
 function foeAtSim(stage, wave, slot) {
   const lead = hRot(stage);
-  const rest = hPool(stage).filter(h => h !== lead);
+  const rest = hRest(stage);
   if (!rest.length) return lead;
   const h = hHash(stage, wave, slot);
   if (h % 100 < D.stage.leadFoePct) return lead;
   return rest[(h >>> 8) % rest.length];
 }
-/** 그 웨이브의 힐러 수 (src/balance.js fixSupportOnly 와 같은 규칙) */
+/** 그 웨이브의 힐러 수 (src/balance.js waveFoes 와 같은 규칙 — 대표 최소 1명 · fixSupportOnly) */
 function supportsIn(stage, wave, n) {
   if (ARG.healOff) return 0;
+  const lead = hRot(stage);
   let list = [...Array(n)].map((_, i) => foeAtSim(stage, wave, i));
+  if (n > 0 && !list.includes(lead)) list[hHash(stage, wave, 77) % n] = lead;
   if (list.length && list.every(isSup)) {
-    const alt = hPool(stage).filter(h => !isSup(h));
+    const near = hRest(stage).filter(h => !isSup(h));
+    const alt = near.length ? near : hPool(stage).filter(h => !isSup(h));
     if (alt.length) list[list.length - 1] = alt[hHash(stage, wave, 99) % alt.length];
   }
   return list.filter(isSup).length;
