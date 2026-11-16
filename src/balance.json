@@ -953,7 +953,7 @@
         "sheet": "Enemy_Grik_Goblin.png",
         "dir": "Grik_Goblin",
         "name": "그릭",
-        "unlock": 10,
+        "unlock": 5,
         "ability": {
           "name": "탐욕",
           "desc": "골드 +40%, 피해 -15%",
@@ -970,7 +970,7 @@
         "sheet": "Enemy_Nightwing_Bat.png",
         "dir": "Nightwing_Bat",
         "name": "나이트윙",
-        "unlock": 40,
+        "unlock": 12,
         "ability": {
           "name": "흡혈",
           "desc": "웨이브 회복 2배, 피해 -10%",
@@ -987,7 +987,7 @@
         "sheet": "Enemy_Sporeling_Mushroom.png",
         "dir": "Sporeling_Mushroom",
         "name": "스포어링",
-        "unlock": 100,
+        "unlock": 20,
         "ability": {
           "name": "포자",
           "desc": "잡몹 피해 +35%, 보스 피해 -20%",
@@ -1002,7 +1002,7 @@
       {
         "key": "treant",
         "name": "루트링",
-        "unlock": 120,
+        "unlock": 26,
         "ability": {
           "name": "뿌리",
           "desc": "최대체력 +30%, 웨이브 회복 +60%, 피해 -12%",
@@ -1018,7 +1018,7 @@
       {
         "key": "griffin",
         "name": "그리플링",
-        "unlock": 140,
+        "unlock": 33,
         "ability": {
           "name": "돌풍",
           "desc": "공격속도 +15%, 더블샷 +10%p, 보스 피해 -20%",
@@ -1034,7 +1034,7 @@
       {
         "key": "frostgiant",
         "name": "요툰",
-        "unlock": 160,
+        "unlock": 40,
         "ability": {
           "name": "빙갑",
           "desc": "받는 피해 -20%, 최대체력 +20%, 공격속도 -12%",
@@ -1050,7 +1050,7 @@
       {
         "key": "imp",
         "name": "임피",
-        "unlock": 180,
+        "unlock": 50,
         "ability": {
           "name": "악의",
           "desc": "치명확률 +8%p, 치명피해 +25%, 최대체력 -25%",
@@ -1068,7 +1068,7 @@
         "sheet": "Enemy_Boneguard_Skeleton.png",
         "dir": "Boneguard_Skeleton",
         "name": "본가드",
-        "unlock": 200,
+        "unlock": 60,
         "ability": {
           "name": "뼈방패",
           "desc": "받는 피해 -25%, 피해 -10%",
@@ -1085,7 +1085,7 @@
         "sheet": "Enemy_Fangwolf_Wolf.png",
         "dir": "Fangwolf_Wolf",
         "name": "팽울프",
-        "unlock": 400,
+        "unlock": 80,
         "ability": {
           "name": "질주",
           "desc": "공격속도 +25%, 치명피해 -20%",
@@ -1102,7 +1102,7 @@
         "sheet": "Enemy_Wraith_Ghost.png",
         "dir": "Wraith_Ghost",
         "name": "레이스",
-        "unlock": 700,
+        "unlock": 100,
         "ability": {
           "name": "원혼",
           "desc": "치명확률 +12%p, 최대체력 -20%",
