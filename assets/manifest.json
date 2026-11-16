@@ -374,7 +374,21 @@
       "evo": [
         2,
         3
-      ]
+      ],
+      "stageFrames": {
+        "t2_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        },
+        "t3_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        }
+      }
     },
     "griffin": {
       "attack": 3,
@@ -390,7 +404,21 @@
       "evo": [
         2,
         3
-      ]
+      ],
+      "stageFrames": {
+        "t2_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        },
+        "t3_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        }
+      }
     },
     "imp": {
       "attack": 3,
@@ -406,7 +434,21 @@
       "evo": [
         2,
         3
-      ]
+      ],
+      "stageFrames": {
+        "t2_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        },
+        "t3_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        }
+      }
     },
     "treant": {
       "attack": 3,
@@ -422,7 +464,21 @@
       "evo": [
         2,
         3
-      ]
+      ],
+      "stageFrames": {
+        "t2_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        },
+        "t3_": {
+          "idle": 2,
+          "attack": 3,
+          "hit": 1,
+          "dead": 1
+        }
+      }
     }
   },
   "hero": {
