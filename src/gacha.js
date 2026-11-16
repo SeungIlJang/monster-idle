@@ -11,6 +11,7 @@ import { S } from './state.js';
 import { eff as relicEff } from './relics.js';
 import { bump as bumpDaily } from './daily.js';
 import { t } from './i18n.js';
+import { MANIFEST } from './sprites.js';
 
 export const BANNERS = B.gacha.banners;            // [{key,name,icon,slots,affects}]
 export const RARITIES = B.gacha.rarities;          // [{name,color,owned,equipped}]
@@ -45,11 +46,26 @@ export const CATALOG = {
     { id: 'wisp', icon: '🔮', atk: { color: '#9fe8ff', shape: 'flame' } },
     { id: 'shard', icon: '🪨', atk: { color: '#d9b06a', shape: 'rock' } },
     { id: 'shade', icon: '👤', atk: { color: '#9a7ad6', shape: 'wedge' } },
+    // 7·8번째(2026-11-16). 슬롯이 8칸이 되면서 6종으로는 하늘에 같은 동료가 최소 둘 겹쳤다.
+    // **그림이 들어오기 전에는 안 나온다** — pullable() 이 매니페스트에 있는 것만 뽑는다
+    // (docs/comp-new-kinds-handoff.md).
+    { id: 'ember', icon: '🐲', atk: { color: '#ff8a3d', shape: 'flame' } },
+    { id: 'bonebird', icon: '🦴', atk: { color: '#efe6cf', shape: 'bone' } },
   ],
 };
 
 // 아이템 이름은 언어팩(d.item.<id>)에서 — 한국어 원문도 src/lang/ko.json 에 있다
 for (const list of Object.values(CATALOG)) for (const it of list) it.name = t('d.item.' + it.id);
+
+/**
+ * 뽑기에서 나올 수 있는 것. 동료는 **그림이 매니페스트에 들어온 종류만** 나온다.
+ * 그림 없는 동료가 뽑히면 하늘에 안 그려지고(companions.compImage 가 null) 뽑기 탭엔 이모지만 뜬다.
+ * 코드와 그림이 따로 들어오므로, 코드를 먼저 배포해도 그림이 들어온 날부터 저절로 섞이게 한다.
+ * 시뮬(tools/design-sim.cjs)도 같은 기준으로 동료 종류 수를 센다 — 종류가 늘면 융합이 느려진다.
+ */
+export const pullable = banner => (banner === 'comp'
+  ? CATALOG.comp.filter(c => MANIFEST.comp?.[c.id])
+  : CATALOG[banner]);
 
 const itemDef = (banner, id) => CATALOG[banner].find(i => i.id === id);
 const keyOf = (id, rarity, enh) => id + '|' + rarity + '|' + enh;
@@ -162,7 +178,7 @@ export function pull(banner, n, { free = false } = {}) {
 
   const results = [];
   for (let i = 0; i < n; i++) {
-    const cat = CATALOG[banner];
+    const cat = pullable(banner);
     const def = cat[Math.floor(Math.random() * cat.length)];
     const rarity = rollRarity(banner);
     addItem(banner, def.id, rarity, 0, 1);

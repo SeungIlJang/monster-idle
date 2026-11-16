@@ -246,7 +246,7 @@
     "gemsPerDay": 1700,
     "costPerPull": 100,
     "freeAdPullsPerBanner": 3,
-    "_itemTypes": "배너당 아이템 종류 수. 융합이 '같은 아이템 3개'라서 종류가 많을수록 승급이 느려진다 — 시뮬도 이 값을 반영해야 한다.",
+    "_itemTypes": "배너당 아이템 종류 수(장비·스킬). 융합이 '같은 아이템 3개'라서 종류가 많을수록 승급이 느려진다 — 시뮬도 이 값을 반영해야 한다. 동료는 이 값을 쓰지 않는다 — 그림이 들어온 종류만 뽑히므로(gacha.pullable) 시뮬이 assets/manifest.json 의 comp 수를 센다.",
     "itemTypes": 6,
     "banners": [
       {

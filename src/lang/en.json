@@ -287,6 +287,8 @@
  "d.item.wisp": "Will-o’-Wisp",
  "d.item.shard": "Pebble",
  "d.item.shade": "Shade",
+ "d.item.ember": "Emberling",
+ "d.item.bonebird": "Bonebird",
  "d.stat.atk": "Attack",
  "d.stat.hp": "Max HP",
  "d.stat.def": "Defense",

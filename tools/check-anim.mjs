@@ -10,6 +10,8 @@
 //   comp_<id>_idle_2.png
 //   comp_<id>_r2_idle_1.png     comp_<id>_r2_idle_2.png            (등급 변형 — r2 영웅 · r3 전설 · r4 신화,
 //                                                                    docs/comp-rarity-art-handoff.md)
+//   comp_<id>_idle_1.png        comp_<id>_idle_2.png               (**새 동료의 기본 그림** — 게임에 아직 없는 키만,
+//                                                                    docs/comp-new-kinds-handoff.md)
 //
 // 기준은 이미 게임에 들어 있는 1번 그림이다(assets/<group>/<key>/<단계>idle_1.png 등).
 // 새 프레임이 그것과 **캔버스 · 발 행 · 가로 중심** 이 다르면 프레임이 바뀔 때마다 캐릭터가
@@ -36,6 +38,8 @@ const H_RATIO = [0.7, 1.15];   // 공격 프레임 높이 / idle 높이 허용 �
 const MIN_DIFF = 0.02;     // 1번 그림과 이만큼(내용 픽셀 비율)은 달라야 한다 — 복사본 방지
 const RAR_SIZE = [0.9, 1.25];  // 등급 변형 내용 크기 / 기본 그림 — 장식이 붙어 조금 커지는 건 된다
 const RAR_DIFF = 0.08;     // 등급 변형은 기본 그림과 이만큼은 달라야 한다 — 작게 그려도 차이가 보여야 한다
+// 새 동료 기본 그림 규격 — 기존 6종(assets/comp/*.png)이 전부 이렇게 서 있다
+const NEW_COMP = { w: 240, h: 240, foot: 231, cx: 119.5, cxTol: 1.8, size: [140, 216], topRoom: 30 };
 
 const dir = process.argv[2];
 if (!dir || !fs.existsSync(dir)) {
@@ -76,6 +80,13 @@ function diffRatio(a, b) {
 // 파일 이름 해석: <group>_<key>[_t2|_t3|_r2|_r3|_r4]_<frame>.png
 const RE = /^(mon|hero|comp)_([a-z0-9]+?)(?:_(t2|t3|r2|r3|r4))?_(idle_1|idle_2|attack_windup|attack_follow)\.png$/;
 const inDir = new Set(fs.readdirSync(dir));
+/** 동료 기준 그림 — 게임에 있으면 그것, 없으면(새 동료) 같은 폴더의 comp_<id>_idle_1.png */
+function compBase(key) {
+  const inGame = path.join(ASSETS, 'comp', `${key}.png`);
+  if (fs.existsSync(inGame)) return inGame;
+  const fresh = `comp_${key}_idle_1.png`;
+  return inDir.has(fresh) ? path.join(dir, fresh) : null;
+}
 const files = fs.readdirSync(dir).filter(f => f.toLowerCase().endsWith('.png')).sort();
 const ok = [], bad = [], skipped = [];
 let totalKB = 0;
@@ -89,8 +100,8 @@ for (const f of files) {
   if (rar) {
     // 등급 변형 — 기본 그림(assets/comp/<id>.png)과 캔버스 · 발 행 · 가로 중심이 같아야 하고, 눈에 띄게 달라야 한다
     if (group !== 'comp' || !fr.startsWith('idle')) { bad.push(`${f} — 등급 변형(r2·r3·r4)은 뽑기 동료 idle_1 · idle_2 만 받습니다`); continue; }
-    const base = path.join(ASSETS, 'comp', `${key}.png`);
-    if (!fs.existsSync(base)) { bad.push(`${f} — 게임에 기본 그림이 없음 (${path.relative(ROOT, base)}) · 키 이름 확인`); continue; }
+    const base = compBase(key);
+    if (!base) { bad.push(`${f} — 기본 그림이 없음 (assets/comp/${key}.png 도, 이 폴더의 comp_${key}_idle_1.png 도 없음) · 키 이름 확인`); continue; }
     const b = measure(base), a = measure(path.join(dir, f));
     totalKB += a.kb;
     // idle_2 는 같은 등급의 idle_1 과 견준다(숨쉬기 · 깜빡임). 그게 폴더에 없으면 기본 그림과
@@ -124,11 +135,35 @@ for (const f of files) {
     else ok.push(`${f}  (${a.cw}×${a.ch}, ${a.kb.toFixed(0)}KB)`);
     continue;
   }
-  if (fr === 'idle_1') { bad.push(`${f} — idle_1 은 등급 변형(comp_<id>_r2_idle_1.png 등)에만 받습니다`); continue; }
+  if (fr === 'idle_1' && group === 'comp' && !stage) {
+    // 새 동료의 기본 그림 — 비교할 그림이 없으니 기존 6종이 선 규격으로 잰다
+    if (fs.existsSync(path.join(ASSETS, 'comp', `${key}.png`))) { bad.push(`${f} — 이미 게임에 있는 동료입니다. 기본 그림은 바꾸지 않습니다 (등급 변형은 comp_${key}_r2_idle_1.png 처럼)`); continue; }
+    const a = measure(path.join(dir, f));
+    totalKB += a.kb;
+    const N = NEW_COMP, why = [];
+    if (a.colorType !== 6) why.push(`RGBA(색상타입 6)가 아님 — 지금 ${a.colorType}`);
+    if (a.w !== N.w || a.h !== N.h) why.push(`캔버스 ${a.w}×${a.h} — ${N.w}×${N.h} 이어야 함`);
+    if (a.x1 < 0) why.push('그림이 비어 있음');
+    else {
+      if (a.y1 !== N.foot) why.push(`발 행 ${a.y1} — ${N.foot} 이어야 함 (다른 동료들과 같은 높이에 떠야 함)`);
+      if (Math.abs(a.cx - N.cx) > N.cxTol) why.push(`가로 중심 ${a.cx} — ${N.cx} ±${N.cxTol} 이어야 함`);
+      if (a.x0 < 1 || a.x1 > a.w - 2 || a.y0 < 1) why.push(`캔버스 가장자리에 닿음 (${a.x0},${a.y0}~${a.x1},${a.y1}) — 잘려 보임`);
+      const big = Math.max(a.cw, a.ch);
+      if (big < N.size[0] || big > N.size[1]) why.push(`내용 크기 ${a.cw}×${a.ch} — 긴 변이 ${N.size[0]}~${N.size[1]}px 이어야 함 (다른 동료와 덩치가 맞게)`);
+      if (a.y0 < N.topRoom) why.push(`위쪽 여유 ${a.y0}px — ${N.topRoom}px 이상 남겨 주세요 (등급 외형의 왕관·볏이 위로 붙습니다)`);
+    }
+    const tag = `comp/${key}`;
+    if (!seen.has(tag)) seen.set(tag, new Set());
+    seen.get(tag).add(fr);
+    if (why.length) bad.push(`${f}\n      - ` + why.join('\n      - '));
+    else ok.push(`${f}  (새 동료 · ${a.cw}×${a.ch}, ${a.kb.toFixed(0)}KB)`);
+    continue;
+  }
+  if (fr === 'idle_1') { bad.push(`${f} — idle_1 은 등급 변형(comp_<id>_r2_idle_1.png 등)과 새 동료 기본 그림에만 받습니다`); continue; }
   if (group === 'comp' && (stage || fr !== 'idle_2')) { bad.push(`${f} — 뽑기 동료는 idle_2 한 장만 받습니다`); continue; }
   const pre = stage ? stage + '_' : '';
   // 기준 그림
-  const refIdle = group === 'comp' ? path.join(ASSETS, 'comp', `${key}.png`) : path.join(ASSETS, group, key, `${pre}idle_1.png`);
+  const refIdle = group === 'comp' ? (compBase(key) || path.join(ASSETS, 'comp', `${key}.png`)) : path.join(ASSETS, group, key, `${pre}idle_1.png`);
   // 공격 프레임의 비교 기준은 **타격** 그림이다. 이미 들인 적이 있으면(다시 들이기) attack_1 은 준비 장면 자신이라
   // '거의 같음' 으로 걸린다 — 그때는 attack_2 가 타격이다.
   const strike = atkCount(group, key, pre) >= 3 ? 'attack_2' : 'attack_1';
@@ -167,6 +202,7 @@ for (const f of files) {
 const pairs = [];
 for (const [tag, set] of seen) {
   if (set.has('idle_1') !== set.has('idle_2') && /\/r[234]$/.test(tag)) pairs.push(`${tag} — 등급 변형은 idle_1 과 idle_2 를 같이 보내 주세요 (지금 ${[...set].join(', ')})`);
+  if (/^comp\/[a-z0-9]+$/.test(tag) && set.has('idle_1') && !set.has('idle_2')) pairs.push(`${tag} — 새 동료는 idle_1 과 idle_2 를 같이 보내 주세요`);
   if (set.has('attack_windup') !== set.has('attack_follow')) pairs.push(`${tag} — attack_windup 과 attack_follow 는 같이 보내 주세요 (지금 ${[...set].join(', ')})`);
 }
 

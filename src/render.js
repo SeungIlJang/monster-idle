@@ -273,6 +273,12 @@ function drawAllyBolt(b) {
     ctx.moveTo(x + r * 1.6, y - r * 0.4); ctx.lineTo(x - r * 1.2, y); ctx.lineTo(x + r * 1.6, y + r * 0.4);
   } else if (b.shape === 'ring') {
     ctx.arc(x, y, r * 0.95, 0, 7);
+  } else if (b.shape === 'bone') {                // 해골새 — 양 끝이 뭉툭한 뼈다귀
+    ctx.rect(x - r * 0.9, y - r * 0.28, r * 1.8, r * 0.56);
+    ctx.moveTo(x - r * 0.9 + r * 0.42, y - r * 0.38); ctx.arc(x - r * 0.9, y - r * 0.38, r * 0.42, 0, 7);
+    ctx.moveTo(x - r * 0.9 + r * 0.42, y + r * 0.38); ctx.arc(x - r * 0.9, y + r * 0.38, r * 0.42, 0, 7);
+    ctx.moveTo(x + r * 0.9 + r * 0.42, y - r * 0.38); ctx.arc(x + r * 0.9, y - r * 0.38, r * 0.42, 0, 7);
+    ctx.moveTo(x + r * 0.9 + r * 0.42, y + r * 0.38); ctx.arc(x + r * 0.9, y + r * 0.38, r * 0.42, 0, 7);
   } else if (b.shape === 'coin') {
     ctx.ellipse(x, y, r * 0.75, r, 0, 0, 7);
   } else {

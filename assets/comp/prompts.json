@@ -44,6 +44,18 @@
       "name": "그림자",
       "icon": "👤",
       "scene": "a small shadow creature, flat charcoal-grey silhouette with soft ragged edges, a simple hunched blob shape with no features except two pale glowing dot eyes, slightly transparent at the bottom edge"
+    },
+    {
+      "id": "ember",
+      "name": "불씨 용",
+      "icon": "🐲",
+      "scene": "a tiny round baby dragon, muted ember-orange body with a pale peach belly, two stubby rounded wings, two tiny nub horns, a short tail ending in a small soft flame tip, two dot eyes, hovering with wings slightly spread"
+    },
+    {
+      "id": "bonebird",
+      "name": "해골새",
+      "icon": "🦴",
+      "scene": "a tiny cute bird made of smooth ivory bones: a round skull-like head with two large dark round eye holes each holding a small pale-cyan dot glow, a short rounded beak, a simple rounded ribcage body, two small bony wings spread, hovering — friendly and toy-like, not scary"
     }
   ],
   "promptTemplate": "{common.style}. {item.scene}. {common.subordinate} {common.silhouette} {common.facing} {common.composition} {common.constraints}",

@@ -268,15 +268,19 @@ const GACHA = {
   types: B.gacha.itemTypes,                          // 종류가 많을수록 3개 모으기가 느리다
   R: B.gacha.rarities.length,
 };
+// 동료는 **그림이 들어온 종류만** 뽑힌다(src/gacha.js pullable). 그래서 동료 종류 수는 매니페스트에서 센다 —
+// 새 동료 그림을 들이면(tools/make-comp-rarity.mjs) 시뮬도 저절로 따라간다. 6 → 8종이면 30일 최고 −0.9%.
+const COMP_KINDS = Object.keys(require('../assets/manifest.json').comp || {}).length || GACHA.types;
+const typesOf = key => (key === 'comp' ? COMP_KINDS : GACHA.types);
 function bannerLv(pulls) {
   let lv = 1;
   for (let i = 0; i < GACHA.lvThresh.length; i++) if (pulls >= GACHA.lvThresh[i]) lv = i + 1;
   return lv;
 }
 /** 뽑기 1회를 "종류당 기대 보유량"에 더한다 */
-function addPull(cnt, pulls) {
+function addPull(cnt, pulls, types) {
   const t = GACHA.table[bannerLv(pulls) - 1];
-  for (let r = 0; r < GACHA.R; r++) cnt[r] += (t[r] / 100) / GACHA.types;
+  for (let r = 0; r < GACHA.R; r++) cnt[r] += (t[r] / 100) / types;
 }
 /** 같은 종류 3개 → 상위 1개. 게임의 일괄 융합과 같은 규칙 */
 function fuse(cnt) {
@@ -286,16 +290,16 @@ function fuse(cnt) {
   }
 }
 /** 보유 효과 합(%) — 가진 것 전부 */
-function ownSum(cnt) {
+function ownSum(cnt, types) {
   let s = 0;
-  for (let r = 0; r < GACHA.R; r++) s += GACHA.types * cnt[r] * GACHA.owned[r];
+  for (let r = 0; r < GACHA.R; r++) s += types * cnt[r] * GACHA.owned[r];
   return s;
 }
 /** 장착 효과 합(%) — 상위 등급부터 슬롯을 채운다 */
-function eqSum(cnt, slots) {
+function eqSum(cnt, slots, types) {
   let left = slots, s = 0;
   for (let r = GACHA.R - 1; r >= 0 && left > 0; r--) {
-    const have = Math.min(left, GACHA.types * cnt[r]);
+    const have = Math.min(left, types * cnt[r]);
     if (have > 0) { s += have * GACHA.equipped[r]; left -= have; }
   }
   return s;
@@ -418,8 +422,8 @@ const activeSlots = (b, best) => b.slotUnlock.filter(u => best >= u).length;
 /** own/eq 는 자주 읽히므로 캐시한다 (뽑기 후와 스테이지 상승 시에만 갱신) */
 function refreshGacha(S) {
   for (const b of GACHA.banners) {
-    S.own[b.key] = ownSum(S.cnt[b.key]);
-    S.eqv[b.key] = eqSum(S.cnt[b.key], activeSlots(b, S.life));
+    S.own[b.key] = ownSum(S.cnt[b.key], typesOf(b.key));
+    S.eqv[b.key] = eqSum(S.cnt[b.key], activeSlots(b, S.life), typesOf(b.key));
   }
 }
 // CLI 오버라이드
@@ -693,7 +697,7 @@ function run() {
   const addPulls = () => {
     for (const k of GACHA.keys) {
       const n = Math.round(perBanner);
-      for (let i = 0; i < n; i++) { addPull(S.cnt[k], S.bp[k]); S.bp[k]++; }
+      for (let i = 0; i < n; i++) { addPull(S.cnt[k], S.bp[k], typesOf(k)); S.bp[k]++; }
       fuse(S.cnt[k]);          // 플레이어는 일괄 융합을 누른다고 본다
       S.pulls += n;
     }

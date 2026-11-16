@@ -479,7 +479,7 @@ SECTIONS.gacha = () => {
       ${sec('🎁 아이템 지급')}
       <div class="devGrid">
         <label class="devRow"><span>배너</span><select id="dvGB">${G.BANNERS.map(b => `<option value="${b.key}" ${b.key === giveBanner ? 'selected' : ''}>${b.icon || ''} ${b.name}</option>`).join('')}</select></label>
-        <label class="devRow"><span>아이템</span><select id="dvGI">${items.map(it => `<option value="${it.id}">${it.icon || ''} ${it.name}</option>`).join('')}</select></label>
+        <label class="devRow"><span>아이템</span><select id="dvGI">${items.map(it => `<option value="${it.id}">${it.icon || ''} ${it.name}${G.pullable(giveBanner).includes(it) ? '' : ' (그림 대기 — 하늘에 안 뜸)'}</option>`).join('')}</select></label>
         <label class="devRow"><span>등급</span><select id="dvGR">${G.RARITIES.map((r, i) => `<option value="${i}" ${i === G.RARITIES.length - 1 ? 'selected' : ''}>${r.name}</option>`).join('')}</select></label>
         ${row('dvGE', '강화', 0)}
         ${row('dvGN', '개수', 1)}
@@ -498,7 +498,7 @@ SECTIONS.gacha = () => {
         <label class="devRow"><span>등급</span><select id="dvAR">${G.RARITIES.map((r, i) => `<option value="${i}" ${i === G.RARITIES.length - 1 ? 'selected' : ''}>${r.name}</option>`).join('')}</select></label>
         ${row('dvAE', '강화', 10, '+1마다 효과 ×' + B.gacha.fuse.enhanceMul)}
       </div>
-      ${btns([['aSet', '6종 전부 이 등급·강화로 (교체)'], ['aUp', '보유 전부 강화 +1'], ['aSlots', '이 배너 슬롯 전부 열기']])}`,
+      ${btns([['aSet', `${G.pullable(allBanner).length}종 전부 이 등급·강화로 (교체)`], ['aUp', '보유 전부 강화 +1'], ['aSlots', '이 배너 슬롯 전부 열기']])}`,
     bind() {
       $('dvGB').onchange = e => { giveBanner = e.target.value; showPanel(); };
       on('dvApply', () => {
@@ -526,20 +526,21 @@ SECTIONS.gacha = () => {
         const top = G.RARITIES.length - 1;
         for (const b of G.BANNERS) {
           const inv = (S.inv[b.key] ||= {});
-          for (const it of G.CATALOG[b.key] || []) { const k = `${it.id}|${top}|0`; inv[k] = (inv[k] || 0) + 1; }
+          for (const it of G.pullable(b.key) || []) { const k = `${it.id}|${top}|0`; inv[k] = (inv[k] || 0) + 1; }
         }
         done('전 아이템 ' + G.RARITIES[top].name + ' 1개씩');
       });
-      $('dvAB').onchange = e => { allBanner = e.target.value; };
+      $('dvAB').onchange = e => { allBanner = e.target.value; $('aSet').textContent = `${G.pullable(allBanner).length}종 전부 이 등급·강화로 (교체)`; };
       on('aSet', () => {
         const f = form();
         const enh = f.int('dvAE', 0, 999);
         if (f.fail()) return;
         const b = $('dvAB').value, r = +$('dvAR').value, e = enh || 0;
         // 종류마다 1개씩 — 슬롯이 다 열려 있으면 전부 장착되고 동료는 하늘에 전부 뜬다
-        S.inv[b] = Object.fromEntries((G.CATALOG[b] || []).map(it => [`${it.id}|${r}|${e}`, 1]));
+        // 그림이 들어온 종류만(G.pullable) — 그림 없는 동료를 넣으면 슬롯만 먹고 하늘엔 안 뜬다
+        S.inv[b] = Object.fromEntries((G.pullable(b) || []).map(it => [`${it.id}|${r}|${e}`, 1]));
         const bn = G.BANNERS.find(x => x.key === b);
-        done(`${bn?.name || b} ${(G.CATALOG[b] || []).length}종 전부 ${G.RARITIES[r].name}${e ? ' +' + e : ''}`);
+        done(`${bn?.name || b} ${(G.pullable(b) || []).length}종 전부 ${G.RARITIES[r].name}${e ? ' +' + e : ''}`);
       });
       on('aUp', () => {
         const b = $('dvAB').value;
